@@ -1,0 +1,20 @@
+{
+  "name": "homotopy-core",
+  "version": "0.1.0",
+  "description": "homotopy.io core library",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "parcel build --target=node src/index.js",
+    "dev": "parcel --target=node src/index.js"
+  },
+  "keywords": [
+    "homotopy.io"
+  ],
+  "author": "",
+  "license": "BSD-3-Clause",
+  "dependencies": {},
+  "devDependencies": {
+    "parcel-bundler": "^1.9.7"
+  }
+}
