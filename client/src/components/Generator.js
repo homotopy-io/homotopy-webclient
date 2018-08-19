@@ -1,11 +1,19 @@
 import * as React from "react";
 import { StyleSheet, css } from "aphrodite";
+import { connect } from "react-redux";
 
-export const SignatureCell = ({
+import { getGenerator } from "~/state/store/signature";
+import { selectGenerator, removeGenerator } from "~/state/actions/signature";
+
+import IconButton from "~/components/IconButton";
+
+export const Generator = ({
   name,
-  diagram
+  diagram,
+  onSelect,
+  onRemove
 }) =>
-  <div className={css(styles.cell)}>
+  <div className={css(styles.generator)}>
     <div className={css(styles.preview)}>
       {/*<Diagram2D diagram={diagram} />*/}
     </div>
@@ -14,19 +22,28 @@ export const SignatureCell = ({
         {name}
       </div>
     </div>
+    <div className={css(styles.actions)}>
+      <IconButton
+        className={`${css(styles.groupAction)}`}
+        onClick={onRemove}
+        icon="trash"
+      />
+    </div>
   </div>
 
-export default ({ id }) =>
-  <SignatureCell name="Cell 0" diagram={null} />
+export default connect(
+  (state, { id }) => getGenerator(state, id),
+  (dispatch, { id }) => ({
+    onSelect: () => dispatch(selectGenerator(id)),
+    onRemove: () => dispatch(removeGenerator(id))
+  })
+)(Generator);
 
 const styles = StyleSheet.create({
-  cell: {
+  generator: {
     display: "flex",
-    padding: 8,
-    cursor: "pointer",
-    ":hover":  {
-      background: "#34495e"
-    }
+    paddingLeft: 8,
+    paddingRight: 8
   },
 
   preview: {
@@ -37,13 +54,21 @@ const styles = StyleSheet.create({
   },
 
   details: {
-    padding: 8,
     display: "flex",
-    flexDirection: "column"
+    flexDirection: "column",
+    flex: 1
   },
 
   name: {
-    fontWeight: 500
+    fontWeight: 500,
+    padding: 8
+  },
+
+  actions: {
+    fontWeight: 600,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "right",
   }
 });
 

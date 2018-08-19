@@ -21,11 +21,17 @@
   },
   "homepage": "https://github.com/jamievicary/homotopy.io#readme",
   "dependencies": {
+    "@icon/stroke-7": "^1.2.0-2",
     "aphrodite": "^2.2.2",
     "babel-polyfill": "^6.26.0",
+    "browserify-css": "0.12.0",
+    "dot-prop-immutable": "^1.4.0",
     "homotopy-core": "0.1.0",
-    "react": "^16.4.2",
+    "react": "^0.14.0 || ^15.0.0-0 || ^16.0.0-0",
     "react-dom": "^16.4.2",
+    "react-ionicons": "^2.1.6",
+    "react-redux": "^5.0.7",
+    "redux": "^4.0.0",
     "rxjs": "^6.2.2",
     "typeface-roboto": "^0.0.54"
   },

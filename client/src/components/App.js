@@ -1,6 +1,5 @@
 import * as React from "react";
 import { StyleSheet, css } from "aphrodite";
-import Logo from "~/components/Logo";
 import Header from "~/components/Header";
 import Signature from "~/components/Signature";
 
@@ -31,7 +30,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     background: "#2c3e50",
     color: "#ecf0f1",
-    width: 300
+    width: 350
   },
 
   content: {
