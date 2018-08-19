@@ -53,7 +53,7 @@ export default createReducer({
 
   [SignatureActions.SELECT_GENERATOR]: (state, { id }) => {
     let { diagram } = state.diagram;
-    let generator = state.signature[id];
+    let generator = state.signature.generators[id];
 
     if (diagram == null) {
       state = dotProp.set(state, `diagram.diagram`, generator.generator.getDiagram());

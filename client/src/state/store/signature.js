@@ -5,14 +5,16 @@ import * as Core from "homotopy-core";
 
 export const getDimensionGroups = (state) => {
   let { signature } = state;
-  let dimension = Math.max(1, ...Object.values(signature).map(g => g.generator.n));
+  let { generators } = signature;
+
+  let dimension = Math.max(1, ...Object.values(generators).map(g => g.generator.n));
   let groups = [];
 
   for (let i = 0; i < dimension; i++) {
     groups[i] = [];
   }
 
-  for (let [id, generator] of Object.entries(signature)) {
+  for (let [id, generator] of Object.entries(generators)) {
     groups[generator.generator.n].push(id);
   }
 
@@ -21,21 +23,23 @@ export const getDimensionGroups = (state) => {
 
 export const getGenerator = (state, id) => {
   let { signature } = state;
+  let { generators } = signature;
 
-  if (!signature[id]) {
+  if (!generators[id]) {
     throw `Unknown generator id ${id}.`;
   } else {
-    return signature[id];
+    return generators[id];
   }
 }
 
 export const createGenerator = (state, source, target) => {
-  let id = Object.keys(state.signature).length;
+  let id = state.signature.id;
   let name = `Cell ${id + 1}`;
   let color = ["red", "green", "blue"][id % 3];
   let generator = new Core.Generator(id, source, target);
 
-  state = dotProp.set(state, `signature.${id}`, {
+  state = dotProp.set(state, `signature.id`, id + 1);
+  state = dotProp.set(state, `signature.generators.${id}`, {
     name, generator, color
   });
 
@@ -45,12 +49,12 @@ export const createGenerator = (state, source, target) => {
 export default createReducer({
   [Actions.REMOVE_GENERATOR]: (state, { id }) => {
     // TODO: Also remove all cells that reference this cell
-    state = dotProp.delete(state, `signature.${id}`);
+    state = dotProp.delete(state, `signature.generators.${id}`);
     return state;
   },
 
   [Actions.RENAME_GENERATOR]: (state, { name }) => {
-    state = dotProp.set(state, `signature.${id}.name`, name);
+    state = dotProp.set(state, `signature.generators.${id}.name`, name);
     return state;
   },
 

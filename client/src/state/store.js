@@ -4,15 +4,16 @@ import signature from "~/state/store/signature";
 
 export default (state, action) => {
   state = state || {
-    signature: {},
+    signature: {
+      generators: {},
+      id: 0
+    },
     diagram: {
       diagram: null,
       source: null,
       target: null
     }
   };
-
-  console.log(action.type);
 
   state = diagram(state, action);
   state = signature(state, action);
