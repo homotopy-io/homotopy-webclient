@@ -15,6 +15,8 @@
   "license": "BSD-3-Clause",
   "dependencies": {},
   "devDependencies": {
+    "eslint": "^5.4.0",
+    "eslint-plugin-react": "^7.11.1",
     "parcel-bundler": "^1.9.7"
   }
 }

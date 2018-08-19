@@ -2,9 +2,18 @@
   "presets": [
     ["env", {
       "targets": {
-        "browsers": ["last 2 versions", "safari >= 7"]
-      },
-      "modules": false
+        "browsers": ["last 2 versions"]
+      }
     }]
+  ],
+  "plugins": [
+    [
+      "module-resolver",
+      {
+        "alias": {
+          "~": "./src",
+        }
+      }
+    ]
   ]
 }
