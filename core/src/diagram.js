@@ -609,7 +609,7 @@ export class Diagram {
       height: position[0] + subdiagram.data.length,
       regular: true
     });
-    let source_second_limit_forward = target.contractForwardLimit(type, slice_position, subdiagram.getTargetBoundary(), !framing);
+    let source_second_limit_forward = target.contractForwardLimit(type, slice_position, subdiagram.target, !framing);
     let source_second_limit_backward = source_second_limit_forward.getBackwardLimit(target, singular);
 
     let data = [new Content(this.n - 1, source_first_limit, source_second_limit_backward)];
@@ -2068,7 +2068,7 @@ export class Diagram {
   getLengthsAtSource() {
     if (this.n == 0) return [];
     if (this.n == 1) return [this.data.length];
-    return this.getSourceBoundary().getLengthsAtSource().concat([this.data.length]);
+    return this.source.getLengthsAtSource().concat([this.data.length]);
   }
   source_size(level) {
     var nCell = this.cells[level];
@@ -2099,8 +2099,8 @@ export class Diagram {
       depth: boundary.depth - 1,
       type: boundary.type
     });
-    if (boundary.type == "s") return this.getSourceBoundary();
-    if (boundary.type == "t") return this.getTargetBoundary();
+    if (boundary.type == "s") return this.source;
+    if (boundary.type == "t") return this.target;
   }
   pullUpMinMax(top_height, bottom_height, min, max) {
     for (var i = bottom_height; i < top_height; i++) {
@@ -2150,12 +2150,12 @@ export class Diagram {
   }
   // Get bounding box surrounding the entire diagram
   getEntireBoundingBox(cell) {
-    var source = this.getSourceBoundary();
+    var source = this.source;
     if (source == null) return {
       min: [],
       max: []
     };
-    var box = this.getSourceBoundary().getEntireBoundingBox();
+    var box = this.source.getEntireBoundingBox();
     box.min.push(0);
     box.max.push(this.cells.length);
     return box;
@@ -2203,10 +2203,10 @@ export class Diagram {
     if (boundary.depth == 1) {
       if (boundary.type == "s") {
         if (height > 0) return null;
-        return this.getSourceBoundary().getLocationBoundaryBox(null, box, location);
+        return this.source.getLocationBoundaryBox(null, box, location);
       } else {
         if (height < Math.max(1, this.cells.length)) return null;
-        return this.getTargetBoundary().getLocationBoundaryBox(null, box, location);
+        return this.target.getLocationBoundaryBox(null, box, location);
       }
     }
     // Deep boundary
@@ -2214,7 +2214,7 @@ export class Diagram {
       depth: boundary.depth - 1,
       type: boundary.type
     };
-    return this.getSourceBoundary().getLocationBoundaryBox(new_boundary, box, location);
+    return this.source.getLocationBoundaryBox(new_boundary, box, location);
   }
   getBoundingBox(cell) {
     _assert(cell);
@@ -2290,7 +2290,7 @@ export class Diagram {
   mirror(n) {
     if (n == 0) {
       // Construct the inverse diagram
-      var new_diagram = new Diagram(this.getTargetBoundary(), []);
+      var new_diagram = new Diagram(this.target, []);
       for (var i = this.cells.length - 1; i >= 0; i--) {
         var new_cell = this.getSlice(i).getInverseCell(this.cells[i]);
         new_diagram.attach(new_cell, {

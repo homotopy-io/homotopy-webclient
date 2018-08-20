@@ -1,4 +1,4 @@
-import { _assert, _validate, isNatural, _propertylist } from "~/util/assert";
+import { _assert, _validate, isNatural, _propertylist } from "~/util/debug";
 
 export class Monotone extends Array {
 

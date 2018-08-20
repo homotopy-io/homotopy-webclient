@@ -6,6 +6,8 @@ export class Generator {
 
   constructor(id, source, target) {
     _assert(id !== undefined);
+    _assert(source == null || source instanceof Diagram);
+    _assert(target == null || target instanceof Diagram);
 
     this.n = source == null ? 0 : source.n + 1;
     this.source = source == null ? null : source.copy();
@@ -26,7 +28,7 @@ export class Generator {
     }
 
     let source = this.source.copy();
-    let first_limit = this.source.contractForwardLimit(this, null, null, true);
+    let first_limit = source.contractForwardLimit(this, null, null, true);
     let singular_height = first_limit.rewrite(this.source.copy());
     let second_limit_forwards = this.target.contractForwardLimit(this, null, null, false);
     let second_limit_backwards = second_limit_forwards.getBackwardLimit(this.target, singular_height);

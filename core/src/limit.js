@@ -396,11 +396,14 @@ export class LimitComponent {
 }
 
 export class Limit extends Array {
-  initialize(n, framing) {
+
+  constructor(n, components, framing) {
+    super(...components);
     this.n = n;
     if (framing != null) this.framing = framing;
-    _validate(this);
+    this.validate();
   }
+
   validate() {
     _assert(isNatural(this.n));
     if (this.n == 0 && this.length > 0) _assert(typeof this.framing === "boolean");
@@ -717,16 +720,13 @@ export class Limit extends Array {
 export class ForwardLimit extends Limit {
 
   constructor(n, components, framing) {
-    if (components === undefined) return super(n);
-    super(...components);
-    super.initialize(n, framing);
+    super(n, components, framing);
     if (n == 0) {
       _assert(this.length <= 1);
       if (this.length == 0) _assert(framing == null);
       if (this.length == 1) _assert(framing != null);
     }
     _validate(this);
-    return this;
   }
   /*
       splice(...args) {
@@ -822,10 +822,8 @@ export class ForwardLimit extends Limit {
 export class BackwardLimit extends Limit {
   constructor(n, components, framing) {
     if (components === undefined) return super(n);
-    super(...components);
-    super.initialize(n, framing);
+    super(n, components, framing);
     _validate(this);
-    return this;
     //return super(n, components, framing); // call the Limit constructor
   }
 
