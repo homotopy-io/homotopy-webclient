@@ -5,16 +5,19 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "parcel build --target=node src/index.js",
-    "dev": "parcel --target=node src/index.js"
+    "build": "babel -d dist src/",
+    "dev": "babel --watch -d dist src/"
   },
   "keywords": [
     "homotopy.io"
   ],
   "author": "",
   "license": "BSD-3-Clause",
-  "dependencies": {},
+  "dependencies": {
+    "babel-polyfill": "^6.26.0"
+  },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
     "eslint": "^5.4.0",
     "eslint-plugin-react": "^7.11.1",
     "parcel-bundler": "^1.9.7"
