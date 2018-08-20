@@ -6,7 +6,11 @@ export default function*(dimension, points, edges) {
 
   yield* run;
 
-  let positions = point => solver.getPosition(point);
+  let positions = new Map();
+  for (let point of points) {
+    positions.set(pointId(point), solver.getPosition(point));
+  }
+
   let bounds = solver.getBounds();
   let minBounds = bounds.min;
   let maxBounds = bounds.max;

@@ -27,16 +27,21 @@
     "browserify-css": "0.12.0",
     "dot-prop-immutable": "^1.4.0",
     "homotopy-core": "0.1.0",
-    "react": "^0.14.0 || ^15.0.0-0 || ^16.0.0-0",
-    "react-dom": "^16.4.2",
+    "konva": "^2.2.1",
+    "react": "16.4.2",
+    "react-dom": "16.4.2",
     "react-ionicons": "^2.1.6",
+    "react-konva": "1.7.12",
     "react-redux": "^5.0.7",
+    "react-spinkit": "^3.0.0",
     "redux": "^4.0.0",
+    "resize-observer-polyfill": "^1.5.0",
     "rxjs": "^6.2.2",
     "typeface-roboto": "^0.0.54"
   },
   "devDependencies": {
     "babel-plugin-module-resolver": "^3.1.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "parcel-bundler": "^1.9.7"
   }
 }

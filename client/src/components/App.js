@@ -2,9 +2,10 @@ import * as React from "react";
 import { StyleSheet, css } from "aphrodite";
 import Header from "~/components/Header";
 import Signature from "~/components/Signature";
+import Diagram2D from "~/components/Diagram2D";
 
-export const Layout = ({}) =>
-  <div className={css(styles.layout)}>
+export const App = ({}) =>
+  <div className={css(styles.app)}>
     <div className={css(styles.sidebar)}>
       <div className={css(styles.logo)}>
         homotopy.io
@@ -14,13 +15,22 @@ export const Layout = ({}) =>
     <div className={css(styles.content)}>
       <Header />
       {/*<Workspace />*/}
+      <Diagram2D
+        diagram={window.diagram}
+        width={500}
+        height={500}
+        scale={60}
+        padding={20}
+        dimension={window.diagram.n}
+        interactive
+      />
     </div>
   </div>
 
-export default Layout;
+export default App;
 
 const styles = StyleSheet.create({
-  layout: {
+  app: {
     display: "flex",
     height: "100%",
   },
@@ -30,7 +40,8 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     background: "#2c3e50",
     color: "#ecf0f1",
-    width: 350
+    width: 350,
+    overflow: "auto"
   },
 
   content: {

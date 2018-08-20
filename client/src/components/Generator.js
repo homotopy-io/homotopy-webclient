@@ -6,16 +6,24 @@ import { getGenerator } from "~/state/store/signature";
 import { selectGenerator, removeGenerator } from "~/state/actions/signature";
 
 import IconButton from "~/components/IconButton";
+import Diagram2D from "~/components/Diagram2D";
 
 export const Generator = ({
   name,
-  diagram,
+  generator,
   onSelect,
   onRemove
 }) =>
   <div className={css(styles.generator)}>
     <div className={css(styles.preview)}>
-      {/*<Diagram2D diagram={diagram} />*/}
+      <Diagram2D
+        diagram={generator.getDiagram()}
+        width={100}
+        height={100}
+        padding={2}
+        scale={100}
+        dimension={generator.n}
+      />
     </div>
     <div className={css(styles.details)}>
       <div className={css(styles.name)}>
@@ -50,7 +58,8 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     border: "2px dashed #34495e",
-    margin: 8
+    margin: 8,
+    display: "flex"
   },
 
   details: {
