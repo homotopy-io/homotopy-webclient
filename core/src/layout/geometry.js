@@ -1,5 +1,25 @@
 import { _assert } from "~/util/debug";
 
+export const typeAt = (diagram, point) => {
+  if (point.length == 0) {
+    return diagram.getLastPoint().type;
+  } else {
+    let [height, ...rest] = point;
+
+    height = Math.max(0, height);
+    height = Math.min(height, 2 * diagram.data.length);
+
+    console.log(height, Math.floor(height / 2), height % 2 == 1, diagram);
+
+    let slice = diagram.getSlice({
+      height: Math.floor(height / 2),
+      regular: height % 2 == 0
+    });
+
+    return typeAt(slice, rest);
+  }
+}
+
 export const pointsOf = function*(diagram, dimension) {
   _assert(diagram.n >= dimension);
 
