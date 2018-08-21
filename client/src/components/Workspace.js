@@ -4,9 +4,11 @@ import { connect } from "react-redux";
 import Diagram2D from "~/components/diagram/Diagram2D";
 
 import { getDiagram } from "~/state/store/diagram";
+import { selectCell } from "~/state/actions/diagram";
 
 export const Workspace = ({
-  diagram
+  diagram,
+  onSelectCell
 }) =>
   <div className={css(styles.workspace)}>
     {/*<div className={css(styles.tools)}>
@@ -32,6 +34,7 @@ export const Workspace = ({
         dimension={diagram.n}
         interactive
         className={css(styles.diagram)}
+        onSelect={onSelectCell}
       />
     }
   </div>
@@ -39,6 +42,9 @@ export const Workspace = ({
 export default connect(
   state => ({
     diagram: getDiagram(state)
+  }),
+  dispatch => ({
+    onSelectCell: (point) => dispatch(selectCell(point))
   })
 )(Workspace);
 

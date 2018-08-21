@@ -47,7 +47,8 @@ export const Diagram2D = ({
   interactive,
   scale,
   className,
-  generators
+  generators,
+  onSelect
 }) => 
   <CanvasStage
     className={`${css(styles.diagram)} ${className}`}
@@ -69,6 +70,7 @@ export const Diagram2D = ({
             layout={layout}
             diagram={diagram}
             generator={generator}
+            onClick={() => onSelect && onSelect(edge.source)}
           />
         );
       })}
@@ -85,6 +87,7 @@ export const Diagram2D = ({
             point={point}
             layout={layout}
             generator={generator}
+            onClick={() => onSelect && onSelect(point)}
           />
         );
       })}
@@ -96,7 +99,8 @@ export const Wire = ({
   target,
   layout,
   diagram,
-  generator
+  generator,
+  onClick
 }) =>
   <Konva.Line
     points={[
@@ -105,18 +109,21 @@ export const Wire = ({
     ]}
     stroke={generator.color}
     strokeWidth={0.05}
+    onClick={onClick}
   />
 
 export const Point = ({
   point,
   layout,
-  generator
+  generator,
+  onClick
 }) =>
   <Konva.Circle
     x={pointPosition(layout)(point)[0]}
     y={pointPosition(layout)(point)[1]}
     radius={0.1}
     fill={generator.color}
+    onClick={onClick}
   />
 
 export const Loading = ({ className }) =>

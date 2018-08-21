@@ -11,7 +11,8 @@ export default (state, action) => {
     diagram: {
       diagram: null,
       source: null,
-      target: null
+      target: null,
+      options: null
     }
   };
 

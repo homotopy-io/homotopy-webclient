@@ -180,32 +180,6 @@ export class Diagram {
     return matches;
   }
 
-  // Check if the given subdiagram, at the given position, contains the given point
-  subdiagramContainsPoint({
-    subdiagram,
-    position,
-    click
-  }) {
-    if (click == null) return true;
-    if (click.length == 0) return true;
-    if (click[0].height < position[0]) return false;
-    if (!click[0].regular && click[0].height >= position[0] + subdiagram.data.length) return false;
-    if (click[0].regular && click[0].height > position[0] + subdiagram.data.length) return false;
-    let main_slice = this.getSlice({
-      height: click[0].height,
-      regular: true
-    });
-    let subdiagram_slice = subdiagram.getSlice({
-      height: click[0].height - position[0],
-      regular: true
-    });
-    return main_slice.subdiagramContainsPoint({
-      subdiagram: subdiagram_slice,
-      position: position.slice(1),
-      click: click.slice(1)
-    });
-  }
-
   rewrite(data) {
     return data.backward_limit.rewrite(data.forward_limit.rewrite(this));
   }
@@ -456,44 +430,6 @@ export class Diagram {
     return true;
   }
 
-  // Convert an internal coordinate to {boundary: {type, depth}, coordinates}, by identifying coordinates in slices adjacent to the boundary as being in that boundary. Assumes coordinates are first-index-first.
-  getBoundaryCoordinates(coordinates, boundaryFlags) {
-    //_assert(coordinates.length == this.n);
-    if (coordinates.length == 0) return {
-      boundary: null,
-      coordinates: []
-    };
-    let allow_boundary = boundaryFlags.length ? boundaryFlags[0] : {
-      source: false,
-      target: false
-    };
-    var slice = this.getSlice(coordinates[0]); // no need to copy slice
-    //var new_allow_boundary = params.allow_boundary.length == 0 ? [] : params.allow_boundary.slice(1);
-    let sub = slice.getBoundaryCoordinates(coordinates.slice(1), boundaryFlags.slice(1));
-    var in_source = allow_boundary.source /* && coordinates.length > 1*/ && coordinates[0].height == 0 && coordinates[0].regular;
-    //var in_target = coordinates.length > 1 && c[0] >= Math.max(this.cells.length, fakeheight ? 1 : 0);
-    var in_target = allow_boundary.target /*&& coordinates.length > 1*/ /*&& c[0] == Math.max(1, this.cells.length)*/ ;
-    if (sub.boundary != null) {
-      sub.boundary.depth++;
-    } else if (in_target) {
-      // We're in the target, and we were previously in the interior
-      sub.boundary = {
-        type: "t",
-        depth: 1
-      };
-    } else if (in_source) {
-      // We're in the source, and we were previously in the interior
-      sub.boundary = {
-        type: "s",
-        depth: 1
-      };
-    } else {
-      // Not in the source or the target, previously in the interior
-      sub.coordinates.unshift(coordinates[0]);
-    }
-    return sub;
-  }
-
   // Check if the specified id is used at all in this diagram
   usesCell(generator) {
     if (generator.dimension > this.t) return false;
@@ -536,36 +472,6 @@ export class Diagram {
     }
   }
 
-  // Attaches the given cell to the diagram, via the specified boundary path. 
-  attach(option, boundary /*, bounds*/ ) {
-    _assert(option instanceof Content);
-
-    if (boundary == null) {
-      return this.rewrite(option);
-    }
-
-    _assert(boundary.type != null);
-    _assert(boundary.depth != null);
-
-    if (boundary.depth > 1) {
-      if (boundary.type == "s") {
-        this.pad(boundary.depth);
-      }
-
-      this.source.attach(option, {
-        type: boundary.type,
-        depth: boundary.depth - 1
-      });
-    } else {
-      if (boundary.type == "s") {
-        let new_content = option.reverse(this.source);
-        this.data.unshift(new_content);
-        this.source.rewrite(option);
-      } else {
-        this.data.push(option);
-      }
-    }
-  }
 
   // Create the forward limit which contracts the a subdiagram at a given position, to a given type
   contractForwardLimit(type, position, subdiagram, framing) {
@@ -696,52 +602,6 @@ export class Diagram {
     return d1.source.equals(d2.source);
   }
 
-  // Get all the ways that a cell matches, local to a given click
-  getLocalMatches(click, type, flip) {
-    //        subdiagramContainsPoint({ subdiagram, position, point }) {
-    var subdiagram;
-    if (!flip) subdiagram = type.source;
-    else subdiagram = type.target;
-    var matches = this.enumerate({
-      goal: subdiagram
-    });
-    var results = [];
-    for (var i = 0; i < matches.length; i++) {
-      if (!this.subdiagramContainsPoint({
-        subdiagram,
-        position: matches[i],
-        click
-      })) continue;
-      //var small_intersection = intersection.min.vector_equals(intersection.max);
-      // Only accept small intersection if it equals click_box
-      //if (small_intersection && !boundingBoxesEqual(intersection, click_box)) continue; 
-
-      let content = this.getAttachmentContent(type, matches[i],
-        type.source, type.target, flip);
-      results.push(content);
-
-      //results.push({ id: id + flip, key: matches[i], possible: true });
-    }
-    return results;
-  }
-
-  // Interpret a user interaction
-  interaction(data, boundary_type, expand) {
-
-    // If there are no directions, the user is trying to attach a generator
-    if (data.directions == null) return this.click(data, boundary_type);
-
-    try {
-      if (expand) return [this.expand(data)];
-      else return [this.contract(data)];
-      //return [this.homotopy(data.coordinates, data.directions, shift)];
-    } catch (e) {
-      let prefix = expand ? "Expansion unsuccessful: " : "Contraction unsuccessful: ";
-      if (typeof e == "string") console.log(prefix + e);
-      else throw e;
-      return [];
-    }
-  }
 
   // Produce the Content object that contracts a diagram
   contract(data) {
@@ -1024,21 +884,6 @@ export class Diagram {
       }
     }
     _assert(false);
-  }
-
-  // User has clicked on the diagram
-  click(data, boundary_type) {
-
-    var cells = gProject.signature.getNCells(this.n + 1);
-    if (this.n == 0) data.coordinates = [];
-    //var click_box = this.getLocationBoundingBox(drag.coordinates);
-    let click = data.coordinates;
-
-    var results = [];
-    for (var i = 0; i < cells.length; i++) {
-      results = results.concat(this.getLocalMatches(click, cells[i], boundary_type == "s" ? true : false));
-    }
-    return results;
   }
 
   // Unify two diagrams, at given recursive depth, with a given tendency to the right
@@ -1992,32 +1837,6 @@ export class Diagram {
       }
   */
 
-  // Construct the content that contracts a source diagram, at a given position, and inserts the target diagram
-  getAttachmentContent(type, position, source, target, flip) {
-
-    if (flip)[source, target] = [target, source];
-
-    //if (!position) position = [].fill(0, 0, this.n);
-    _assert(position.length == this.n);
-    _assert(this.n == source.n);
-    _assert(this.n == target.n);
-    if (this.n == 0) {
-      let forward_component = new LimitComponent(0, {
-        type: type
-      });
-      let backward_component = new LimitComponent(0, {
-        type: target.type
-      });
-      let forward_limit = new ForwardLimit(0, [forward_component], !flip);
-      let backward_limit = new BackwardLimit(0, [backward_component], flip);
-      return new Content(0, forward_limit, backward_limit);
-    }
-    let forward_limit = this.contractForwardLimit(type, position, source, !flip);
-    let singular_diagram = forward_limit.rewrite(this.copy());
-    let backward_limit = singular_diagram.contractBackwardLimit(type, position, target, flip);
-    return new Content(this.n, forward_limit, backward_limit);
-  }
-
   //////////////////// NOT REVISED ////////////////////////
   /*
       Check for equality of two diagrams, recursively on their sources.
@@ -2085,22 +1904,6 @@ export class Diagram {
     } else {
       return nCell.target_size();
     }
-  }
-  getBoundary(path) {
-    if (path == null) return this;
-    var boundary = {};
-    if (typeof path == "string") {
-      boundary.type = path.last();
-      boundary.depth = path.length;
-    } else {
-      boundary = path;
-    }
-    if (boundary.depth > 1) return this.source.getBoundary({
-      depth: boundary.depth - 1,
-      type: boundary.type
-    });
-    if (boundary.type == "s") return this.source;
-    if (boundary.type == "t") return this.target;
   }
   pullUpMinMax(top_height, bottom_height, min, max) {
     for (var i = bottom_height; i < top_height; i++) {

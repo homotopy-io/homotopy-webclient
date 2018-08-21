@@ -70,4 +70,40 @@ export default createReducer({
       return state;
     }
   },
+
+  [DiagramActions.SELECT_CELL]: (state, { point }) => {
+    let { diagram } = state.diagram;
+    let { generators } = state.signature;
+
+    if (diagram == null) {
+      return;
+    }
+
+    // TODO: Respect current slices
+
+    let boundaryPath = Core.Boundary.getPath(diagram, point);
+    let boundary = Core.Boundary.followPath(diagram, boundaryPath);
+
+    let options = Core.Matches.getAttachmentOptions(
+      boundary,
+      [...Object.values(generators)].map(generator => generator.generator),
+      boundaryPath.boundary == "source",
+      boundaryPath.point
+    ).map(match => ({
+      generator: match.generator.id,
+      match: match.match,
+      boundaryPath
+    }));
+
+    if (options.length == 1) {
+      let [ option ] = options;
+      diagram = diagram.copy();
+      Core.attach(diagram, generators[option.generator].generator, boundaryPath);
+      state = dotProp.set(state, `diagram.diagram`, diagram);
+      return state;
+    } else {
+      state = dotProp.set(state, `diagram.options`, options);
+      return state;
+    }
+  }
 })

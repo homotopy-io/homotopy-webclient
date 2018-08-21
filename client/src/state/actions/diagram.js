@@ -2,6 +2,7 @@ export const SET_SOURCE = "diagram/set-source";
 export const SET_TARGET = "diagram/set-target";
 export const CLEAR_DIAGRAM = "diagram/clear-diagram";
 export const TAKE_IDENTITY = "diagram/take-identity";
+export const SELECT_CELL = "diagram/select-cell";
 
 export const setSource = () => ({
   type: SET_SOURCE
@@ -17,4 +18,9 @@ export const clearDiagram = () => ({
 
 export const takeIdentity = () => ({
   type: TAKE_IDENTITY
+});
+
+export const selectCell = (point) => ({
+  type: SELECT_CELL,
+  payload: { point }
 });
