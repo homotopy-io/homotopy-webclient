@@ -28,7 +28,8 @@ export const attach = (diagram, generator, path) => {
 
   // Create attachment content
   let boundary = Boundary.followPath(diagram, path);
-  let content = buildAttachmentContent(boundary, generator, path.point, false);
+  let attachPoint = path.point.map(x => Math.floor(x / 2));
+  let content = buildAttachmentContent(boundary, generator, attachPoint, false);
 
   // Attach the content to the diagram
   if (path.boundary == "source") {
@@ -39,6 +40,20 @@ export const attach = (diagram, generator, path) => {
   }
 }
 
+/**
+
+    let forward_limit = this.contractForwardLimit(type, position, source, !flip);
+    let singular_diagram = forward_limit.rewrite(this.copy());
+    let backward_limit = singular_diagram.contractBackwardLimit(type, position, target, flip);
+return new Content(this.n, forward_limit, backward_limit);
+*/
+
+/**
+ * @param {Diagram} diagram
+ * @param {Generator} generator
+ * @param {number[]} point Attachment point in algebraic coordinates.
+ * @param {boolean} inverse
+ */
 export const buildAttachmentContent = (diagram, generator, point, inverse) => {
   let source = !inverse ? generator.getSource() : generator.getTarget();
   let target = !inverse ? generator.getTarget() : generator.getSource();
