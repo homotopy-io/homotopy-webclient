@@ -2,7 +2,7 @@ import * as React from "react";
 import { StyleSheet, css } from "aphrodite";
 import Header from "~/components/Header";
 import Signature from "~/components/Signature";
-import Diagram2D from "~/components/Diagram2D";
+import Workspace from "~/components/Workspace";
 
 export const App = ({}) =>
   <div className={css(styles.app)}>
@@ -14,16 +14,7 @@ export const App = ({}) =>
     </div>
     <div className={css(styles.content)}>
       <Header />
-      {/*<Workspace />*/}
-      <Diagram2D
-        diagram={window.diagram}
-        width={500}
-        height={500}
-        scale={60}
-        padding={20}
-        dimension={window.diagram.n}
-        interactive
-      />
+      <Workspace />
     </div>
   </div>
 

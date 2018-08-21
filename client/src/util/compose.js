@@ -1,0 +1,1 @@
+export default (...fns) => value => fns.reduce((value, fn) => fn(value), value);

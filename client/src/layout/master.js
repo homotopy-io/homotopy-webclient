@@ -1,50 +1,76 @@
-import { computeLayout } from "homotopy-core";
+import { computeLayout, Geometry } from "homotopy-core";
+import * as Rx from "rxjs";
 
-if (window.layoutWorker) {
-  window.layoutWorker.terminate();
-}
+class LayoutWorker {
 
-const worker = new Worker("./worker.js");
-window.layoutWorker = worker;
-
-worker.onmessage = ({ data }) => {
-  if (data.type == "completed") {
-    let { id, result } = data.payload;
-    if (waiting.has(id)) {
-      waiting.get(id)(result);
-      waiting.delete(id);
-    }
-  } else if (data.type == "error") {
-    console.error(data.error);
+  constructor() {
+    this.nextId = 0;
+    this.waiting = new Map();
+    this.worker = new Worker("./worker.js");
+    this.worker.onmessage = this.onMessage.bind(this);
   }
+
+  start(data, onComplete) {
+    let id = this.nextId++;
+
+    this.worker.postMessage({
+      type: "start",
+      payload: { id, ...data }
+    });
+
+    this.waiting.set(id, onComplete);
+    return id;
+  }
+
+  stop(id) {
+    this.worker.postMessage({
+      type: "stop",
+      payload: { id }
+    });
+  }
+
+  onMessage({ data }) {
+    if (data.type == "completed") {
+      let { id, result } = data.payload;
+
+      if (this.waiting.has(id)) {
+        this.waiting.get(id)(result);
+        this.waiting.delete(id);
+      }
+    } else if (data.type == "error") {
+      console.error(data.payload);
+    }
+  }
+
 }
 
-worker.postMessage({
-  "type": "test"
-});
+// Create a layout worker globally and make it survive hot reloads.
+if (!window.layoutWorker) {
+  window.layoutWorker = new LayoutWorker();
+}
 
-let nextId = 0;
-let waiting = new Map();
+export default (diagram, dimension) => {
+  let points = [...Geometry.pointsOf(diagram, dimension)];
+  let edges = [...Geometry.edgesOf(diagram, dimension)];
 
-export default (dimension, points, edges) => {
-  let id = nextId++;
+  return Rx.Observable.create(observer => {
+    let onComplete = result => {
+      observer.next({
+        ...result,
+        points,
+        edges
+      });
+      observer.complete();
+    };
 
-  worker.postMessage({
-    type: "start",
-    payload: { id, dimension, points, edges }
+    let id = window.layoutWorker.start({
+      dimension,
+      points,
+      edges
+    }, onComplete);
+
+    return () => {
+      window.layoutWorker.stop(id);
+    }
   });
-
-  let wait = new Promise(resolve => {
-    waiting.set(id, resolve);
-  });
-
-  let cancel = () => {
-    worker.postMessage({
-      type: "stop",
-      payload: { id } 
-    });
-    waiting.delete(id);
-  };
-
-  return { wait, cancel };
 }

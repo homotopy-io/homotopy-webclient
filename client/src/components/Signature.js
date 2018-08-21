@@ -7,7 +7,7 @@ import Generator from "~/components/Generator";
 import { getDimensionGroups } from "~/state/store/signature";
 import { createGenerator } from "~/state/actions/signature";
 
-import IconButton from "~/components/IconButton";
+import IconButton from "~/components/misc/IconButton";
 
 export const Signature = ({
   groups, onAddGenerator

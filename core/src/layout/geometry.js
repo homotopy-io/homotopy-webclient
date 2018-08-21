@@ -9,8 +9,6 @@ export const typeAt = (diagram, point) => {
     height = Math.max(0, height);
     height = Math.min(height, 2 * diagram.data.length);
 
-    console.log(height, Math.floor(height / 2), height % 2 == 1, diagram);
-
     let slice = diagram.getSlice({
       height: Math.floor(height / 2),
       regular: height % 2 == 0

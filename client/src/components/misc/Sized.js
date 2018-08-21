@@ -1,7 +1,7 @@
 import * as React from "react";
 import ResizeObserver from "resize-observer-polyfill";
 
-export class SizedContainer extends React.Component {
+export class Sized extends React.Component {
 
   constructor(props) {
     super(props);
@@ -36,4 +36,4 @@ export class SizedContainer extends React.Component {
 
 }
 
-export default SizedContainer;
+export default Sized;

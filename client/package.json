@@ -34,6 +34,7 @@
     "react-konva": "1.7.12",
     "react-redux": "^5.0.7",
     "react-spinkit": "^3.0.0",
+    "react-streams": "^13.6.6",
     "redux": "^4.0.0",
     "resize-observer-polyfill": "^1.5.0",
     "rxjs": "^6.2.2",

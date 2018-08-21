@@ -5,8 +5,8 @@ import { connect } from "react-redux";
 import { getGenerator } from "~/state/store/signature";
 import { selectGenerator, removeGenerator } from "~/state/actions/signature";
 
-import IconButton from "~/components/IconButton";
-import Diagram2D from "~/components/Diagram2D";
+import IconButton from "~/components/misc/IconButton";
+import Diagram2D from "~/components/diagram/Diagram2D";
 
 export const Generator = ({
   name,
@@ -15,7 +15,7 @@ export const Generator = ({
   onRemove
 }) =>
   <div className={css(styles.generator)}>
-    <div className={css(styles.preview)}>
+    <div className={css(styles.preview)} onClick={onSelect}>
       <Diagram2D
         diagram={generator.getDiagram()}
         width={100}

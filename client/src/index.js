@@ -11,20 +11,10 @@ import reducer from "~/state/store";
 import * as Test from "~/layout/master";
 import { Geometry } from "homotopy-core";
 
+import * as Rx from "rxjs";
+import * as RxOps from "rxjs/operators";
 
-const x = new Core.Generator("x", null, null);
-const y = new Core.Generator("y", null, null);
-const f = new Core.Generator("f", x.getDiagram(), y.getDiagram());
-const xBoost = x.getDiagram();
-xBoost.boost();
-
-const aSource = f.getDiagram().copy();
-aSource.attach(f.getDiagram().data[0], { type: "s", depth: 0 });
-
-const aTarget = xBoost;
-const a = new Core.Generator("a", aSource, aTarget);
-window.diagram = a.getDiagram();
-
+import { setSource, setTarget, takeIdentity, clearDiagram } from "~/state/actions/diagram";
 
 const configureStore = () => {
   if (window.store == null) {
@@ -39,8 +29,22 @@ const configureStore = () => {
   return window.store;
 }
 
+const store = configureStore();
+
+const key$ = Rx.fromEvent(document, "keydown")
+  .pipe(RxOps.map(event => event.key))
+  .subscribe(key => {
+    console.log(key);
+    switch (key) {
+      case "s": return store.dispatch(setSource());
+      case "t": return store.dispatch(setTarget());
+      case "i": return store.dispatch(takeIdentity());
+      case "c": return store.dispatch(clearDiagram());
+    }
+  });
+
 ReactDOM.render(
-  <ReactRedux.Provider store={configureStore()}>
+  <ReactRedux.Provider store={store}>
     <App />
   </ReactRedux.Provider>,
   document.getElementById("app")

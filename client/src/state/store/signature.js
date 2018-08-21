@@ -7,10 +7,10 @@ export const getDimensionGroups = (state) => {
   let { signature } = state;
   let { generators } = signature;
 
-  let dimension = Math.max(1, ...Object.values(generators).map(g => g.generator.n));
+  let dimension = Math.max(0, ...Object.values(generators).map(g => g.generator.n));
   let groups = [];
 
-  for (let i = 0; i < dimension; i++) {
+  for (let i = 0; i <= dimension; i++) {
     groups[i] = [];
   }
 
@@ -19,6 +19,10 @@ export const getDimensionGroups = (state) => {
   }
 
   return groups;
+}
+
+export const getGenerators = (state) => {
+  return state.signature.generators;
 }
 
 export const getGenerator = (state, id) => {

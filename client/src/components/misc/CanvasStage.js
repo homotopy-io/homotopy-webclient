@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as Konva from "react-konva";
 import { StyleSheet, css } from "aphrodite";
-import SizedContainer from "~/components/SizedContainer";
+import Sized from "~/components/misc/Sized";
 
 export class CanvasStage extends React.Component {
 
@@ -30,9 +30,10 @@ export class CanvasStage extends React.Component {
   }
 
   onResize(width, height) {
-
     if (this.stage && this.state.width && this.state.height) {
       let stage = this.stage;
+      stage.x(stage.x() + (this.state.width - width) * 0.5 * stage.scaleX());
+      stage.y(stage.y() + (this.state.height - height) * 0.5 * stage.scaleY());
     }
 
     this.setState({ width, height });
@@ -67,7 +68,7 @@ export class CanvasStage extends React.Component {
     let ready = this.state.width && this.state.height;
 
     return (
-      <SizedContainer className={this.props.className} onResize={this.onResize} onClick={this.props.onClick}>
+      <Sized className={this.props.className} onResize={this.onResize} onClick={this.props.onClick}>
         { ready ?
           <Konva.Stage
             width={this.state.width}
@@ -82,7 +83,7 @@ export class CanvasStage extends React.Component {
             {this.props.children}
           </Konva.Stage> : null
         }
-      </SizedContainer>
+      </Sized>
     );
   }
 

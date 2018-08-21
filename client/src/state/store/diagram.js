@@ -6,6 +6,10 @@ import * as Actions from "~/state/actions/diagram";
 import * as Core from "homotopy-core";
 import { createGenerator } from "~/state/store/signature";
 
+export const getDiagram = (state) => {
+  return state.diagram.diagram;
+}
+
 export default createReducer({
   [DiagramActions.SET_SOURCE]: (state, {}) => {
     let { target, diagram } = state.diagram;
@@ -14,12 +18,12 @@ export default createReducer({
       return state;
     } else if (target != null) {
       state = createGenerator(state, diagram, target);
-      state = dotProp(state, `diagram.diagram`, null);
-      state = dotProp(state, `diagram.target`, null);
+      state = dotProp.set(state, `diagram.diagram`, null);
+      state = dotProp.set(state, `diagram.target`, null);
       return state;
     } else {
-      state = dotProp(state, `diagram.source`, diagram);
-      state = dotProp(state, `diagram.diagram`, null);
+      state = dotProp.set(state, `diagram.source`, diagram);
+      state = dotProp.set(state, `diagram.diagram`, null);
       return state;
     }
   },
@@ -30,24 +34,28 @@ export default createReducer({
     if (diagram == null) {
       return state;
     } else if (source != null) {
-      state = createGenerator(state, source, target);
-      state = dotProp(state, `diagram.diagram`, null);
-      state = dotProp(state, `diagram.source`, null);
+      state = createGenerator(state, source, diagram);
+      state = dotProp.set(state, `diagram.diagram`, null);
+      state = dotProp.set(state, `diagram.source`, null);
       return state;
     } else {
-      state = dotProp(state, `diagram.target`, diagram);
-      state = dotProp(state, `diagram.diagram`, null);
+      state = dotProp.set(state, `diagram.target`, diagram);
+      state = dotProp.set(state, `diagram.diagram`, null);
       return state;
     }
   },
 
   [DiagramActions.CLEAR_DIAGRAM]: (state, {}) => {
-    state = dotProp(state, `diagram.diagram`, null);
+    state = dotProp.set(state, `diagram.diagram`, null);
     return state;
   },
 
   [DiagramActions.TAKE_IDENTITY]: (state, {}) => {
-    state = dotProp(state, `diagram.diagram`, diagram => diagram.copy().boost());
+    state = dotProp.set(state, `diagram.diagram`, diagram => {
+      let copy = diagram.copy();
+      copy.boost();
+      return copy;
+    });
     return state;
   },
 

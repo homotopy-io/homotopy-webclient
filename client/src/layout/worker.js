@@ -21,7 +21,6 @@ self.onmessage = ({ data }) => {
 const work = async () => {
   await new Promise(resolve => setTimeout(resolve, 0));
 
-
   try {
     if (jobs.size == 0) {
       await new Promise(resolve => {
