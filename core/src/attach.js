@@ -23,7 +23,7 @@ export const attach = (diagram, generator, path) => {
       diagram.pad(path.depth);
     }
 
-    attach(diagram.source, generator, { ...path, depth: path.depth - 1 });
+    return attach(diagram.source, generator, { ...path, depth: path.depth - 1 });
   }
 
   // Create attachment content
@@ -39,14 +39,6 @@ export const attach = (diagram, generator, path) => {
     diagram.data.push(content);
   }
 }
-
-/**
-
-    let forward_limit = this.contractForwardLimit(type, position, source, !flip);
-    let singular_diagram = forward_limit.rewrite(this.copy());
-    let backward_limit = singular_diagram.contractBackwardLimit(type, position, target, flip);
-return new Content(this.n, forward_limit, backward_limit);
-*/
 
 /**
  * @param {Diagram} diagram
