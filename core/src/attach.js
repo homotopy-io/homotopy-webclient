@@ -29,12 +29,14 @@ export const attach = (diagram, generator, path) => {
   // Create attachment content
   let boundary = Boundary.followPath(diagram, path);
   let attachPoint = path.point.map(x => Math.floor(x / 2));
-  let content = buildAttachmentContent(boundary, generator, attachPoint, false);
+  let content = buildAttachmentContent(boundary, generator, attachPoint, path.boundary == "source");
 
   // Attach the content to the diagram
   if (path.boundary == "source") {
-    diagram.data.unshift(content);
-    diagram.source.rewrite(content.reverse(generator.source));
+    diagram.data.unshift(content.reverse(diagram.source));
+    // let source = generator.source.copy();
+    // source.deepPad(attachPoint);
+    diagram.source.rewrite(content);
   } else {
     diagram.data.push(content);
   }
