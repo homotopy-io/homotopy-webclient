@@ -15,7 +15,8 @@
   "license": "BSD-3-Clause",
   "dependencies": {
     "babel-polyfill": "^6.26.0",
-    "kiwi.js": "^1.0.2"
+    "kiwi.js": "^1.0.2",
+    "union-find": "^1.0.2"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

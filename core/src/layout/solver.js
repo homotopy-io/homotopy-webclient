@@ -1,4 +1,5 @@
 import * as Kiwi from "kiwi.js";
+import UnionFind from "union-find";
 
 export default function*(dimension, points, edges) {
   let solver = new Solver(dimension, points, edges);
@@ -27,14 +28,17 @@ class Solver {
     this.edges = edges;
     this.points = new Map();
     this.solver = new Kiwi.Solver();
+    this.variables = new Map();
 
     // Create the structures that hold the information about each point.
+    let variableId = 0;
+
     for (let point of points) {
       let variables = [];
       let relations = new Map();
 
-      for (let codim = 0; codim < dimension; codim++) {
-        variables.push(new Kiwi.Variable());
+      for (let codim = 1; codim < dimension; codim++) {
+        variables.push(variableId++);
         relations.set(`${codim}:1`, { points: [], codim });
         relations.set(`${codim}:-1`, { points: [], codim });
       }
@@ -60,12 +64,27 @@ class Solver {
         }
       }
     }
+
+    // Unify variables along unary relations of highest dimension.
+    this.forest = new UnionFind(variableId);
+
+    for (let { relations, point } of this.points.values()) {
+      for (let [key, { points, codim }] of relations) {
+        if (codim > 0 && codim == this.dimension - 1 && points.length == 1) {
+          this.forest.link(
+            this.getVariableId(point, codim),
+            this.getVariableId(points[0], codim)
+          );
+          relations.delete(key);
+        }
+      }
+    }
   }
 
   getPosition(point) {
     let position = [];
     for (let codim = 0; codim < this.dimension; codim++) {
-      position.push(this.getVariable(point, codim).value());
+      position.push(this.getValue(point, codim));
     }
     return position;
   }
@@ -74,10 +93,11 @@ class Solver {
     let min = Array(this.dimension).fill(Infinity);
     let max = Array(this.dimension).fill(-Infinity);
 
-    for (let { variables } of this.points.values()) {
+    for (let { point } of this.points.values()) {
       for (let codim = 0; codim < this.dimension; codim++) {
-        min[codim] = Math.min(variables[codim].value(), min[codim]);
-        max[codim] = Math.max(variables[codim].value(), max[codim]);
+        let value = this.getValue(point, codim);
+        min[codim] = Math.min(value, min[codim]);
+        max[codim] = Math.max(value, max[codim]);
       }
     }
 
@@ -87,7 +107,6 @@ class Solver {
   *run() {
     for (let constraint of this.createConstraints()) {
       this.solver.addConstraint(constraint);
-      yield;
     }
     this.solver.updateVariables();
   }
@@ -98,8 +117,25 @@ class Solver {
     relations.get(key).points.push(target);
   }
 
+  getVariableId(point, codim) {
+    return this.points.get(pointId(point)).variables[codim - 1];
+  }
+
   getVariable(point, codim) {
-    return this.points.get(pointId(point)).variables[codim];
+    let id = this.forest.find(this.getVariableId(point, codim));
+    if (!this.variables.has(id)) {
+      this.variables.set(id, new Kiwi.Variable());
+    }
+    return this.variables.get(id);
+  }
+
+  getValue(point, codim) {
+    if (codim == 0) {
+      return point[0];
+    } else {
+      let variable = this.getVariable(point, codim);
+      return variable.value();
+    }
   }
 
   *createConstraints() {
@@ -114,6 +150,10 @@ class Solver {
    */
   *createDistanceConstraints() {
     for (let { source, target, codim, dir } of this.edges) {
+      if (codim == 0) {
+        continue;
+      }
+
       yield new Kiwi.Constraint(
         new Kiwi.Expression(
           [-dir, this.getVariable(source, codim)],
@@ -128,7 +168,7 @@ class Solver {
 
   *createLevelConstraints() {
     for (let { source, target, codim } of this.edges) {
-      for (let codimLower = 0; codimLower < codim; codimLower++) {
+      for (let codimLower = 1; codimLower < codim; codimLower++) {
         yield new Kiwi.Constraint(
           this.getVariable(source, codimLower),
           Kiwi.Operator.Eq,
@@ -142,7 +182,7 @@ class Solver {
   *createAverageConstraints() {
     for (let { relations, point } of this.points.values()) {
       for (let { points, codim } of relations.values()) {
-        if (points.length > 0) {
+        if (codim > 0 && points.length >= 1) {
           yield new Kiwi.Constraint(
             new Kiwi.Expression(
               ...points.map(p => [1 / points.length, this.getVariable(p, codim)])
