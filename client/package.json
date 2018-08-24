@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "parcel src/index.html --open"
+    "dev": "parcel src/index.html"
   },
   "repository": {
     "type": "git",
@@ -27,17 +27,17 @@
     "browserify-css": "0.12.0",
     "dot-prop-immutable": "^1.4.0",
     "homotopy-core": "0.1.0",
-    "konva": "^2.2.1",
+    "pixi.js": "^4.8.1",
     "react": "16.4.2",
     "react-dom": "16.4.2",
     "react-ionicons": "^2.1.6",
-    "react-konva": "1.7.12",
     "react-redux": "^5.0.7",
     "react-spinkit": "^3.0.0",
     "react-streams": "^13.6.6",
     "redux": "^4.0.0",
     "resize-observer-polyfill": "^1.5.0",
     "rxjs": "^6.2.2",
+    "svg-pan-zoom": "^3.5.3",
     "typeface-roboto": "^0.0.54"
   },
   "devDependencies": {

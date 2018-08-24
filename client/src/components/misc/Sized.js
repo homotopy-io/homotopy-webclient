@@ -1,25 +1,41 @@
 import * as React from "react";
 import ResizeObserver from "resize-observer-polyfill";
+import { StyleSheet, css } from "aphrodite";
+
+export default Component => props =>
+  <Sized>
+    {(width, height) =>
+      <Component
+        width={width}
+        height={height}
+        {...props}
+      />
+    }
+  </Sized>
 
 export class Sized extends React.Component {
 
   constructor(props) {
     super(props);
     this.containerRef = React.createRef();
+    this.state = { width: 0, height: 0 };
   }
 
   componentDidMount() {
-    let container = this.containerRef.current;
-    this.props.onResize(container.clientWidth, container.clientHeight);
-
     this.observer = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        let { contentRect } = entry;
-        this.props.onResize(contentRect.width, contentRect.height);
+      for (let { contentRect } of entries) {
+        this.setState({
+          width: contentRect.width,
+          height: contentRect.height
+        });
       }
     });
+    this.observer.observe(this.containerRef.current);
 
-    this.observer.observe(container);
+    this.setState({
+      width: this.containerRef.current.clientWidth,
+      height: this.containerRef.current.clientHeight
+    });
   }
 
   componentWillUnmount() {
@@ -27,13 +43,22 @@ export class Sized extends React.Component {
   }
 
   render() {
+    let { width, height } = this.state;
+
     return (
-      <div className={this.props.className} ref={this.containerRef}>
-        {this.props.children}
+      <div className={css(styles.container)} ref={this.containerRef}>
+        { width && height ? this.props.children(width, height) : null }
       </div>
     )
   }
 
 }
 
-export default Sized;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    position: "relative",
+    display: "flex",
+    overflow: "hidden"
+  }
+})

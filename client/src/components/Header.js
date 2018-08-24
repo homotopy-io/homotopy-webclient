@@ -14,11 +14,12 @@ export const Header = ({}) =>
 export default Header;
 
 const styles = StyleSheet.create({
-  header: {},
+  header: {
+  },
 
   actions: {
     display: "flex",
-    justifyContent: "right",
+    justifyContent: "flex-end",
     padding: 8,
     margin: 0,
   },

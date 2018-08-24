@@ -2,6 +2,7 @@ import dotProp from "dot-prop-immutable";
 import createReducer from "~/util/create-reducer";
 import * as Actions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
+import { cellColors } from "~/style";
 
 export const getDimensionGroups = (state) => {
   let { signature } = state;
@@ -39,7 +40,7 @@ export const getGenerator = (state, id) => {
 export const createGenerator = (state, source, target) => {
   let id = state.signature.id;
   let name = `Cell ${id + 1}`;
-  let color = ["red", "green", "blue"][id % 3];
+  let color = cellColors[id % cellColors.length];
   let generator = new Core.Generator(id, source, target);
 
   state = dotProp.set(state, `signature.id`, id + 1);

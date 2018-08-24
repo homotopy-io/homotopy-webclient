@@ -18,8 +18,8 @@ export const Generator = ({
     <div className={css(styles.preview)} onClick={onSelect}>
       <Diagram2D
         diagram={generator.getDiagram()}
-        width={100}
-        height={100}
+        width={75}
+        height={75}
         padding={2}
         scale={100}
         dimension={generator.n}
@@ -55,8 +55,8 @@ const styles = StyleSheet.create({
   },
 
   preview: {
-    width: 100,
-    height: 100,
+    width: 75,
+    height: 75,
     border: "2px dashed #34495e",
     margin: 8,
     display: "flex"

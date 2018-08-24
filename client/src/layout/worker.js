@@ -28,7 +28,7 @@ const work = async () => {
       });
     } else {
       let [id, job] = jobs.entries().next().value;
-      let fuel = 100;
+      let fuel = 1000;
 
       while (fuel-- >= 0) {
         let step = job.next();
@@ -50,7 +50,7 @@ const work = async () => {
   } catch (error) {
     self.postMessage({
       type: "error",
-      error: error.toString()
+      payload: error.toString()
     })
     return;
   }

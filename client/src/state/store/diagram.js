@@ -71,7 +71,7 @@ export default createReducer({
     }
   },
 
-  [DiagramActions.SELECT_CELL]: (state, { point }) => {
+  [DiagramActions.SELECT_CELL]: (state, { points }) => {
     let { diagram } = state.diagram;
     let { generators } = state.signature;
 
@@ -81,8 +81,10 @@ export default createReducer({
 
     // TODO: Respect current slices
 
-    let boundaryPath = Core.Boundary.getPath(diagram, point);
+    let boundaryPath = Core.Boundary.getPath(diagram, points);
+    console.log(boundaryPath);
     let boundary = Core.Boundary.followPath(diagram, boundaryPath);
+    console.log(boundary);
 
     let options = Core.Matches.getAttachmentOptions(
       boundary,
@@ -91,14 +93,16 @@ export default createReducer({
       boundaryPath.point
     ).map(match => ({
       generator: match.generator.id,
-      match: match.match,
-      boundaryPath
+      path: { ...boundaryPath, point: match.match },
     }));
+
+    console.log(options);
 
     if (options.length == 1) {
       let [ option ] = options;
       diagram = diagram.copy();
-      Core.attach(diagram, generators[option.generator].generator, boundaryPath);
+      Core.attach(diagram, generators[option.generator].generator, option.path);
+      console.log(diagram, boundaryPath);
       state = dotProp.set(state, `diagram.diagram`, diagram);
       return state;
     } else {

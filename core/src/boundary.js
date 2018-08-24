@@ -2,20 +2,18 @@ import { _assert } from "~/util/debug";
 
 /**
  * @param {Diagram} diagram
- * @param {number[]} point The point in geometric coordinates.
+ * @param {number[][]} points The points of the simplex in geometric coordinates.
  */
-export const getPath = (diagram, point) => {
-  _assert(diagram.n == point.length);
-
+export const getPath = (diagram, points) => {
   if (diagram.n == 0) {
     return {
       boundary: null,
       depth: null,
-      point
+      point: points[0]
     };
   }
 
-  let [height, ...rest] = point;
+  let height = points[0][0];
 
   // Ensure that the height is inside the bounds of the diagram.
   height = Math.max(0, height);
@@ -25,7 +23,7 @@ export const getPath = (diagram, point) => {
   let path = getPath(diagram.getSlice({
     height: Math.floor(height / 2),
     regular: height % 2 == 0
-  }), rest);
+  }), points.map(point => point.slice(1)));
 
   // Increase the boundary depth
   if (path.boundary) {
@@ -34,14 +32,14 @@ export const getPath = (diagram, point) => {
   }
 
   // On the interior in the slice, on the source boundary here.
-  if (height == 0) {
+  if (Math.min(...points.map(point => point[0])) < 0) {
     path.depth = 1;
     path.boundary = "source";
     return path;
   }
 
   // On the interior in the slice, on the target boundary here.
-  if (height == diagram.data.length * 2) {
+  if (Math.max(...points.map(point => point[0])) > diagram.data.length * 2) {
     path.depth = 1;
     path.boundary = "target";
     return path;
@@ -51,7 +49,7 @@ export const getPath = (diagram, point) => {
   return {
     boundary: null,
     depth: null,
-    point
+    point: points[0]
   };
 }
 

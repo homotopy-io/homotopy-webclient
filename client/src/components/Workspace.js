@@ -44,7 +44,7 @@ export default connect(
     diagram: getDiagram(state)
   }),
   dispatch => ({
-    onSelectCell: (point) => dispatch(selectCell(point))
+    onSelectCell: (points) => dispatch(selectCell(points))
   })
 )(Workspace);
 
