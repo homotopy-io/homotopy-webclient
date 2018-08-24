@@ -61,6 +61,21 @@ export const slicesOf = function*(diagram) {
   yield [diagram.data.length * 2 + 1, diagram.target];
 }
 
+export const getSlice = (diagram, ...heights) => {
+  if (heights.length == 0) {
+    return diagram;
+  } else {
+    let [height, ...rest] = heights;
+    height = Math.max(height, 0);
+    height = Math.min(height, diagram.data.length * 2);
+    let slice = diagram.getSlice({
+      height: Math.floor(height / 2),
+      regular: height % 2 == 0
+    });
+    return getSlice(slice, ...rest);
+  }
+}
+
 export const edgesOf = function*(diagram, dimension) {
   if (dimension == 0) {
     return;

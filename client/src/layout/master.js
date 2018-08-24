@@ -55,6 +55,7 @@ export default (diagram, dimension) => {
 
   return Rx.Observable.create(observer => {
     let onComplete = result => {
+      let endTime = new Date().getTime();
       observer.next({
         ...result,
         points,

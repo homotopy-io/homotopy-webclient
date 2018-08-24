@@ -12,6 +12,8 @@ export default (state, action) => {
       diagram: null,
       source: null,
       target: null,
+      slice: null,
+      projection: null,
       options: null
     }
   };

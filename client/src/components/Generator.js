@@ -22,7 +22,7 @@ export const Generator = ({
         height={75}
         padding={2}
         scale={100}
-        dimension={generator.n}
+        dimension={Math.min(2, generator.n)}
       />
     </div>
     <div className={css(styles.details)}>

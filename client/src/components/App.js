@@ -3,10 +3,12 @@ import { StyleSheet, css } from "aphrodite";
 import Header from "~/components/Header";
 import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
+import DiagramTool from "~/components/tools/Diagram";
+import BoundaryTool from "~/components/tools/Boundary";
 
 export const App = ({}) =>
   <div className={css(styles.app)}>
-    <div className={css(styles.sidebar)}>
+    <div className={css(styles.signaturebar)}>
       <div className={css(styles.logo)}>
         homotopy.io
       </div>
@@ -15,6 +17,10 @@ export const App = ({}) =>
     <div className={css(styles.content)}>
       <Header />
       <Workspace />
+    </div>
+    <div className={css(styles.toolbar)}>
+      <DiagramTool />
+      <BoundaryTool />
     </div>
   </div>
 
@@ -26,7 +32,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  sidebar: {
+  signaturebar: {
     display: "flex",
     flexDirection: "column",
     background: "#2c3e50",
@@ -45,5 +51,13 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: "1.8em",
     padding: 16
+  },
+
+  toolbar: {
+    display: "flex",
+    flexDirection: "column",
+    background: "#2c3e50",
+    color: "#ecf0f1",
+    width: 250
   }
 });

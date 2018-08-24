@@ -47,7 +47,6 @@ const styles = StyleSheet.create({
   },
 
   group: {
-    marginBottom: 16
   },
 
   groupHeader: {
@@ -55,6 +54,7 @@ const styles = StyleSheet.create({
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    background: "#34495e"
   },
 
   groupLabel: {
@@ -67,5 +67,10 @@ const styles = StyleSheet.create({
     padding: 8,
     fontWeight: 600,
     "cursor": "pointer",
+  },
+
+  groupContent: {
+    paddingTop: 16,
+    paddingBottom: 16
   }
 });

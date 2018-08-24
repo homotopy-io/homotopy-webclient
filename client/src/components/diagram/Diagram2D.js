@@ -37,6 +37,7 @@ export class Diagram2D extends React.Component {
     this.panzoom = panzoom(this.diagramRef.current, {
       panEnabled: this.props.interactive,
       zoomEnabled: this.props.interactive,
+      dblClickZoomEnabled: this.props.interactive,
       zoomScaleSensitivity: 0.4,
       minZoom: 0.001,
       maxZoom: 1000
@@ -54,7 +55,7 @@ export class Diagram2D extends React.Component {
   }
 
   onSelect(e, ...points) {
-    if (this.props.interactive && !this.props.panning) {
+    if (this.props.interactive) {
       // TODO: Consider all points to determine boundary flags.
       console.log(points);
       this.props.onSelect && this.props.onSelect(points);
