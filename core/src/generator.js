@@ -4,54 +4,42 @@ import { Content } from "~/limit";
 
 export class Generator {
 
-  constructor(id, source, target) {
+  constructor(id, source = null, target = null) {
     _assert(id !== undefined);
     _assert(source == null || source instanceof Diagram);
     _assert(target == null || target instanceof Diagram);
 
     this.n = source == null ? 0 : source.n + 1;
-    this.source = source == null ? null : source.copy();
-    this.target = target == null ? null : target.copy();
+    this.source = source;
+    this.target = target;
     this.id = id;
+
+    // Build content
+    if (this.n > 0) {
+      let first_limit = this.source.contractForwardLimit(this, null, null, true);
+      let singular_height = first_limit.rewrite(this.source);
+      let second_limit_forwards = this.target.contractForwardLimit(this, null, null, false);
+      let second_limit_backwards = second_limit_forwards.getBackwardLimit(this.target, singular_height);
+      this.content = new Content(this.n - 1, first_limit, second_limit_backwards);
+    }
+
+    // Build diagram
+    if (this.n == 0) {
+      this.diagram = new Diagram(0, {
+        type: this
+      });
+    } else {
+      this.diagram = new Diagram(this.n, {
+        source: this.source,
+        data: [this.content]
+      })
+    }
+
+    Object.freeze(this);
   }
 
   validate() {
     _assert(this.n == 0 || this.source);
-  }
-
-  getContent() {
-    _assert(this.n > 0);
-
-    let first_limit = this.source.contractForwardLimit(this, null, null, true);
-    let singular_height = first_limit.rewrite(this.source.copy());
-    let second_limit_forwards = this.target.contractForwardLimit(this, null, null, false);
-    let second_limit_backwards = second_limit_forwards.getBackwardLimit(this.target, singular_height);
-    return new Content(this.n - 1, first_limit, second_limit_backwards);
-  }
-
-  getDiagram() {
-    if (this.n == 0) {
-      return new Diagram(0, {
-        t: 0,
-        type: this
-      });
-    }
-
-    let source = this.source.copy();
-    let content = this.getContent();
-
-    return new Diagram(source.n + 1, {
-      source,
-      data: [content]
-    });
-  }
-
-  getSource() {
-    return (this.source == null ? null : this.source.copy());
-  }
-
-  getTarget() {
-    return (this.target == null ? null : this.target.copy());
   }
 
   // Mirror a generator
@@ -69,12 +57,6 @@ export class Generator {
 
   getType() {
     return "Generator";
-  }
-
-  copy() {
-    let source = this.source == null ? null : this.source.copy();
-    let target = this.target == null ? null : this.target.copy();
-    return new Generator(this.id, source, target);
   }
 
   getBoundingBox() {

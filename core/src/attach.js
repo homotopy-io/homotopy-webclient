@@ -10,8 +10,7 @@ export const attach = (diagram, generator, path) => {
 
   if (path.boundary == null) {
     _assert(generator.n - 1 == diagram.n);
-    diagram.rewrite(generator.getContent());
-    return;
+    return diagram.rewrite(generator.content);
   }
 
   _assert(generator.n > 0);
@@ -20,10 +19,11 @@ export const attach = (diagram, generator, path) => {
   // Follow the path
   if (path.depth > 1) {
     if (path.boundary == "source") {
-      diagram.pad(path.depth);
+      diagram = diagram.pad(path.depth);
     }
 
-    return attach(diagram.source, generator, { ...path, depth: path.depth - 1 });
+    let source = attach(diagram.source, generator, { ...path, depth: path.depth - 1 });
+    return new Diagram(diagram.n, { source, data: diagram.data });
   }
 
   // Create attachment content
@@ -32,14 +32,17 @@ export const attach = (diagram, generator, path) => {
 
   // Attach the content to the diagram
   if (path.boundary == "source") {
-    diagram.data.unshift(content.reverse(diagram.source));
-    // let source = generator.source.copy();
-    // source.deepPad(attachPoint);
-    diagram.source.rewrite(content);
+    let data = [content.reverse(diagram.source), ...diagram.data];
+    let source = diagram.source.rewrite(content);
+    return new Diagram(diagram.n, { source, data });
   } else {
-    diagram.data.push(content);
+    let source = diagram.source;
+    let data = [...diagram.data, content];
+    return new Diagram(diagram.n, { source, data });
   }
 }
+
+export default attach;
 
 /**
  * @param {Diagram} diagram
@@ -47,9 +50,9 @@ export const attach = (diagram, generator, path) => {
  * @param {number[]} point Attachment point in algebraic coordinates.
  * @param {boolean} inverse
  */
-export const buildAttachmentContent = (diagram, generator, point, inverse) => {
-  let source = !inverse ? generator.getSource() : generator.getTarget();
-  let target = !inverse ? generator.getTarget() : generator.getSource();
+const buildAttachmentContent = (diagram, generator, point, inverse) => {
+  let source = !inverse ? generator.source : generator.target;
+  let target = !inverse ? generator.target : generator.source;
 
   if (diagram.n == 0) {
     let forwardComponent = new LimitComponent(0, { type: generator });
@@ -62,7 +65,7 @@ export const buildAttachmentContent = (diagram, generator, point, inverse) => {
   }
 
   let forwardLimit = diagram.contractForwardLimit(generator, point, source, !inverse);
-  let singularSlice = forwardLimit.rewrite(diagram.copy());
+  let singularSlice = forwardLimit.rewrite(diagram);
   let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target, inverse);
 
   return new Content(diagram.n, forwardLimit, backwardLimit);

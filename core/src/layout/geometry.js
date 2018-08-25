@@ -61,6 +61,36 @@ export const slicesOf = function*(diagram) {
   yield [diagram.data.length * 2 + 1, diagram.target];
 }
 
+export const unprojectPoint = (diagram, point) => {
+  if (point.length >= diagram.n) {
+    return point;
+  } else {
+    diagram = diagram.getSlice(...point);
+    return [...point, ...lastPoint(diagram)];
+  }
+}
+
+export const lastPoint = (diagram) => {
+  if (diagram.n == 0) {
+    return [];
+  }
+
+  if (diagram.data.length == 0) {
+    return [0, ...lastPoint(diagram.source)];
+  }
+
+  let k = diagram.data.length - 1;
+
+  while (k > 0 && diagram.data[k].forward_limit.length + diagram.data[k].backward_limit.length == 0) {
+    k--;
+  }
+
+  return [k * 2 + 1, ...lastPoint(diagram.getSlice({
+    height: k,
+    regular: false
+  }))];
+}
+
 export const getSlice = (diagram, ...heights) => {
   if (heights.length == 0) {
     return diagram;

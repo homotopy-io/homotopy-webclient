@@ -108,15 +108,17 @@ export class Diagram2D extends React.Component {
     let position = this.getPosition(point);
     let generator = this.getGenerator(point);
 
-    if (generator.generator.n < this.props.diagram.n) {
-      return null;
-    }
+    // if (generator.generator.n < this.props.diagram.n) {
+    //   return null;
+    // }
 
     return (
       <circle
         cx={position[0]}
         cy={position[1]}
         r={10}
+        strokeWidth={0.5}
+        stroke="black"
         fill={generator.color}
         onClick={e => this.onSelect(e, point)}
         key={`point#${point.join(":")}`}>

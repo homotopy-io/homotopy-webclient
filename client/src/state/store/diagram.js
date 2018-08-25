@@ -131,9 +131,7 @@ export default createReducer({
   },
 
   [DiagramActions.TAKE_IDENTITY]: (state, {}) => {
-    let diagram = state.diagram.diagram.copy();
-    diagram.boost();
-    state = dotProp.set(state, `diagram.diagram`, diagram);
+    state = dotProp.set(state, `diagram.diagram`, diagram => diagram.boost());
     state = updateSlices(state);
     return state;
   },
@@ -141,7 +139,6 @@ export default createReducer({
   [DiagramActions.SET_PROJECTION]: (state, { projection }) => {
     state = dotProp.set(state, `diagram.projection`, projection);
     state = updateSlices(state);
-    console.log(state);
     return state;
   },
 
@@ -179,7 +176,8 @@ export default createReducer({
     }
 
     // Respect the current slices
-    points = points.map(point => [...slice, ...point]);
+    points = points.map(point => Core.Geometry.unprojectPoint(diagram, [...slice, ...point]));
+    console.log(points);
 
     let boundaryPath = Core.Boundary.getPath(diagram, points);
     let boundary = Core.Boundary.followPath(diagram, boundaryPath);
@@ -196,8 +194,7 @@ export default createReducer({
 
     if (options.length == 1) {
       let [ option ] = options;
-      diagram = diagram.copy();
-      Core.attach(diagram, generators[option.generator].generator, option.path);
+      diagram = Core.attach(diagram, generators[option.generator].generator, option.path);
       state = dotProp.set(state, `diagram.diagram`, diagram);
       return state;
     } else {

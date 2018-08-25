@@ -37,6 +37,7 @@ export class Content {
     this.n = n;
     this.forward_limit = forward_limit;
     this.backward_limit = backward_limit;
+    Object.freeze(this);
     _validate(this);
   }
 
@@ -72,8 +73,9 @@ export class Content {
   }
 
   pad(depth) {
-    this.forward_limit.pad(depth);
-    this.backward_limit.pad(depth);
+    let forward_limit = this.forward_limit.pad(depth);
+    let backward_limit = this.backward_limit.pad(depth);
+    return new Content(this.n, forward_limit, backward_limit);
   }
 
   // Pad the content so that the origin moves to the specified position
@@ -99,8 +101,8 @@ export class Content {
   // Assuming that the content is to act on the specified source, reverse it
   reverse(source) {
     _assert(this.n == source.n);
-    let middle = this.forward_limit.rewrite(source.copy());
-    let target = this.backward_limit.rewrite(middle.copy());
+    let middle = this.forward_limit.rewrite(source);
+    let target = this.backward_limit.rewrite(middle);
     let forward_limit = this.backward_limit.getForwardLimit(target, middle);
     let backward_limit = this.forward_limit.getBackwardLimit(source, middle);
     return new Content(this.n, forward_limit, backward_limit);
@@ -259,6 +261,7 @@ export class LimitComponent {
     _assert(this.first <= this.last);
     _assert(this.first >= 0 && this.last >= 0);
     this.sublimits = args.sublimits;
+    Object.freeze(this);
     _validate(this);
   }
 
@@ -357,15 +360,17 @@ export class LimitComponent {
 
   pad(depth) {
     if (depth == 1) {
-      this.first++;
-      this.last++;
+      let data = this.data;
+      let sublimits = this.sublimits;
+      let first = this.first + 1;
+      let last = this.last + 1;
+      return new LimitComponent(this.n, { data, sublimits, first, last });
     } else if (depth > 1) {
-      for (let i = 0; i < this.data.length; i++) {
-        this.data[i].pad(depth - 1);
-      }
-      for (let i = 0; i < this.sublimits.length; i++) {
-        this.sublimits[i].pad(depth - 1);
-      }
+      let data = this.data.map(content => content.pad(depth - 1));
+      let sublimits = this.sublimits.map(sublimit => sublimit.pad(depth - 1));
+      let first = this.first;
+      let last = this.last;
+      return new LimitComponent(this.n, { data, sublimits, first, last });
     }
   }
 
@@ -422,11 +427,6 @@ export class Limit extends Array {
       if (this[i].usesCell(generator)) return true;
     }
     return false;
-  }
-  pad(depth) {
-    for (let i = 0; i < this.length; i++) {
-      this[i].pad(depth);
-    }
   }
   deepPad(position) {
     _assert(this.n == position.length);
@@ -726,6 +726,7 @@ export class ForwardLimit extends Limit {
       if (this.length == 0) _assert(framing == null);
       if (this.length == 1) _assert(framing != null);
     }
+    Object.freeze(this);
     _validate(this);
   }
   /*
@@ -733,6 +734,11 @@ export class ForwardLimit extends Limit {
           return super.splice(...args);
       }
       */
+
+  pad(depth) {
+    let components = [...this].map(component => component.pad(depth));
+    return new ForwardLimit(this.n, components, this.framing);
+  }
 
   validate() {
     super.validate();
@@ -743,14 +749,15 @@ export class ForwardLimit extends Limit {
 
   rewrite(diagram) {
     if (this.n == 0) {
-      diagram.type = this[0].type;
-      return diagram;
+      return new Diagram(0, { type: this[0].type });
     }
+
+    let data = diagram.data.slice();
     for (let i = this.length - 1; i >= 0; i--) {
       let c = this[i];
-      diagram.data.splice(c.first, c.last - c.first, c.data[0].copy());
+      data.splice(c.first, c.last - c.first, c.data[0]);
     }
-    return diagram;
+    return new Diagram(diagram.n, { source: diagram.source, data });
   }
 
   copy() {
@@ -824,6 +831,7 @@ export class BackwardLimit extends Limit {
     if (components === undefined) return super(n);
     super(n, components, framing);
     _validate(this);
+    Object.freeze(this);
     //return super(n, components, framing); // call the Limit constructor
   }
 
@@ -838,19 +846,20 @@ export class BackwardLimit extends Limit {
     _assert(diagram instanceof Diagram);
     _validate(this, diagram);
     if (diagram.n == 0) {
-      diagram.type = this[0].type;
-      return diagram;
+      return new Diagram(0, { type: this[0].type });
     }
+
     let offset = 0;
+    let data = diagram.data.slice();
     for (let i = 0; i < this.length; i++) {
       let c = this[i];
-      let before = diagram.data.slice(0, c.first);
-      let after = diagram.data.slice(c.first + 1, diagram.data.length);
-      diagram.data = before.concat(c.data.concat(after));
+      let before = data.slice(0, c.first);
+      let after = data.slice(c.first + 1, diagram.data.length);
+      data = [...before, ...c.data, ...after];
       //diagram.data = diagram.data.slice(0, c.first + offset).concat(c.data.concat(diagram.data.slice(c.first + offset + 1, diagram.data.length)));
       //offset += c.last - c.first - 1;
     }
-    return diagram;
+    return new Diagram(diagram.n, { source: diagram.source, data });
   }
   copy() {
     let new_components = [];
@@ -869,6 +878,11 @@ export class BackwardLimit extends Limit {
 
   preimage(range) {
     return super.preimage(range, false);
+  }
+
+  pad(depth) {
+    let components = [...this].map(component => component.pad(depth));
+    return new BackwardLimit(this.n, components, this.framing);
   }
 
   // Supposing this limit goes from source to target, construct the equivalent backward limit.

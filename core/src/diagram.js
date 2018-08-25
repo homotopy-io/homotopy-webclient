@@ -12,12 +12,15 @@ export class Diagram {
     if (n == 0) {
       _assert(args.type instanceof Generator);
       this.type = args.type;
-      return this;
+    } else {
+      _assert(args.source && (args.source.n + 1 == n));
+      _assert(args.data);
+      this.source = args.source;
+      this.data = args.data;
+      Object.freeze(this.data);
     }
-    _assert(args.source && (args.source.n + 1 == n));
-    _assert(args.data);
-    this.source = args.source;
-    this.data = args.data;
+
+    Object.freeze(this);
   }
 
   validate() {
@@ -56,12 +59,19 @@ export class Diagram {
       return this;
     }
 
-    _assert(!isNaN(locations[0].height));
-    _assert(locations[0].regular != undefined);
     _assert(this.n > 0);
 
     // Recursive case
     let pos = locations.shift();
+
+    if (typeof(pos) === "number") {
+      pos = Math.max(0, pos);
+      pos = Math.min(this.data.length * 2, pos);
+      pos = { height: Math.floor(pos / 2), regular: pos % 2 == 0 };
+    }
+
+    _assert(!isNaN(pos.height));
+    _assert(pos.regular != undefined);
 
     if (locations.length > 0) {
       // No need to copy slice.
@@ -84,14 +94,13 @@ export class Diagram {
       let singular = this.getSlice({
         height: pos.height - 1,
         regular: false
-      }).copy();
+      });
       return this.data[pos.height - 1].backward_limit.rewrite(singular);
     } else {
       let regular = this.getSlice({
         height: pos.height,
         regular: true
-      }).copy();
-      if (pos.height == 0) regular.t = this.t - 1; // When rewriting source need to correct the type dimension
+      });
       return this.data[pos.height].forward_limit.rewrite(regular);
     }
   }
@@ -184,38 +193,23 @@ export class Diagram {
     return data.backward_limit.rewrite(data.forward_limit.rewrite(this));
   }
 
-  // Make a copy of a diagram
-  copy() {
-    if (this.n == 0) {
-      return new Diagram(0, { type: this.type });
-    } else {
-      let data = Content.copyData(this.data);
-      let source = this.source.copy();
-      return new Diagram(this.n, { source, data });
-    }
-  }
-
   // Find the ID of the last cell that appears in the diagram
   getLastPoint() {
-    let d = this;
-
-    while (d.n > 0 && d.data.length == 0) {
-      d = d.source;
+    if (this.n == 0) {
+      return this;
     }
 
-    if (d.n == 0) {
-      return d;
+    if (this.data.length == 0) {
+      return this.source.getLastPoint();
     }
 
-    _assert(d.data != null);
+    let k = this.data.length - 1;
 
-    let k = d.data.length - 1;
-
-    while (k > 0 && d.data[k].forward_limit.length + d.data[k].backward_limit.length == 0) {
+    while (k > 0 && this.data[k].forward_limit.length + this.data[k].backward_limit.length == 0) {
       k--;
     }
 
-    return d.getSlice({
+    return this.getSlice({
       height: k,
       regular: false
     }).getLastPoint();
@@ -323,10 +317,12 @@ export class Diagram {
     }
 
     // Base case: 0-diagrams always normalize to themselves.
-    if (this.n == 0) return {
-      diagram: this.copy(),
-      embedding: new ForwardLimit(0, [])
-    };
+    if (this.n == 0) {
+      return {
+        diagram: this,
+        embedding: new ForwardLimit(0, [])
+      };
+    }
 
     // Recursive case
     let new_data = [];
@@ -467,9 +463,9 @@ export class Diagram {
       return;
     }
 
-    for (let content of this.data) {
-      content.pad(depth - 1);
-    }
+    let source = this.source;
+    let data = this.data.map(content => content.pad(depth - 1));
+    return new Diagram(this.n, { source, data });
   }
 
 
@@ -504,7 +500,7 @@ export class Diagram {
       sublimits.push(sub_forward_limit);
     }
     let source_first_limit = this.source.contractForwardLimit(type, slice_position, subdiagram.source, framing);
-    let singular = source_first_limit.rewrite(this.source.copy());
+    let singular = source_first_limit.rewrite(this.source);
     //let source_backward_limit = this.getTargetBoundary().contractBackwardLimit(type);
     /*
     let source_backward_limit = this
@@ -679,7 +675,7 @@ export class Diagram {
         let reverse_expansion = reverse_content.getExpansionData(location[1].height, r2, r1, s);
         let data_0_rev = reverse_expansion.data[0].reverse(r2);
 
-        let new_regular_slice = reverse_expansion.data[0].rewrite(r2.copy());
+        let new_regular_slice = reverse_expansion.data[0].rewrite(r2);
         let data_1_rev = reverse_expansion.data[1].reverse(new_regular_slice);
         let data = [data_1_rev, data_0_rev];
 
@@ -756,7 +752,7 @@ export class Diagram {
       // Recursive case
       let slice = this.getSlice(location[0]);
       let recursive = slice.getContractionLimit(location.slice(1), right);
-      let recursive_target = recursive.rewrite(slice.copy());
+      let recursive_target = recursive.rewrite(slice);
       let recursive_backward = recursive.getBackwardLimit(slice, recursive_target);
       if (location[0].regular) {
         // Contraction recursive case on regular slice: insert bubble.
@@ -852,7 +848,7 @@ export class Diagram {
       // Recursive case
       let slice = this.getSlice(location[0]);
       let recursive = slice.getContractionLimit(location.slice(1), right);
-      let recursive_target = recursive.rewrite(slice.copy());
+      let recursive_target = recursive.rewrite(slice);
       let recursive_backward = recursive.getBackwardLimit(slice, recursive_target);
       if (location[0].regular) {
         // Contraction recursive case on regular slice: insert bubble.
@@ -912,11 +908,11 @@ export class Diagram {
     if (this.n == 0) {
       _assert(D1.type instanceof Generator && D2.type instanceof Generator);
       let I1, I2, T;
-      if (D1.type == this.type)[I1, I2, T] = [L2.copy(), new BackwardLimit(0, [], null, 0), D2.copy()];
-      else if (this.type == D2.type)[I1, I2, T] = [new ForwardLimit(0, [], null, 0), L1.copy(), D1.copy()];
+      if (D1.type == this.type)[I1, I2, T] = [L2, new BackwardLimit(0, [], null, 0), D2];
+      else if (this.type == D2.type)[I1, I2, T] = [new ForwardLimit(0, [], null, 0), L1, D1];
       else if (D1.type != D2.type) throw "no unification at codimension " + depth + ", base case has all types distinct";
       else if (L1.framing != L2.framing) throw "no unification at codimension " + depth + ", base case has inconsistent framings";
-      else [I1, I2, T] = [new ForwardLimit(0, [], null, 0), new BackwardLimit(0, [], null, 0), D1.copy()];
+      else [I1, I2, T] = [new ForwardLimit(0, [], null, 0), new BackwardLimit(0, [], null, 0), D1];
       _assert(T instanceof Diagram && I1 instanceof ForwardLimit && I2 instanceof BackwardLimit);
       return {
         T,
@@ -1175,7 +1171,7 @@ export class Diagram {
 
     // Build final data
     let target = new Diagram(n, {
-      source: upper[0].source.copy(),
+      source: upper[0].source,
       data: target_content
     });
     let limits = [];
@@ -1310,9 +1306,9 @@ export class Diagram {
         let diagram = u.getSlice({
           height: j,
           regular: true
-        }).copy();
-        let left_limit = u.data[j - 1].backward_limit.copy();
-        let right_limit = u.data[j].forward_limit.copy();
+        });
+        let left_limit = u.data[j - 1].backward_limit;
+        let right_limit = u.data[j].forward_limit;
         let left_index = upper_exploded.length - 2;
         let right_index = upper_exploded.length - 1;
         lower_exploded.push({
@@ -1333,7 +1329,7 @@ export class Diagram {
         let diagram = l.diagram.getSlice({
           height: j,
           regular: false
-        }).copy(); // LOTS OF THESE COPIES CAN BE AVOIDED, THINK IT THROUGH CAREFULLY
+        }); 
         let left_limit = l.left_limit.subLimit(j).copy();
         let right_limit = l.right_limit.subLimit(j).copy();
         let lower_offset = lower_ranges[i].first;
@@ -1419,7 +1415,7 @@ export class Diagram {
     let source = this.getSlice({
       height: range.first,
       regular: true
-    }).copy();
+    });
     let data = [];
     for (let i = range.first; i < range.last; i++) {
       data.push(this.data[i].copy());
@@ -1863,13 +1859,10 @@ export class Diagram {
   }
   // Turns an n-diagram into an identity (n+1)-diagram
   boost() {
-    var diagram_copy = this.copy();
-    this.source = diagram_copy;
-    this.data = [];
-    this.type = undefined;
-    this.n++;
-    this.t++;
-    this.initializeSliceCache();
+    return new Diagram(this.n + 1, {
+      source: this,
+      data: []
+    });
   }
   /*
       Returns the full sizes of all the slices of the diagram
