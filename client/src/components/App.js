@@ -5,6 +5,7 @@ import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
 import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
+import AttachmentTool from "~/components/tools/Attachment";
 
 export const App = ({}) =>
   <div className={css(styles.app)}>
@@ -20,6 +21,7 @@ export const App = ({}) =>
     </div>
     <div className={css(styles.toolbar)}>
       <DiagramTool />
+      <AttachmentTool />
       <BoundaryTool />
     </div>
   </div>

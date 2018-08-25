@@ -2,7 +2,6 @@ import dotProp from "dot-prop-immutable";
 import createReducer from "~/util/create-reducer";
 import * as DiagramActions from "~/state/actions/diagram";
 import * as SignatureActions from "~/state/actions/signature";
-import * as Actions from "~/state/actions/diagram";
 import * as Core from "homotopy-core";
 import { createGenerator } from "~/state/store/signature";
 
@@ -159,47 +158,12 @@ export default createReducer({
     let generator = state.signature.generators[id];
 
     if (diagram == null) {
-      diagram = generator.generator.getDiagram();
+      diagram = generator.generator.diagram;
       state = setDiagram(state, diagram);
       return state;
     } else {
       return state;
     }
-  },
-
-  [DiagramActions.SELECT_CELL]: (state, { points }) => {
-    let { diagram, slice } = state.diagram;
-    let { generators } = state.signature;
-
-    if (diagram == null) {
-      return;
-    }
-
-    // Respect the current slices
-    points = points.map(point => Core.Geometry.unprojectPoint(diagram, [...slice, ...point]));
-    console.log(points);
-
-    let boundaryPath = Core.Boundary.getPath(diagram, points);
-    let boundary = Core.Boundary.followPath(diagram, boundaryPath);
-
-    let options = Core.Matches.getAttachmentOptions(
-      boundary,
-      [...Object.values(generators)].map(generator => generator.generator),
-      boundaryPath.boundary == "source",
-      boundaryPath.point
-    ).map(match => ({
-      generator: match.generator.id,
-      path: { ...boundaryPath, point: match.match },
-    }));
-
-    if (options.length == 1) {
-      let [ option ] = options;
-      diagram = Core.attach(diagram, generators[option.generator].generator, option.path);
-      state = dotProp.set(state, `diagram.diagram`, diagram);
-      return state;
-    } else {
-      state = dotProp.set(state, `diagram.options`, options);
-      return state;
-    }
   }
+
 })

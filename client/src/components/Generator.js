@@ -17,7 +17,7 @@ export const Generator = ({
   <div className={css(styles.generator)}>
     <div className={css(styles.preview)} onClick={onSelect}>
       <Diagram2D
-        diagram={generator.getDiagram()}
+        diagram={generator.diagram}
         width={75}
         height={75}
         padding={2}

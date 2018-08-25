@@ -62,16 +62,6 @@ export class Diagram2D extends React.Component {
     }
   }
 
-  center() {
-    let { minBounds, maxBounds } = this.props.layout;
-
-    minBounds = [...Array(2 - minBounds.length).fill(0), ...minBounds];
-    maxBounds = [...Array(2 - maxBounds.length).fill(0), ...maxBounds];
-
-    let rect = this.diagramRef.current.getBoundingClientRect();
-
-  }
-
   getPosition(point) {
     let { positions, minBounds, maxBounds } = this.props.layout;
 
@@ -108,17 +98,16 @@ export class Diagram2D extends React.Component {
     let position = this.getPosition(point);
     let generator = this.getGenerator(point);
 
-    // if (generator.generator.n < this.props.diagram.n) {
-    //   return null;
-    // }
+    if (generator.generator.n < this.props.diagram.n) {
+      return null;
+    }
 
     return (
       <circle
         cx={position[0]}
         cy={position[1]}
         r={10}
-        strokeWidth={0.5}
-        stroke="black"
+        strokeWidth={0}
         fill={generator.color}
         onClick={e => this.onSelect(e, point)}
         key={`point#${point.join(":")}`}>
