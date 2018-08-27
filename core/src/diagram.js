@@ -471,107 +471,97 @@ export class Diagram {
 
   // Create the forward limit which contracts the a subdiagram at a given position, to a given type
   contractForwardLimit(type, position, subdiagram, framing) {
-    if (!position) {
-      let arr = [];
-      if (this.n > 0) {
-        arr[this.n - 1] = 0;
-        arr = arr.fill(0, 0, this.n);
-      }
-      position = arr;
-    }
-    if (!subdiagram) subdiagram = this;
+    position = position || Array(this.n).fill(0);
+    subdiagram = subdiagram || this;
+
     _assert(position.length == this.n);
     _assert(this.n == subdiagram.n);
-    if (this.n == 0) return new ForwardLimit(0, [new LimitComponent(0, {
-      type
-    })], framing);
-    let slice_position = position.slice(1);
+
+    if (this.n == 0) {
+      return new ForwardLimit(0, [new LimitComponent(0, {
+        type
+      })], framing);
+    }
+
+    let [height, ...rest] = position;
     let sublimits = [];
     for (let i = 0; i < subdiagram.data.length; i++) {
       let singular_slice = this.getSlice({
-        height: position[0] + i,
+        height: height + i,
         regular: false
       });
       let subdiagram_singular_slice = subdiagram.getSlice({
         height: i,
         regular: false
       });
-      let sub_forward_limit = singular_slice.contractForwardLimit(type, slice_position, subdiagram_singular_slice, framing);
-      sublimits.push(sub_forward_limit);
+      sublimits.push(singular_slice.contractForwardLimit(
+        type, rest, subdiagram_singular_slice, framing
+      ));
     }
-    let source_first_limit = this.source.contractForwardLimit(type, slice_position, subdiagram.source, framing);
+    let source_first_limit = this.source.contractForwardLimit(type, rest, subdiagram.source, framing);
     let singular = source_first_limit.rewrite(this.source);
-    //let source_backward_limit = this.getTargetBoundary().contractBackwardLimit(type);
-    /*
-    let source_backward_limit = this
-        .getSlice({ height: position[0] + subdiagram.data.length, regular: true })
-        .contractBackwardLimit(type, slice_position, subdiagram.getTargetBoundary(), framing); // only contractBackwardLimit call, can we avoid?
-    */
+
     let target = this.getSlice({
-      height: position[0] + subdiagram.data.length,
+      height: height + subdiagram.data.length,
       regular: true
     });
-    let source_second_limit_forward = target.contractForwardLimit(type, slice_position, subdiagram.target, !framing);
+
+    let source_second_limit_forward = target.contractForwardLimit(type, rest, subdiagram.target, !framing);
     let source_second_limit_backward = source_second_limit_forward.getBackwardLimit(target, singular);
 
     let data = [new Content(this.n - 1, source_first_limit, source_second_limit_backward)];
-    let first = position[0];
-    let last = position[0] + subdiagram.data.length;
     let forward_limit_component = new LimitComponent(this.n, {
-      first,
-      last,
+      first: height,
+      last: height + subdiagram.data.length,
       data,
       sublimits
     });
-    let forward_limit = new ForwardLimit(this.n, [forward_limit_component], null);
-    return forward_limit;
+    return new ForwardLimit(this.n, [forward_limit_component], null);
   }
 
   // Create the backward limit which inflates the point at the given position, to a given subdiagram
   contractBackwardLimit(type, position, subdiagram, framing) {
-    if (!position) {
-      let arr = [];
-      if (this.n > 0) {
-        arr[this.n - 1] = 0;
-        arr = arr.fill(0, 0, this.n);
-      }
-      position = arr;
-    }
-    if (!subdiagram) subdiagram = this;
+    position = position || Array(this.n).fill(0);
+    subdiagram = subdiagram || this;
+
     _assert(position.length == this.n);
     _assert(this.n == subdiagram.n);
+
     if (this.n == 0) {
       let forward_component = new LimitComponent(0, {
         type: subdiagram.type
       });
       return new BackwardLimit(0, [forward_component], framing);
     }
+
     let sublimits = [];
     let singular_slice = this.getSlice({
       height: position[0],
       regular: false
     });
     let slice_position = position.slice(1);
+
     for (let i = 0; i < subdiagram.data.length; i++) {
       let subdiagram_singular_slice = subdiagram.getSlice({
         height: i,
         regular: false
       });
-      let sub_backward_limit = singular_slice.contractBackwardLimit(type, slice_position, subdiagram_singular_slice, framing);
-      sublimits.push(sub_backward_limit);
+      sublimits.push(singular_slice.contractBackwardLimit(
+        type, slice_position, subdiagram_singular_slice, framing
+      ));
     }
+
     let first = position[0];
     let last = position[0] + subdiagram.data.length;
-    let data = Content.copyData(subdiagram.data);
-    Content.deepPadData(data, slice_position);
+    let data = Content.deepPadData(subdiagram.data, slice_position);
+
     let backward_limit_component = new LimitComponent(this.n, {
       first,
       last,
       data,
       sublimits
     });
-    let backward_limit = new BackwardLimit(this.n, [backward_limit_component], null);
-    return backward_limit;
+    return new BackwardLimit(this.n, [backward_limit_component], null);
   }
 
   singularData() {

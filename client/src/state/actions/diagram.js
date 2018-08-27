@@ -37,7 +37,7 @@ export const takeIdentity = () => ({
   type: TAKE_IDENTITY
 });
 
-export const selectCell = (points) => ({
+export const selectCell = (point) => ({
   type: SELECT_CELL,
-  payload: { points }
+  payload: { point }
 });

@@ -80,8 +80,9 @@ export class Content {
 
   // Pad the content so that the origin moves to the specified position
   deepPad(position) {
-    this.forward_limit.deepPad(position);
-    this.backward_limit.deepPad(position);
+    let forward_limit = this.forward_limit.deepPad(position);
+    let backward_limit = this.backward_limit.deepPad(position);
+    return new Content(this.n, forward_limit, backward_limit);
   }
 
   equals(content) {
@@ -239,9 +240,7 @@ export class Content {
   }
 
   static deepPadData(data, position) {
-    for (let i = 0; i < data.length; i++) {
-      data[i].deepPad(position);
-    }
+    return data.map(content => content.deepPad(position));
   }
 }
 
@@ -377,16 +376,17 @@ export class LimitComponent {
   // Pad this component so that the origin moves to the given position
   deepPad(position) {
     _assert(this.n == position.length);
-    if (this.n == 0) return;
-    this.first += position[0];
-    this.last += position[0];
-    let slice_position = position.slice(1);
-    for (let i = 0; i < this.data.length; i++) {
-      this.data[i].deepPad(slice_position);
+    if (this.n == 0) {
+      return this;
     }
-    for (let i = 0; i < this.sublimits.length; i++) {
-      this.sublimits[i].deepPad(slice_position);
-    }
+
+    let [height, ...rest] = position;
+
+    let first = this.first + height;
+    let last = this.last + height;
+    let data = this.data.map(content => content.deepPad(rest));
+    let sublimits = this.sublimits.map(limit => limit.deepPad(rest));
+    return new LimitComponent(this.n, { data, sublimits, first, last });
   }
 
   typecheck(subdata, target_slice) {
@@ -428,12 +428,7 @@ export class Limit extends Array {
     }
     return false;
   }
-  deepPad(position) {
-    _assert(this.n == position.length);
-    for (let i = 0; i < this.length; i++) {
-      this[i].deepPad(position);
-    }
-  }
+
   equals(limit) {
     if (this.length != limit.length) return false;
     for (let i = 0; i < this.length; i++) {
@@ -740,6 +735,11 @@ export class ForwardLimit extends Limit {
     return new ForwardLimit(this.n, components, this.framing);
   }
 
+  deepPad(position) {
+    let components = [...this].map(component => component.deepPad(position));
+    return new ForwardLimit(this.n, components, this.framing);
+  }
+
   validate() {
     super.validate();
     for (let i = 0; i < this.length; i++) {
@@ -882,6 +882,11 @@ export class BackwardLimit extends Limit {
 
   pad(depth) {
     let components = [...this].map(component => component.pad(depth));
+    return new BackwardLimit(this.n, components, this.framing);
+  }
+
+  deepPad(position) {
+    let components = [...this].map(component => component.deepPad(position));
     return new BackwardLimit(this.n, components, this.framing);
   }
 

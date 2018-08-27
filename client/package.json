@@ -35,9 +35,12 @@
     "react-spinkit": "^3.0.0",
     "react-streams": "^13.6.6",
     "redux": "^4.0.0",
+    "reselect": "^3.0.1",
     "resize-observer-polyfill": "^1.5.0",
     "rxjs": "^6.2.2",
     "svg-pan-zoom": "^3.5.3",
+    "three": "^0.95.0",
+    "three-orbit-controls": "^82.1.0",
     "typeface-roboto": "^0.0.54"
   },
   "devDependencies": {

@@ -39,6 +39,9 @@ class Solver {
 
       for (let codim = 1; codim < dimension; codim++) {
         variables.push(variableId++);
+      }
+
+      for (let codim = 0; codim < dimension; codim++) {
         relations.set(`${codim}:1`, { points: [], codim });
         relations.set(`${codim}:-1`, { points: [], codim });
       }
@@ -52,16 +55,18 @@ class Solver {
 
     // Analyze the inputs and outputs that should be averaged over.
     for (let { source, target, codim, dir } of this.edges) {
-      for (let codimHigher = codim + 1; codimHigher < this.dimension; codimHigher++) {
-        // Regular source
-        if (source[codimHigher] % 2 == 0) {
-          this.addRelation(source, target, codimHigher, dir);
-        }
+      if (codim >= this.dimension - 1) {
+        continue;
+      }
 
-        // Singular target
-        if (target[codimHigher] % 2 != 0) {
-          this.addRelation(target, source, codimHigher, dir);
-        }
+      // Regular source
+      if (source[codim + 1] % 2 == 0) {
+        this.addRelation(source, target, codim, dir);
+      }
+
+      // Singular target
+      if (target[codim + 1] % 2 != 0) {
+        this.addRelation(target, source, codim, dir);
       }
     }
 
@@ -70,11 +75,13 @@ class Solver {
 
     for (let { relations, point } of this.points.values()) {
       for (let [key, { points, codim }] of relations) {
-        if (codim > 0 && codim == this.dimension - 1 && points.length == 1) {
-          this.forest.link(
-            this.getVariableId(point, codim),
-            this.getVariableId(points[0], codim)
-          );
+        if (codim == 0 && points.length == 1) {
+          for (let codimHigher = 1; codimHigher < this.dimension; codimHigher++) {
+            this.forest.link(
+              this.getVariableId(point, codimHigher),
+              this.getVariableId(points[0], codimHigher)
+            );
+          }
           relations.delete(key);
         }
       }
@@ -100,6 +107,8 @@ class Solver {
         max[codim] = Math.max(value, max[codim]);
       }
     }
+
+    console.log(min, max);
 
     return { min, max };
   }
@@ -154,6 +163,10 @@ class Solver {
         continue;
       }
 
+      if (codim == 1 && source[0] % 2 == 1) {
+        continue;
+      }
+
       yield new Kiwi.Constraint(
         new Kiwi.Expression(
           [-dir, this.getVariable(source, codim)],
@@ -182,15 +195,17 @@ class Solver {
   *createAverageConstraints() {
     for (let { relations, point } of this.points.values()) {
       for (let { points, codim } of relations.values()) {
-        if (codim > 0 && points.length >= 1) {
-          yield new Kiwi.Constraint(
-            new Kiwi.Expression(
-              ...points.map(p => [1 / points.length, this.getVariable(p, codim)])
-            ),
-            Kiwi.Operator.Eq,
-            this.getVariable(point, codim),
-            Kiwi.Strength.medium + codim
-          );
+        if (points.length >= 1) {
+          for (let codimHigher = codim + 1; codimHigher < this.dimension; codimHigher++) {
+            yield new Kiwi.Constraint(
+              new Kiwi.Expression(
+                ...points.map(p => [1 / points.length, this.getVariable(p, codimHigher)])
+              ),
+              Kiwi.Operator.Eq,
+              this.getVariable(point, codimHigher),
+              Kiwi.Strength.medium - codim * 10
+            );
+          }
         }
       }
     }

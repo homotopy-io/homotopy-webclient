@@ -19,6 +19,10 @@ export const getOptions = (state) => {
   }
 }
 
+export const getHighlight = (state) => {
+
+}
+
 export const clearOptions = (state) => {
   state = dotProp.set(state, `attach.options`, null);
   state = dotProp.set(state, `attach.highlight`, null);
@@ -57,7 +61,7 @@ export default createReducer({
     return state;
   },
 
-  [DiagramActions.SELECT_CELL]: (state, { points }) => {
+  [DiagramActions.SELECT_CELL]: (state, { point }) => {
     let { diagram, slice } = state.diagram;
     let { generators } = state.signature;
 
@@ -66,9 +70,9 @@ export default createReducer({
     }
 
     // Respect the current slices
-    points = points.map(point => Core.Geometry.unprojectPoint(diagram, [...slice, ...point]));
+    point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
 
-    let boundaryPath = Core.Boundary.getPath(diagram, points);
+    let boundaryPath = Core.Boundary.getPath(diagram, point);
     let boundary = Core.Boundary.followPath(diagram, boundaryPath);
 
     let options = Core.Matches.getAttachmentOptions(

@@ -55,11 +55,13 @@ export const ProjectionControl = ({
     options.push(i);
   }
 
+  console.log(options);
+
   return (
     <Control label="Projection">
-      <select onChange={e => onChange(Number(e.target.value))} value={value}>
+      <select onChange={e => { console.log("on change"); onChange(Number(e.target.value)) }} value={value}>
         {options.map(option =>
-          <option value={option}>
+          <option value={option} key={option}>
             {option}
           </option>
         )}
@@ -85,9 +87,9 @@ export const SliceControl = ({
   return (
     <Control label="Slice">
       {selections.map((options, i) =>
-        <select onChange={e => onChange(i, Number(e.target.value))} value={slice[i]}>
+        <select onChange={e => onChange(i, Number(e.target.value))} value={slice[i]} key={i}>
           {options.map(option =>
-            <option value={option}>
+            <option value={option} key={option}>
               {Math.floor(option / 2)}
               {option % 2 == 0 ? "" : "*"}
             </option>

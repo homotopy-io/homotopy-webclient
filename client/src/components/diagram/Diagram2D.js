@@ -1,9 +1,9 @@
 import * as React from "react";
 import { StyleSheet, css } from "aphrodite";
-import * as Pixi from "pixi.js";
 import Spinner from "react-spinkit";
 import panzoom from "svg-pan-zoom";
 import { connect } from "react-redux";
+import { createSelector } from "reselect";
 
 import * as Core from "homotopy-core";
 
@@ -46,7 +46,8 @@ export class Diagram2D extends React.Component {
 
   componentDidUpdate(props) {
     if (this.props.layout != props.layout) {
-      this.renderCache = null;
+      this.panzoom.destroy();
+      this.componentDidMount();
     }
   }
 
@@ -54,11 +55,9 @@ export class Diagram2D extends React.Component {
     this.panzoom.destroy();
   }
 
-  onSelect(e, ...points) {
+  onSelect(e, point) {
     if (this.props.interactive) {
-      // TODO: Consider all points to determine boundary flags.
-      console.log(points);
-      this.props.onSelect && this.props.onSelect(points);
+      this.props.onSelect && this.props.onSelect(point);
     }
   }
 
@@ -84,7 +83,7 @@ export class Diagram2D extends React.Component {
   }
 
   getControlPoint(generator, from, to) {
-    if (this.props.diagram.n != 2 || generator.generator.n <= this.props.diagram.n - 2) {
+    if (this.props.diagram.n < 2 || generator.generator.n <= this.props.diagram.n - 2) {
       return from;
     }
 
@@ -107,7 +106,8 @@ export class Diagram2D extends React.Component {
         cx={position[0]}
         cy={position[1]}
         r={10}
-        strokeWidth={0}
+        strokeWidth={0.1}
+        stroke="#000000"
         fill={generator.color}
         onClick={e => this.onSelect(e, point)}
         key={`point#${point.join(":")}`}>
@@ -184,6 +184,8 @@ export class Diagram2D extends React.Component {
       <path
         d={path}
         fill={sGenerator.color}
+        strokeWidth={0.1}
+        stroke="black"
         key={`surface#${s.join(":")}#${m.join(" ")}#${t.join(":")}`}
         onClick={e => this.onSelect(e, s, m, t)}>
         {this.props.interactive && <title>{sGenerator.name}</title>}
@@ -191,12 +193,13 @@ export class Diagram2D extends React.Component {
     );
   }
 
-  render() {  
-    if (!this.renderCache) {
-      let edges = this.props.layout.edges;
-      let points = this.props.layout.points;
-      let surfaces = findSurfaces(this.props.diagram, this.props.layout);
-      this.renderCache = (
+  render() {
+    let edges = this.props.layout.edges;
+    let points = this.props.layout.points;
+    let surfaces = findSurfaces(this.props.diagram, this.props.layout);
+
+    return (
+      <svg className={css(styles.diagram)} width={this.props.width} height={this.props.height} ref={this.diagramRef}>
         <g>
           <g shapeRendering="crispEdges">
             {surfaces.map(([a, b, c]) => this.renderSurface(a, b, c))}
@@ -204,12 +207,6 @@ export class Diagram2D extends React.Component {
           {edges.map(({source, target}) => this.renderWire(source, target))}
           {points.map(point => this.renderPoint(point))}
         </g>
-      )
-    }
-
-    return (
-      <svg className={css(styles.diagram)} width={this.props.width} height={this.props.height} ref={this.diagramRef}>
-        {this.renderCache}
       </svg>
     );
   }

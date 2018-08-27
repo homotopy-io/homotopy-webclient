@@ -14,7 +14,13 @@ import { Geometry } from "homotopy-core";
 import * as Rx from "rxjs";
 import * as RxOps from "rxjs/operators";
 
-import { setSource, setTarget, takeIdentity, clearDiagram } from "~/state/actions/diagram";
+import {
+  setSource,
+  setTarget,
+  takeIdentity,
+  clearDiagram,
+  selectRenderer
+} from "~/state/actions/diagram";
 
 const configureStore = () => {
   if (window.store == null) {
@@ -31,7 +37,11 @@ const configureStore = () => {
 
 const store = configureStore();
 
-const key$ = Rx.fromEvent(document, "keydown")
+if (window.keySubscriptions) {
+  window.keySubscriptions.unsubscribe();
+}
+
+window.keySubscriptions = Rx.fromEvent(document, "keydown")
   .pipe(RxOps.map(event => event.key))
   .subscribe(key => {
     console.log(key);
@@ -40,6 +50,8 @@ const key$ = Rx.fromEvent(document, "keydown")
       case "t": return store.dispatch(setTarget());
       case "i": return store.dispatch(takeIdentity());
       case "c": return store.dispatch(clearDiagram());
+      case "r": return store.dispatch(selectRenderer(2));
+      case "R": return store.dispatch(selectRenderer(3));
     }
   });
 

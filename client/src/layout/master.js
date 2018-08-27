@@ -53,25 +53,35 @@ export default (diagram, dimension) => {
   let points = [...Geometry.pointsOf(diagram, dimension)];
   let edges = [...Geometry.edgesOf(diagram, dimension)];
 
+  let job = computeLayout(dimension, points, edges);
+  let result;
+  while (true) {
+    let step = job.next();
+    if (step.done) {
+      result = step.value;
+      break;
+    }
+  }
+
   return Rx.Observable.create(observer => {
-    let onComplete = result => {
-      let endTime = new Date().getTime();
+    // let onComplete = result => {
+    //   let endTime = new Date().getTime();
       observer.next({
         ...result,
         points,
         edges
       });
       observer.complete();
-    };
+    // };
 
-    let id = window.layoutWorker.start({
-      dimension,
-      points,
-      edges
-    }, onComplete);
+    // let id = window.layoutWorker.start({
+    //   dimension,
+    //   points,
+    //   edges
+    // }, onComplete);
 
     return () => {
-      window.layoutWorker.stop(id);
+      // window.layoutWorker.stop(id);
     }
   });
 }
