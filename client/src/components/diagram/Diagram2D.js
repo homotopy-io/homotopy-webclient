@@ -5,6 +5,9 @@ import panzoom from "svg-pan-zoom";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
 
+import * as Rx from "rxjs";
+import * as RxOps from "rxjs/operators";
+
 import * as Core from "homotopy-core";
 
 import compose from "~/util/compose";
@@ -35,7 +38,7 @@ export class Diagram2D extends React.Component {
 
   componentDidMount() {
     this.panzoom = panzoom(this.diagramRef.current, {
-      panEnabled: this.props.interactive,
+      panEnabled: false,
       zoomEnabled: this.props.interactive,
       dblClickZoomEnabled: this.props.interactive,
       zoomScaleSensitivity: 0.4,
@@ -77,17 +80,35 @@ export class Diagram2D extends React.Component {
     return [x, y];
   }
 
+  isPointHighlighted(point) {
+    if (!this.props.highlight) {
+      return false;
+    }
+
+    let { path, subdiagram } = this.props.highlight;
+    return Core.Boundary.containsPoint(
+      this.props.diagram,
+      [...this.props.slice, ...point],
+      path,
+      subdiagram
+    );
+  }
+
+  get diagram() {
+    return this.props.diagram.getSlice(...this.props.slice);
+  }
+
   getGenerator(point) {
-    let id = Core.Geometry.typeAt(this.props.diagram, point).id;
+    let id = Core.Geometry.typeAt(this.diagram, point).id;
     return this.props.generators[id];
   }
 
   getControlPoint(generator, from, to) {
-    if (this.props.diagram.n < 2 || generator.generator.n <= this.props.diagram.n - 2) {
+    if (this.diagram.n < 2 || generator.generator.n <= this.diagram.n - 2) {
       return from;
     }
 
-    let codim = this.props.diagram.n - generator.generator.n;
+    let codim = this.diagram.n - generator.generator.n;
     let control = from.slice();
     control[codim] = (control[codim] + to[codim]) / 2;
     return control;
@@ -97,7 +118,7 @@ export class Diagram2D extends React.Component {
     let position = this.getPosition(point);
     let generator = this.getGenerator(point);
 
-    if (generator.generator.n < this.props.diagram.n) {
+    if (generator.generator.n < this.diagram.n) {
       return null;
     }
 
@@ -120,7 +141,7 @@ export class Diagram2D extends React.Component {
     let sGenerator = this.getGenerator(s);
     let tGenerator = this.getGenerator(t);
 
-    if (sGenerator.generator.n < this.props.diagram.n - 1) {
+    if (sGenerator.generator.n < this.diagram.n - 1) {
       return null;
     }
 
@@ -158,6 +179,12 @@ export class Diagram2D extends React.Component {
     let mPosition = this.getPosition(m);
     let tPosition = this.getPosition(t);
 
+    let highlight = (
+      this.isPointHighlighted(s) &&
+      this.isPointHighlighted(m) &&
+      this.isPointHighlighted(t)
+    );
+
     let smControl = this.getControlPoint(sGenerator, sPosition, mPosition);
     let msControl = this.getControlPoint(mGenerator, mPosition, sPosition);
 
@@ -183,9 +210,7 @@ export class Diagram2D extends React.Component {
     return (
       <path
         d={path}
-        fill={sGenerator.color}
-        strokeWidth={0.1}
-        stroke="black"
+        fill={highlight ? "#f1c40f" : sGenerator.color}
         key={`surface#${s.join(":")}#${m.join(" ")}#${t.join(":")}`}
         onClick={e => this.onSelect(e, s, m, t)}>
         {this.props.interactive && <title>{sGenerator.name}</title>}
@@ -196,7 +221,9 @@ export class Diagram2D extends React.Component {
   render() {
     let edges = this.props.layout.edges;
     let points = this.props.layout.points;
-    let surfaces = findSurfaces(this.props.diagram, this.props.layout);
+    let surfaces = findSurfaces(this.diagram, this.props.layout);
+
+    console.log(this.props.highlight);
 
     return (
       <svg className={css(styles.diagram)} width={this.props.width} height={this.props.height} ref={this.diagramRef}>
@@ -212,6 +239,7 @@ export class Diagram2D extends React.Component {
   }
 
 }
+
 
 const findSurfaces = (diagram, layout) => {
   let graph = new Graph();

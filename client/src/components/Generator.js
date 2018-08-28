@@ -23,10 +23,7 @@ export const Generator = ({
     <div className={css(styles.preview)} onClick={onSelect}>
       <Diagram2D
         diagram={generator.diagram}
-        width={75}
-        height={75}
-        padding={2}
-        scale={100}
+        slice={[]}
         dimension={Math.min(2, generator.n)}
       />
     </div>

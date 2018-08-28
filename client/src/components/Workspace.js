@@ -3,12 +3,15 @@ import { StyleSheet, css } from "aphrodite";
 import { connect } from "react-redux";
 import Diagram2D from "~/components/diagram/Diagram2D";
 
-import { getDisplayDiagram, getDisplayDimension } from "~/state/store/diagram";
+import { getDiagram, getDisplayDimension, getSlice } from "~/state/store/diagram";
+import { getHighlight } from "~/state/store/attach";
 import { selectCell } from "~/state/actions/diagram";
 
 export const Workspace = ({
   diagram,
   dimension,
+  highlight,
+  slice,
   onSelectCell
 }) =>
   <div className={css(styles.workspace)}>
@@ -16,6 +19,8 @@ export const Workspace = ({
       <Diagram2D
         diagram={diagram}
         dimension={dimension}
+        highlight={highlight}
+        slice={slice}
         interactive
         className={css(styles.diagram)}
         onSelect={onSelectCell}
@@ -25,8 +30,10 @@ export const Workspace = ({
 
 export default connect(
   state => ({
-    diagram: getDisplayDiagram(state),
-    dimension: getDisplayDimension(state)
+    diagram: getDiagram(state),
+    dimension: getDisplayDimension(state),
+    highlight: getHighlight(state),
+    slice: getSlice(state)
   }),
   dispatch => ({
     onSelectCell: (points) => dispatch(selectCell(points))

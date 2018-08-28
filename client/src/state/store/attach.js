@@ -20,7 +20,16 @@ export const getOptions = (state) => {
 }
 
 export const getHighlight = (state) => {
+  let { options, highlight } = state.attach;
 
+  if (options === null || highlight === null) {
+    return null;
+  } else {
+    let option = options[highlight];
+    let generator = state.signature.generators[option.generator].generator;
+    let subdiagram = option.path.boundary == "source" ? generator.target : generator.source;
+    return { path: option.path, subdiagram };
+  }
 }
 
 export const clearOptions = (state) => {
@@ -83,6 +92,7 @@ export default createReducer({
     ).map(match => ({
       generator: match.generator.id,
       path: { ...boundaryPath, point: match.match },
+      point: [...point.slice(0, boundaryPath.depth || 0), ...match.match.map(x => x * 2)]
     }));
 
     if (options.length == 1) {

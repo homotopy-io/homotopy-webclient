@@ -26,7 +26,7 @@ export const BoundaryTool = ({
     ]}>
       <div className={css(styles.container)}>
         <div className={css(styles.diagram)}>
-          <Diagram2D diagram={diagram} dimension={Math.min(2, diagram.n)} />
+          <Diagram2D diagram={diagram} dimension={Math.min(2, diagram.n)} slice={[]} />
         </div>
       </div>
     </Tool>
