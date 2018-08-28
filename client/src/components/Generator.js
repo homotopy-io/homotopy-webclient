@@ -3,16 +3,21 @@ import { StyleSheet, css } from "aphrodite";
 import { connect } from "react-redux";
 
 import { getGenerator } from "~/state/store/signature";
-import { selectGenerator, removeGenerator } from "~/state/actions/signature";
+import { selectGenerator, removeGenerator, renameGenerator, recolorGenerator } from "~/state/actions/signature";
+import { cellColors } from "~/style";
 
 import IconButton from "~/components/misc/IconButton";
+import ColorPicker from "~/components/misc/ColorPicker";
 import Diagram2D from "~/components/diagram/Diagram2D";
 
 export const Generator = ({
   name,
+  color,
   generator,
   onSelect,
-  onRemove
+  onRemove,
+  onRename,
+  onRecolor
 }) =>
   <div className={css(styles.generator)}>
     <div className={css(styles.preview)} onClick={onSelect}>
@@ -26,9 +31,17 @@ export const Generator = ({
       />
     </div>
     <div className={css(styles.details)}>
-      <div className={css(styles.name)}>
-        {name}
-      </div>
+      <input
+        type="text"
+        value={name}
+        className={css(styles.name)}
+        onChange={e => onRename(e.target.value)}
+      />
+      <ColorPicker
+        color={color}
+        colors={cellColors}
+        onChange={color => onRecolor(color)}
+      />
     </div>
     <div className={css(styles.actions)}>
       <IconButton
@@ -43,7 +56,9 @@ export default connect(
   (state, { id }) => getGenerator(state, id),
   (dispatch, { id }) => ({
     onSelect: () => dispatch(selectGenerator(id)),
-    onRemove: () => dispatch(removeGenerator(id))
+    onRemove: () => dispatch(removeGenerator(id)),
+    onRename: (name) => dispatch(renameGenerator(id, name)),
+    onRecolor: (color) => dispatch(recolorGenerator(id, color))
   })
 )(Generator);
 
@@ -70,7 +85,10 @@ const styles = StyleSheet.create({
 
   name: {
     fontWeight: 500,
-    padding: 8
+    padding: 8,
+    background: "#34495e",
+    border: "none",
+    color: "#ecf0f1",
   },
 
   actions: {

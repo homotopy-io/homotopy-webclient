@@ -7,6 +7,7 @@ export default (state, action) => {
   state = state || {
     signature: {
       generators: {},
+      edited: null,
       id: 0
     },
     diagram: {

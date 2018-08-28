@@ -124,6 +124,27 @@ export default createReducer({
     }
   },
 
+  [DiagramActions.CONTRACT]: (state, { point, direction }) => {
+    let { diagram, slice } = state.diagram;
+
+    if (diagram == null) {
+      return state;
+    }
+
+    point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+
+    try {
+      let content = diagram.contract(point, direction);
+      console.log(content);
+      return state;
+      // let path = Core.Boundary.getPath(diagram, point);
+
+    } catch(error) {
+      console.error(error);
+      return state;
+    }
+  },
+
   [DiagramActions.CLEAR_DIAGRAM]: (state, {}) => {
     state = dotProp.set(state, `diagram.diagram`, null);
     return state;

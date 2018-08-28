@@ -2,6 +2,7 @@ export const REMOVE_GENERATOR = "signature/remove-generator";
 export const RENAME_GENERATOR = "signature/rename-generator";
 export const CREATE_GENERATOR = "signature/create-generator";
 export const SELECT_GENERATOR = "signature/select-generator";
+export const RECOLOR_GENERATOR = "signature/recolor-generator";
 
 export const removeGenerator = (id) => ({
   type: REMOVE_GENERATOR,
@@ -11,6 +12,11 @@ export const removeGenerator = (id) => ({
 export const renameGenerator = (id, name) => ({
   type: RENAME_GENERATOR,
   payload: { id, name }
+});
+
+export const recolorGenerator = (id, color) => ({
+  type: RECOLOR_GENERATOR,
+  payload: { id, color }
 });
 
 export const createGenerator = () => ({

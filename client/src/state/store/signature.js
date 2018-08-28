@@ -58,8 +58,13 @@ export default createReducer({
     return state;
   },
 
-  [Actions.RENAME_GENERATOR]: (state, { name }) => {
+  [Actions.RENAME_GENERATOR]: (state, { id, name }) => {
     state = dotProp.set(state, `signature.generators.${id}.name`, name);
+    return state;
+  },
+
+  [Actions.RECOLOR_GENERATOR]: (state, { id, color }) => {
+    state = dotProp.set(state, `signature.generators.${id}.color`, color);
     return state;
   },
 

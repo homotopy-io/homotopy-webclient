@@ -41,7 +41,8 @@ if (window.keySubscriptions) {
   window.keySubscriptions.unsubscribe();
 }
 
-window.keySubscriptions = Rx.fromEvent(document, "keydown")
+window.keySubscriptions = Rx.fromEvent(document, "keydown") 
+  .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
   .pipe(RxOps.map(event => event.key))
   .subscribe(key => {
     console.log(key);

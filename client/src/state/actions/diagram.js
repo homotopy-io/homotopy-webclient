@@ -6,6 +6,7 @@ export const CLEAR_BOUNDARY = "diagram/clear-boundary";
 export const CLEAR_DIAGRAM = "diagram/clear-diagram";
 export const TAKE_IDENTITY = "diagram/take-identity";
 export const SELECT_CELL = "diagram/select-cell";
+export const CONTRACT = "diagram/contract";
 
 export const setSource = () => ({
   type: SET_SOURCE
@@ -40,4 +41,9 @@ export const takeIdentity = () => ({
 export const selectCell = (point) => ({
   type: SELECT_CELL,
   payload: { point }
+});
+
+export const contract = (point, direction) => ({
+  type: CONTRACT,
+  payload: { point, direction }
 });
