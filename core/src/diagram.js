@@ -590,23 +590,36 @@ export class Diagram {
 
 
   // Produce the Content object that contracts a diagram
-  contract(data) {
-    let location = data.coordinates;
-    let drag = data.directions;
-    _assert(!data.coordinates.last().regular); // final entity must be at a singular height
-    let slice = this.getSlice(data.coordinates.slice(0, location.length - 1)); // last coordinate is irrelevant
-    if (drag[0] < 0 && location.last().height == 0) throw "can't perform homotopy off the bottom of the diagram";
-    _assert(location.last().height < slice.data.length);
-    if (drag[0] > 0 && location.last().height == slice.data.length - 1) throw "can't perform homotopy off the top of the diagram";
-    if (drag[0] < 0) {
-      location[location.length - 1].height--; // if we're dragging down, adjust for this
-      if (drag[1] != null) drag[1] = -drag[1];
+  contract(point, directions) {
+    let location = point.map(x => ({
+      height: Math.floor(x / 2),
+      regular: x % 2 == 0
+    }));
+    console.log("Location: ", location);
+
+    let height = location[location.length - 1];
+
+    _assert(!height.regular); // final entity must be at a singular height
+    let slice = this.getSlice(...location.slice(0, location.length - 1)); // last coordinate is irrelevant
+
+    if (directions[0] < 0 && height.height == 0) {
+      throw "Can't perform homotopy off the bottom of the diagram.";
     }
-    let right = drag[1];
+
+    _assert(height.height < slice.data.length);
+
+    if (directions[0] > 0 && height.height == slice.data.length - 1) {
+      throw "Can't perform homotopy off the top of the diagram.";
+    }
+
+    if (directions[0] < 0) {
+      location[location.length - 1].height--; // if we're dragging down, adjust for this
+      if (directions[1] != null) directions[1] = -directions[1];
+    }
+
+    let right = directions[1];
     let forward_limit = this.getContractionLimit(location, right);
-    //let target = forward_limit.rewrite(this.copy());
     let backward_limit = new BackwardLimit(this.n, []);
-    console.log("Contraction successful");
     return new Content(this.n, forward_limit, backward_limit);
   }
 

@@ -3,12 +3,11 @@ import * as ReactDOM from "react-dom";
 import * as Redux from "redux";
 import * as ReactRedux from "react-redux";
 import "typeface-roboto";
+import "@icon/stroke-7/stroke-7.css";
 
-import * as Core from "homotopy-core";
 import App from "~/components/App";
 import reducer from "~/state/store";
 
-import * as Test from "~/layout/master";
 import { Geometry } from "homotopy-core";
 
 import * as Rx from "rxjs";
@@ -19,29 +18,12 @@ import {
   setTarget,
   takeIdentity,
   clearDiagram,
-  selectRenderer
+  setRenderer
 } from "~/state/actions/diagram";
 
-const configureStore = () => {
-  if (window.store == null) {
-    window.store = Redux.createStore(reducer);
-    return window.store;
-  }
+const store = Redux.createStore(reducer);
 
-  if (process.env.NODE_ENV === "development") {
-    window.store.replaceReducer(reducer);
-  } 
-
-  return window.store;
-}
-
-const store = configureStore();
-
-if (window.keySubscriptions) {
-  window.keySubscriptions.unsubscribe();
-}
-
-window.keySubscriptions = Rx.fromEvent(document, "keydown") 
+Rx.fromEvent(document, "keydown") 
   .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
   .pipe(RxOps.map(event => event.key))
   .subscribe(key => {
@@ -51,14 +33,31 @@ window.keySubscriptions = Rx.fromEvent(document, "keydown")
       case "t": return store.dispatch(setTarget());
       case "i": return store.dispatch(takeIdentity());
       case "c": return store.dispatch(clearDiagram());
-      case "r": return store.dispatch(selectRenderer(2));
-      case "R": return store.dispatch(selectRenderer(3));
+      case "r": return store.dispatch(setRenderer(2));
+      case "R": return store.dispatch(setRenderer(3));
     }
   });
 
-ReactDOM.render(
+const render = () => ReactDOM.render(
   <ReactRedux.Provider store={store}>
     <App />
   </ReactRedux.Provider>,
   document.getElementById("app")
 );
+
+
+if (module.hot) {
+  console.log("Setup HMR");
+
+  module.hot.accept('./components/App.js', () => {
+    console.log("Render");
+    setTimeout(render);
+  });
+
+  module.hot.accept(["homotopy-core", './state/store'], () => {
+    console.log("Replaced store");
+    store.replaceReducer(reducer);
+  });
+}
+
+render();

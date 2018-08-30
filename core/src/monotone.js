@@ -423,30 +423,27 @@ export class Monotone extends Array {
     lower,
     upper
   }) {
-    let upper_included = [];
-    for (let i = 0; i < upper.length; i++) {
-      _assert(isNatural(upper[i]));
-      upper_included[i] = false;
+    for (let i of upper) {
+      _assert(isNatural(i));
     }
 
-    let lower_included = [];
     for (let i = 0; i < lower.length; i++) {
       _propertylist(lower[i], ["left", "right"], ["bias"]);
       _propertylist(lower[i].left, ["target", "monotone"]);
       _propertylist(lower[i].right, ["target", "monotone"]);
       //_assert(lower[i].left.monotone instanceof Monotone && lower[i].right.monotone instanceof Monotone);
-      let lt = lower[i].left.target;
       _assert(lower[i].left.monotone.length == lower[i].right.monotone.length);
       _assert(lower[i].left.target < upper.length && lower[i].right.target < upper.length);
       _assert(lower[i].left.monotone.target_size == upper[lower[i].left.target]);
       _assert(lower[i].right.monotone.target_size == upper[lower[i].right.target]);
       _assert(lower[i].left.length == lower[i].right.length);
-      lower_included[i] = false;
     }
 
+    let upper_included = Array(upper.length).fill(false);
+    let lower_included = Array(lower.length).fill(false);
+
     // Build the first part of the cocone
-    let cocone = [];
-    cocone[0] = Monotone.getIdentity(upper[0]);
+    let cocone = [Monotone.getIdentity(upper[0])];
     upper_included[0] = true;
 
     // Pass through repeatedly until no further unifications can be made

@@ -1,12 +1,13 @@
 import { computeLayout, Geometry } from "homotopy-core";
 import * as Rx from "rxjs";
+import Worker from "worker-loader!./worker.js";
 
 class LayoutWorker {
 
   constructor() {
     this.nextId = 0;
     this.waiting = new Map();
-    this.worker = new Worker("./worker.js");
+    this.worker = new Worker();
     this.worker.onmessage = this.onMessage.bind(this);
   }
 
@@ -45,9 +46,7 @@ class LayoutWorker {
 }
 
 // Create a layout worker globally and make it survive hot reloads.
-if (!window.layoutWorker) {
-  window.layoutWorker = new LayoutWorker();
-}
+const layoutWorker = new LayoutWorker();
 
 export default (diagram, dimension) => {
   let points = [...Geometry.pointsOf(diagram, dimension)];
@@ -85,3 +84,5 @@ export default (diagram, dimension) => {
     }
   });
 }
+
+// TODO: Hot reloading

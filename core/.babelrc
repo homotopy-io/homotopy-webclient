@@ -1,9 +1,10 @@
 {
   "presets": [
-    ["env", {
+    ["@babel/env", {
       "targets": {
         "node": 6
-      }
+      },
+      "modules": false
     }]
   ],
   "plugins": [
@@ -15,6 +16,6 @@
         }
       }
     ],
-    "transform-object-rest-spread"
+    "@babel/proposal-object-rest-spread"
   ]
 }

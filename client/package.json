@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "parcel src/index.html"
+    "dev": "webpack-dev-server --mode development --inline",
+    "build": "webpack --mode production"
   },
   "repository": {
     "type": "git",
@@ -43,11 +44,22 @@
     "svg-pan-zoom": "^3.5.3",
     "three": "^0.95.0",
     "three-orbit-controls": "^82.1.0",
-    "typeface-roboto": "^0.0.54"
+    "typeface-roboto": "^0.0.54",
+    "webpack-dev-server": "^3.1.7"
   },
   "devDependencies": {
+    "@babel/core": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
+    "@babel/preset-react": "^7.0.0",
+    "babel-loader": "^8.0.0",
     "babel-plugin-module-resolver": "^3.1.1",
-    "babel-plugin-transform-object-rest-spread": "^6.26.0",
-    "parcel-bundler": "^1.9.7"
+    "css-loader": "^1.0.0",
+    "file-loader": "^2.0.0",
+    "html-loader": "^0.5.5",
+    "source-map-loader": "^0.2.4",
+    "style-loader": "^0.23.0",
+    "webpack": "^4.17.1",
+    "webpack-cli": "^3.1.0",
+    "worker-loader": "^2.0.0"
   }
 }
