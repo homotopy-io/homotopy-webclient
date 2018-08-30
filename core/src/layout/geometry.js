@@ -2,7 +2,16 @@ import { _assert } from "~/util/debug";
 
 export const typeAt = (diagram, point) => {
   if (point.length == 0) {
-    return diagram.getLastPoint().type;
+    let maxType = null;
+
+    for (let t of typesOf(diagram)) {
+      if (!maxType || t.n > maxType.n) {
+        maxType = t;
+      }
+    }
+
+    return maxType;
+
   } else {
     let [height, ...rest] = point;
 
@@ -15,6 +24,19 @@ export const typeAt = (diagram, point) => {
     });
 
     return typeAt(slice, rest);
+  }
+}
+
+export const typesOf = function*(diagram) {
+  if (diagram.n == 0) {
+    yield diagram.type;
+    return;
+  } else {
+    yield* typesOf(diagram.source);
+
+    for (let content of diagram.data) {
+      yield content.forward_limit[0].type;
+    }
   }
 }
 
