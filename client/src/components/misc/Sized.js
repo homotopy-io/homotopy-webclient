@@ -13,6 +13,8 @@ export const withSize = Component => props =>
     }
   </Sized>;
 
+export default withSize;
+
 export class Sized extends React.Component {
 
   constructor(props) {
