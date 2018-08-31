@@ -165,6 +165,7 @@ export default createReducer({
       return state;
 
     } catch(error) {
+      console.error(error);
       return state;
     }
   },

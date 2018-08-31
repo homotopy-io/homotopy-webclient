@@ -68,6 +68,10 @@ export class Generator {
   }
 
   usesCell(generator) {
+    if (this.id == generator.id) {
+      return true;
+    }
+
     // Generators can only use cells which have a lower dimension
     if (generator.n >= this.n) {
       return false;

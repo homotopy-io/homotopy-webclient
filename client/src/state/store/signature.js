@@ -53,8 +53,26 @@ export const createGenerator = (state, source, target) => {
 
 export default createReducer({
   [Actions.REMOVE_GENERATOR]: (state, { id }) => {
-    // TODO: Also remove all cells that reference this cell
-    state = dotProp.delete(state, `signature.generators.${id}`);
+    let generators = state.signature.generators;
+    let removedGenerator = generators[id].generator;
+
+    // Remove all generators that use this generator.
+    generators = {...generators};
+    let keep = {};
+    for (let generator of Object.values(generators)) {
+      if (!generator.generator.usesCell(removedGenerator)) {
+        console.log("Keep", generator.generator.id);
+        keep[generator.generator.id] = generator;
+      }
+    }
+    state = dotProp.set(state, "signature.generators", keep);
+
+    // Clear the current diagram if it uses the removed cell
+    let diagram = state.diagram.diagram;
+    if (diagram != null && diagram.usesCell(removedGenerator)) {
+      state = dotProp.set(state, "diagram.diagram", null);
+    }
+
     return state;
   },
 

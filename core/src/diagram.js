@@ -386,11 +386,10 @@ export class Diagram {
 
   // Check if the specified id is used at all in this diagram
   usesCell(generator) {
-    if (generator.dimension > this.t) return false;
-    if (this.n == 0) return this.data == generator.id;
+    if (this.n == 0) return this.type.id == generator.id;
     if (this.source && this.source.usesCell(generator)) return true;
-    for (var i = 0; i < this.data.length; i++) {
-      if (this.data[i].usesCell(generator)) return true;
+    for (let content of this.data) {
+      if (content.usesCell(generator)) return true;
     }
     return false;
   }
