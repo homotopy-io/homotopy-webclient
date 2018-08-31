@@ -39,7 +39,7 @@ class LayoutWorker {
         this.waiting.delete(id);
       }
     } else if (data.type == "error") {
-      console.error(data.payload);
+      throw new Error(data.payload);
     }
   }
 
@@ -65,12 +65,12 @@ export default (diagram, dimension) => {
   return Rx.Observable.create(observer => {
     // let onComplete = result => {
     //   let endTime = new Date().getTime();
-      observer.next({
-        ...result,
-        points,
-        edges
-      });
-      observer.complete();
+    observer.next({
+      ...result,
+      points,
+      edges
+    });
+    observer.complete();
     // };
 
     // let id = window.layoutWorker.start({
@@ -81,8 +81,8 @@ export default (diagram, dimension) => {
 
     return () => {
       // window.layoutWorker.stop(id);
-    }
+    };
   });
-}
+};
 
 // TODO: Hot reloading

@@ -16,7 +16,7 @@ self.onmessage = ({ data }) => {
     let { id } = data.payload;
     jobs.delete(id);
   }
-}
+};
 
 const work = async () => {
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -24,7 +24,7 @@ const work = async () => {
   try {
     if (jobs.size == 0) {
       await new Promise(resolve => {
-        wakeUp = () => setTimeout(resolve, 0)
+        wakeUp = () => setTimeout(resolve, 0);
       });
     } else {
       let [id, job] = jobs.entries().next().value;
@@ -51,11 +51,11 @@ const work = async () => {
     self.postMessage({
       type: "error",
       payload: error.toString()
-    })
+    });
     return;
   }
 
   work();
-}
+};
 
 work();

@@ -25,7 +25,7 @@ export const typeAt = (diagram, point) => {
 
     return typeAt(slice, rest);
   }
-}
+};
 
 export const typesOf = function*(diagram) {
   if (diagram.n == 0) {
@@ -38,7 +38,7 @@ export const typesOf = function*(diagram) {
       yield content.forward_limit[0].type;
     }
   }
-}
+};
 
 export const pointsOf = function*(diagram, dimension) {
   _assert(diagram.n >= dimension);
@@ -53,7 +53,7 @@ export const pointsOf = function*(diagram, dimension) {
       }
     }
   }
-}
+};
 
 export const boundaryOf = (diagram, dimension) => {
   _assert(diagram.n >= dimension);
@@ -67,7 +67,7 @@ export const boundaryOf = (diagram, dimension) => {
     }
     return boundary;
   }
-}
+};
 
 export const slicesOf = function*(diagram) {
   _assert(diagram.n > 0);
@@ -81,7 +81,7 @@ export const slicesOf = function*(diagram) {
 
   yield [diagram.data.length * 2, diagram.target];
   yield [diagram.data.length * 2 + 1, diagram.target];
-}
+};
 
 export const unprojectPoint = (diagram, point) => {
   if (point.length >= diagram.n) {
@@ -90,7 +90,7 @@ export const unprojectPoint = (diagram, point) => {
     diagram = diagram.getSlice(...point);
     return [...point, ...lastPoint(diagram)];
   }
-}
+};
 
 export const lastPoint = (diagram) => {
   if (diagram.n == 0) {
@@ -111,7 +111,7 @@ export const lastPoint = (diagram) => {
     height: k,
     regular: false
   }))];
-}
+};
 
 export const getSlice = (diagram, ...heights) => {
   if (heights.length == 0) {
@@ -126,7 +126,7 @@ export const getSlice = (diagram, ...heights) => {
     });
     return getSlice(slice, ...rest);
   }
-}
+};
 
 export const edgesOf = function*(diagram, dimension) {
   if (dimension == 0) {
@@ -169,7 +169,7 @@ export const edgesOf = function*(diagram, dimension) {
       }
     }
   }
-}
+};
 
 const limitAction = (limit, point) => {
   // Special case: the identity limit preserves all points.
@@ -235,4 +235,4 @@ const limitAction = (limit, point) => {
   }
 
   return [...targets].map(([height, target]) => [height, ...target]);
-}
+};

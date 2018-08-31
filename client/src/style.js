@@ -5,4 +5,4 @@ export const cellColors = [
   "#8e44ad", // wisteria
   "#27ae60", // nephritis
   "#f1c40f", // sunflower
-]
+];

@@ -70,4 +70,4 @@ const buildAttachmentContent = generator => (diagram, point, boundary) => {
   let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target, inverse);
 
   return new Content(diagram.n, forwardLimit, backwardLimit);
-}
+};

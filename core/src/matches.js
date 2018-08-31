@@ -13,7 +13,7 @@ export const getMatches = (diagram, subdiagram) => {
   }
 
   return diagram.enumerate({ goal: subdiagram });
-}
+};
 
 export const getAttachmentOptions = (diagram, generators, inverse, point) => {
   let matches = [];
@@ -32,7 +32,7 @@ export const getAttachmentOptions = (diagram, generators, inverse, point) => {
   }
 
   return matches;
-}
+};
 
 /**
  * @param {Diagram} diagram
@@ -41,7 +41,7 @@ export const getAttachmentOptions = (diagram, generators, inverse, point) => {
  */
 export const containsPoint = (diagram, match, point) => {
   _assert(diagram.n == point.length);
-  _assert(diagram.n == match.length)
+  _assert(diagram.n == match.length);
 
   if (diagram.n == 0) {
     return true;
@@ -59,4 +59,4 @@ export const containsPoint = (diagram, match, point) => {
       return containsPoint(slice, matchRest, pointRest);
     }
   }
-}
+};

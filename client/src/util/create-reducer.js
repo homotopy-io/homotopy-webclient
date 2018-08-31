@@ -4,4 +4,4 @@ export default (reducers) => (state, action) => {
   } else {
     return state;
   }
-}
+};

@@ -17,7 +17,7 @@ export const getOptions = (state) => {
       path: option.path
     }));
   }
-}
+};
 
 export const getHighlight = (state) => {
   let { options, highlight } = state.attach;
@@ -30,22 +30,22 @@ export const getHighlight = (state) => {
     let subdiagram = option.path.boundary == "source" ? generator.target : generator.source;
     return { path: option.path, subdiagram };
   }
-}
+};
 
 export const clearOptions = (state) => {
-  state = dotProp.set(state, `attach.options`, null);
-  state = dotProp.set(state, `attach.highlight`, null);
+  state = dotProp.set(state, "attach.options", null);
+  state = dotProp.set(state, "attach.highlight", null);
   return state;
-}
+};
 
 export default createReducer({
-  [AttachActions.CLEAR_HIGHLIGHT]: (state, {}) => {
-    state = dotProp.set(state, `attach.highlight`, null);
+  [AttachActions.CLEAR_HIGHLIGHT]: (state) => {
+    state = dotProp.set(state, "attach.highlight", null);
     return state;
   },
 
   [AttachActions.SET_HIGHLIGHT]: (state, { index }) => {
-    state = dotProp.set(state, `attach.highlight`, index);
+    state = dotProp.set(state, "attach.highlight", index);
     return state;
   },
 
@@ -63,9 +63,9 @@ export default createReducer({
 
     diagram = Core.attachGenerator(diagram, generator.generator, option.path);
 
-    state = dotProp.set(state, `diagram.diagram`, diagram);
-    state = dotProp.set(state, `attach.options`, null);
-    state = dotProp.set(state, `attach.highlight`, null);
+    state = dotProp.set(state, "diagram.diagram", diagram);
+    state = dotProp.set(state, "attach.options", null);
+    state = dotProp.set(state, "attach.highlight", null);
 
     return state;
   },
@@ -98,43 +98,43 @@ export default createReducer({
     if (options.length == 1) {
       let [ option ] = options;
       diagram = Core.attachGenerator(diagram, generators[option.generator].generator, option.path);
-      state = dotProp.set(state, `diagram.diagram`, diagram);
+      state = dotProp.set(state, "diagram.diagram", diagram);
       return state;
     } else if (options.length > 1) {
-      state = dotProp.set(state, `attach.options`, options);
-      state = dotProp.set(state, `attach.highlight`, null);
+      state = dotProp.set(state, "attach.options", options);
+      state = dotProp.set(state, "attach.highlight", null);
       return state;
     } else {
       return state;
     }
   },
 
-  [AttachActions.CLEAR_OPTIONS]: (state, {}) => {
+  [AttachActions.CLEAR_OPTIONS]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.CLEAR_DIAGRAM]: (state, {}) => {
+  [DiagramActions.CLEAR_DIAGRAM]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.TAKE_IDENTITY]: (state, {}) => {
+  [DiagramActions.TAKE_IDENTITY]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_PROJECTION]: (state, {}) => {
+  [DiagramActions.SET_PROJECTION]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_SLICE]: (state, {}) => {
+  [DiagramActions.SET_SLICE]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_SOURCE]: (state, {}) => {
+  [DiagramActions.SET_SOURCE]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_TARGET]: (state, {}) => {
+  [DiagramActions.SET_TARGET]: (state) => {
     return clearOptions(state);
   }
 
-})
+});

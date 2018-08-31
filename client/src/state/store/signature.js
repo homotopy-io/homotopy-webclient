@@ -20,11 +20,11 @@ export const getDimensionGroups = (state) => {
   }
 
   return groups;
-}
+};
 
 export const getGenerators = (state) => {
   return state.signature.generators;
-}
+};
 
 export const getGenerator = (state, id) => {
   let { signature } = state;
@@ -35,7 +35,7 @@ export const getGenerator = (state, id) => {
   } else {
     return generators[id];
   }
-}
+};
 
 export const createGenerator = (state, source, target) => {
   let id = state.signature.id;
@@ -43,13 +43,13 @@ export const createGenerator = (state, source, target) => {
   let color = cellColors[id % cellColors.length];
   let generator = new Core.Generator(id, source, target);
 
-  state = dotProp.set(state, `signature.id`, id + 1);
+  state = dotProp.set(state, "signature.id", id + 1);
   state = dotProp.set(state, `signature.generators.${id}`, {
     name, generator, color
   });
 
   return state;
-}
+};
 
 export default createReducer({
   [Actions.REMOVE_GENERATOR]: (state, { id }) => {
@@ -68,7 +68,7 @@ export default createReducer({
     return state;
   },
 
-  [Actions.CREATE_GENERATOR]: (state, {}) => {
+  [Actions.CREATE_GENERATOR]: (state) => {
     state = createGenerator(state, null, null);
     return state;
   },

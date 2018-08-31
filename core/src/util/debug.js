@@ -1,6 +1,6 @@
 export const _assert = (condition) => {
   if (!condition) {
-    throw new Error(`Assertion failed.`);
+    throw new Error("Assertion failed.");
   }
 };
 
@@ -13,7 +13,7 @@ export const _validate = (object) => {
     debugger;
   }
   object.validate();
-}
+};
 
 export const _propertylist = (object, properties) => {
   for (let property of properties) {

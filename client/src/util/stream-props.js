@@ -1,6 +1,5 @@
 import * as React from "react";
 import { Subject } from "rxjs";
-import { distinctUntilChanged } from "rxjs";
 
 export default pipe => Component => {
   return class StreamProps extends React.Component {
@@ -33,11 +32,11 @@ export default pipe => Component => {
 
     render() {
       if (this.state.value !== undefined) {
-        return <Component {...this.props} {...this.state.value} />
+        return <Component {...this.props} {...this.state.value} />;
       } else {
         return null;
       }
     }
 
-  }
-}
+  };
+};
