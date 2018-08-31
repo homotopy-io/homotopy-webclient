@@ -105,10 +105,14 @@ export default createReducer({
     if (diagram == null) {
       return state;
     } else if (target != null) {
-      state = createGenerator(state, diagram, target);
-      state = dotProp.set(state, "diagram.diagram", null);
-      state = dotProp.set(state, "diagram.target", null);
-      return state;
+      if (target.n == diagram.n) {
+        state = createGenerator(state, diagram, target);
+        state = dotProp.set(state, "diagram.diagram", null);
+        state = dotProp.set(state, "diagram.target", null);
+        return state;
+      } else {
+        return state;
+      }
     } else {
       state = dotProp.set(state, "diagram.source", diagram);
       state = dotProp.set(state, "diagram.diagram", null);
@@ -122,10 +126,14 @@ export default createReducer({
     if (diagram == null) {
       return state;
     } else if (source != null) {
-      state = createGenerator(state, source, diagram);
-      state = dotProp.set(state, "diagram.diagram", null);
-      state = dotProp.set(state, "diagram.source", null);
-      return state;
+      if (source.n == diagram.n) {
+        state = createGenerator(state, source, diagram);
+        state = dotProp.set(state, "diagram.diagram", null);
+        state = dotProp.set(state, "diagram.source", null);
+        return state;
+      } else {
+        return state;
+      }
     } else {
       state = dotProp.set(state, "diagram.target", diagram);
       state = dotProp.set(state, "diagram.diagram", null);

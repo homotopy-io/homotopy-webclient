@@ -1,5 +1,4 @@
 import test from "tape";
-import { attachGenerator } from "~/attach";
 import { Generator } from "~/generator";
 
 test("usesCell detects usage of generator in 1-cell.", t => {
