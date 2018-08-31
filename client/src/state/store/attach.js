@@ -91,7 +91,7 @@ export default createReducer({
       boundaryPath.point
     ).map(match => ({
       generator: match.generator.id,
-      path: { ...boundaryPath, point: match.match },
+      path: { ...boundaryPath, point: match.match.map(x => x * 2) },
       point: [...point.slice(0, boundaryPath.depth || 0), ...match.match.map(x => x * 2)]
     }));
 

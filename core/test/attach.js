@@ -98,4 +98,17 @@ test("Whiskering 2-diagrams.", t => {
   t.end();
 });
 
-// TODO: Build 2-diagram by attaching mutliplication maps.
+test("Associativity diagram.", t => {
+  let x = new Generator("x");
+  let f = new Generator("f", x.diagram, x.diagram);
+  let ff = attachGenerator(f.diagram, f, { boundary: "target", depth: 1, point: [] });
+  let m = new Generator("m", ff, f.diagram);
+
+  let left = attachGenerator(m.diagram, m, { boundary: "source", depth: 1, point: [0] });
+  let right = attachGenerator(m.diagram, m, { boundary: "source", depth: 1, point: [2] });
+
+  t.ok(left.source.equals(right.source));
+  t.ok(left.target.equals(right.target));
+
+  t.end();
+});
