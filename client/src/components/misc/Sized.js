@@ -48,7 +48,7 @@ export class Sized extends React.Component {
     let { width, height } = this.state;
 
     return (
-      <Container ref={this.containerRef}>
+      <Container innerRef={this.containerRef}>
         { width && height ? this.props.children(width, height) : null }
       </Container>
     );

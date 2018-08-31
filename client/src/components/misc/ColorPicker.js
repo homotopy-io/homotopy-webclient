@@ -63,7 +63,7 @@ const Preview = styled.div`
   display: inline-block;
   width: 20px;
   height: 20px;
-  border-radius: 10;
+  border-radius: 10px;
   cursor: pointer;
   margin: 4px;
 `;

@@ -123,8 +123,7 @@ export class Diagram2D extends React.Component {
         cx={position[0]}
         cy={position[1]}
         r={10}
-        strokeWidth={0.1}
-        stroke="#000000"
+        strokeWidth={0}
         fill={generator.color}
         onClick={e => this.onSelect(e, point)}
         key={`point#${point.join(":")}`}>
@@ -220,11 +219,9 @@ export class Diagram2D extends React.Component {
     let surfaces = findSurfaces(this.diagram, this.props.layout);
 
     return (
-      <DiagramSVG width={this.props.width} height={this.props.height} ref={this.diagramRef}>
+      <DiagramSVG width={this.props.width} height={this.props.height} innerRef={this.diagramRef}>
         <g>
-          <g shapeRendering="crispEdges">
-            {surfaces.map(([a, b, c]) => this.renderSurface(a, b, c))}
-          </g>
+          {surfaces.map(([a, b, c]) => this.renderSurface(a, b, c))}
           {edges.map(({source, target}) => this.renderWire(source, target))}
           {points.map(point => this.renderPoint(point))}
         </g>

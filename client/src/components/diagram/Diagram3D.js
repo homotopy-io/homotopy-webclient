@@ -96,7 +96,7 @@ export class Diagram3D extends React.Component {
 
   render() {
     return (
-      <DiagramContainer ref={this.diagramRef} />
+      <DiagramContainer innerRef={this.diagramRef} />
     );
   }
 
