@@ -206,6 +206,7 @@ const limitAction = (limit, point) => {
     let last = component.last * 2;
 
     if (height < first) {
+      targets.set(height - offset, rest);
       break;
     }
 
