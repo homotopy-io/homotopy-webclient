@@ -1,5 +1,5 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 import { connect } from "react-redux";
 
 import { getGenerator } from "~/state/store/signature";
@@ -19,19 +19,18 @@ export const Generator = ({
   onRename,
   onRecolor
 }) =>
-  <div className={css(styles.generator)}>
-    <div className={css(styles.preview)} onClick={onSelect}>
+  <Wrapper>
+    <Preview onClick={onSelect}>
       <Diagram2D
         diagram={generator.diagram}
         slice={[]}
         dimension={Math.min(2, generator.n)}
       />
-    </div>
-    <div className={css(styles.details)}>
-      <input
+    </Preview>
+    <Details>
+      <Name
         type="text"
         value={name}
-        className={css(styles.name)}
         onChange={e => onRename(e.target.value)}
       />
       <ColorPicker
@@ -39,15 +38,14 @@ export const Generator = ({
         colors={cellColors}
         onChange={color => onRecolor(color)}
       />
-    </div>
-    <div className={css(styles.actions)}>
+    </Details>
+    <Actions>
       <IconButton
-        className={`${css(styles.groupAction)}`}
         onClick={onRemove}
         icon="trash"
       />
-    </div>
-  </div>
+    </Actions>
+  </Wrapper>;
 
 export default connect(
   (state, { id }) => getGenerator(state, id),
@@ -59,40 +57,37 @@ export default connect(
   })
 )(Generator);
 
-const styles = StyleSheet.create({
-  generator: {
-    display: "flex",
-    paddingLeft: 8,
-    paddingRight: 8
-  },
+const Wrapper = styled.div`
+  display: flex;
+  padding-left: 8px;
+  padding-right: 8px;
+`;
 
-  preview: {
-    width: 75,
-    height: 75,
-    border: "2px dashed #34495e",
-    margin: 8,
-    display: "flex"
-  },
+const Preview = styled.div`
+  width: 75px;
+  height: 75px;
+  border: 2px dashed #34495e;
+  margin: 8px;
+  display: flex;
+`;
 
-  details: {
-    display: "flex",
-    flexDirection: "column",
-    flex: 1
-  },
+const Details = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+`;
 
-  name: {
-    fontWeight: 500,
-    padding: 8,
-    background: "#34495e",
-    border: "none",
-    color: "#ecf0f1",
-  },
+const Name = styled.input`
+  font-weight: 500;
+  padding: 8px;
+  background: #34495e;
+  border: none;
+  color: #ecf0f1;
+`;
 
-  actions: {
-    fontWeight: 600,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "right",
-  }
-});
-
+const Actions = styled.div`
+  fontWeight: 600;
+  display: flex;
+  flex-direction: column;
+  justify-content: right;
+`;

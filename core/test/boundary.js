@@ -12,14 +12,13 @@ test("Simplex to boundary coordinates in 1-diagram.", t => {
   let d = attach(f.diagram, g, { boundary: "target", depth: 1, point: [] });
 
   let pairs = [
-    [[[0], [-1]], { boundary: "source", depth: 1, point: [] }],
-    [[[0], [1]],  { boundary: null, depth: null, point: [0] }],
-    [[[1]],       { boundary: null, depth: null, point: [1] }],
-    [[[2], [1]],  { boundary: null, depth: null, point: [2] }],
-    [[[2], [3]],  { boundary: null, depth: null, point: [2] }],
-    [[[3]],       { boundary: null, depth: null, point: [3] }],
-    [[[4], [3]],  { boundary: null, depth: null, point: [4] }],
-    [[[4], [5]],  { boundary: "target", depth: 1, point: [] }],
+    [[-1], { boundary: "source", depth: 1, point: [] }],
+    [[0], { boundary: "source", depth: 1, point: [] }],
+    [[1], { boundary: null, depth: null, point: [1] }],
+    [[2], { boundary: null, depth: null, point: [2] }],
+    [[3], { boundary: null, depth: null, point: [3] }],
+    [[4], { boundary: "target", depth: 1, point: [] }],
+    [[5], { boundary: "target", depth: 1, point: [] }],
   ];
 
   for (let [points, path] of pairs) {

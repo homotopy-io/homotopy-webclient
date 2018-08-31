@@ -1,5 +1,5 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 import Header from "~/components/Header";
 import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
@@ -7,59 +7,56 @@ import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 
-export const App = ({}) =>
-  <div className={css(styles.app)}>
-    <div className={css(styles.signaturebar)}>
-      <div className={css(styles.logo)}>
-        homotopy.io
-      </div>
+export const App = () =>
+  <Container>
+    <SignatureBar>
+      <Logo>homotopy.io</Logo>
       <Signature />
-    </div>
-    <div className={css(styles.content)}>
+    </SignatureBar>
+    <Content>
       <Header />
       <Workspace />
-    </div>
-    <div className={css(styles.toolbar)}>
+    </Content>
+    <ToolBar>
       <DiagramTool />
       <AttachmentTool />
       <BoundaryTool />
-    </div>
-  </div>
+    </ToolBar>
+  </Container>;
 
 export default App;
 
-const styles = StyleSheet.create({
-  app: {
-    display: "flex",
-    height: "100%",
-  },
+const Container = styled.div`
+  display: flex;
+  height: 100%;
+`;
 
-  signaturebar: {
-    display: "flex",
-    flexDirection: "column",
-    background: "#2c3e50",
-    color: "#ecf0f1",
-    width: 350,
-    overflow: "auto"
-  },
+const SignatureBar = styled.div`
+  display: flex;
+  flex-direction: column;
+  background: #2c3e50;
+  color: #ecf0f1;
+  width: 350px;
+  overflow: auto;
+`;
 
-  content: {
-    background: "#bdc3c7",
-    display: "flex",
-    flexDirection: "column",
-    flex: 1
-  },
+const ToolBar = styled.div`
+  display: flex;
+  flex-direction: column;
+  background: #2c3e50;
+  color: #ecf0f1;
+  width: 250px;
+`;
 
-  logo: {
-    fontSize: "1.8em",
-    padding: 16
-  },
+const Logo = styled.div`
+  font-size: 1.8em;
+  padding: 16px;
+`;
 
-  toolbar: {
-    display: "flex",
-    flexDirection: "column",
-    background: "#2c3e50",
-    color: "#ecf0f1",
-    width: 250
-  }
-});
+const Content = styled.div`
+  background: #bdc3c7;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+`;
+

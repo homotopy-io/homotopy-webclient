@@ -2,11 +2,11 @@
   "name": "homotopy-core",
   "version": "0.1.0",
   "description": "homotopy.io core library",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
-    "test": "npm run build && babel -d dist/test test/ && node dist/test/index.js | tap-diff",
-    "build": "babel src --out-dir dist --source-maps",
-    "dev": "babel --watch src --out-dir dist --source-maps"
+    "test": "BABEL_ENV=test npm run build && BABEL_ENV=test babel -d dist/test test/ && node dist/test/index.js | faucet",
+    "build": "babel src --out-dir dist/src --source-maps",
+    "dev": "babel --watch src --out-dir dist/src --source-maps"
   },
   "keywords": [
     "homotopy.io"
@@ -23,7 +23,7 @@
     "@babel/core": "^7.0.0",
     "eslint": "^5.4.0",
     "eslint-plugin-react": "^7.11.1",
-    "tap-diff": "^0.1.1",
+    "faucet": "^0.0.1",
     "tape": "^4.9.1"
   }
 }

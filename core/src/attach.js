@@ -3,7 +3,6 @@ import { Generator } from "~/generator";
 import { Diagram } from "~/diagram";
 import { LimitComponent, ForwardLimit, BackwardLimit, Content } from "~/limit";
 import * as Boundary from "~/boundary";
-import { pointsOf } from "~/layout/geometry";
 
 export const attach = (diagram, generator, path) => {
   _assert(generator instanceof Generator);

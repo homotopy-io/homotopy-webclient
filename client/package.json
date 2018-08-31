@@ -23,29 +23,22 @@
   "homepage": "https://github.com/jamievicary/homotopy.io#readme",
   "dependencies": {
     "@icon/stroke-7": "^1.2.0-2",
-    "aphrodite": "^2.2.2",
     "babel-polyfill": "^6.26.0",
-    "browserify-css": "0.12.0",
     "dot-prop-immutable": "^1.4.0",
     "homotopy-core": "0.1.0",
-    "pixi.js": "^4.8.1",
     "react": "16.4.2",
     "react-color": "^2.14.1",
     "react-dom": "16.4.2",
-    "react-ionicons": "^2.1.6",
-    "react-picker": "^1.2.11",
     "react-redux": "^5.0.7",
     "react-spinkit": "^3.0.0",
-    "react-streams": "^13.6.6",
     "redux": "^4.0.0",
-    "reselect": "^3.0.1",
     "resize-observer-polyfill": "^1.5.0",
     "rxjs": "^6.2.2",
+    "styled-components": "^3.4.5",
     "svg-pan-zoom": "^3.5.3",
     "three": "^0.95.0",
     "three-orbit-controls": "^82.1.0",
-    "typeface-roboto": "^0.0.54",
-    "webpack-dev-server": "^3.1.7"
+    "typeface-roboto": "^0.0.54"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0",
@@ -54,12 +47,15 @@
     "babel-loader": "^8.0.0",
     "babel-plugin-module-resolver": "^3.1.1",
     "css-loader": "^1.0.0",
+    "eslint": "^5.4.0",
+    "eslint-plugin-react": "^7.11.1",
     "file-loader": "^2.0.0",
     "html-loader": "^0.5.5",
     "source-map-loader": "^0.2.4",
     "style-loader": "^0.23.0",
     "webpack": "^4.17.1",
     "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.7",
     "worker-loader": "^2.0.0"
   }
 }

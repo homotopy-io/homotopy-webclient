@@ -1,4 +1,4 @@
-import { _validate, _assert } from "~/util/debug";
+import { _assert } from "~/util/debug";
 import { Diagram } from "~/diagram";
 import { Content } from "~/limit";
 
@@ -32,7 +32,7 @@ export class Generator {
       this.diagram = new Diagram(this.n, {
         source: this.source,
         data: [this.content]
-      })
+      });
     }
 
     Object.freeze(this);

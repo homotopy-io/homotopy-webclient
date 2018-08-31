@@ -1,8 +1,8 @@
 import * as React from "react";
 import ResizeObserver from "resize-observer-polyfill";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 
-export default Component => props =>
+export const withSize = Component => props =>
   <Sized>
     {(width, height) =>
       <Component
@@ -11,7 +11,7 @@ export default Component => props =>
         {...props}
       />
     }
-  </Sized>
+  </Sized>;
 
 export class Sized extends React.Component {
 
@@ -46,19 +46,17 @@ export class Sized extends React.Component {
     let { width, height } = this.state;
 
     return (
-      <div className={css(styles.container)} ref={this.containerRef}>
+      <Container ref={this.containerRef}>
         { width && height ? this.props.children(width, height) : null }
-      </div>
-    )
+      </Container>
+    );
   }
 
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    position: "relative",
-    display: "flex",
-    overflow: "hidden"
-  }
-})
+const Container = styled.div`
+  flex: 1;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+`;

@@ -109,7 +109,7 @@ export default createReducer({
     }
   },
 
-  [AttachActions.CLAER_OPTIONS]: (state, {}) => {
+  [AttachActions.CLEAR_OPTIONS]: (state, {}) => {
     return clearOptions(state);
   },
 

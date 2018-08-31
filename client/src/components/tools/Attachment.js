@@ -1,10 +1,10 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 import { connect } from "react-redux";
 
 import { getOptions } from "~/state/store/attach";
 import { setHighlight, clearHighlight, selectOption } from "~/state/actions/attach";
-import Tool from "~/components/Tool"
+import Tool from "~/components/Tool";
 
 export const AttachmentTool = ({
   options,
@@ -18,20 +18,20 @@ export const AttachmentTool = ({
 
   return (
     <Tool title="Attachment">
-      <ul className={css(styles.options)}>
+      <Options>
         {options.map((option, index) =>
-          <li
-            className={css(styles.option)}
+          <Option
             onMouseOver={() => onSetHighlight(index)}
             onMouseOut={onClearHighlight}
-            onClick={() => onSelect(index)}>
+            onClick={() => onSelect(index)}
+            key={index}>
             {option.generator.name}
-          </li>
+          </Option>
         )}
-      </ul>
+      </Options>
     </Tool>
   );
-}
+};
 
 export default connect(
   state => ({
@@ -44,18 +44,16 @@ export default connect(
   })
 )(AttachmentTool);
 
-const styles = StyleSheet.create({
-  options: {
-    display: "flex",
-    flexDirection: "column",
-    padding: 0,
-    margin: 0
-  },
+const Options = styled.ul`
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+`;
 
-  option: {
-    display: "block",
-    margin: 0,
-    padding: 8,
-    cursor: "pointer",
-  }
-});
+const Option = styled.li`
+  display: block;
+  margin: 0;
+  padding: 8px;
+  cursor: pointer;
+`;

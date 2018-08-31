@@ -1,4 +1,3 @@
-import { _assert } from "~/util/debug";
 import * as Match from "~/matches";
 
 /**
@@ -49,7 +48,7 @@ export const getPath = (diagram, point) => {
     depth: null,
     point: point
   };
-}
+};
 
 export const followPath = (diagram, path) => {
   if (path.boundary != null) {
@@ -61,7 +60,7 @@ export const followPath = (diagram, path) => {
   }
 
   return diagram;
-}
+};
 
 export const containsPoint = (diagram, point, path, subdiagram) => {
   if (diagram.n == 0) {
@@ -96,7 +95,7 @@ export const containsPoint = (diagram, point, path, subdiagram) => {
   }
 
   return Match.containsPoint(subdiagram, path.point, point);
-}
+};
 
 export const shiftPath = (path, depth) => {
   if (depth <= 0) {
@@ -124,4 +123,4 @@ export const shiftPath = (path, depth) => {
     depth: null,
     point: path.point.slice(depth)
   };
-}
+};

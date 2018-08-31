@@ -6,9 +6,7 @@ import "typeface-roboto";
 import "@icon/stroke-7/stroke-7.css";
 
 import App from "~/components/App";
-import reducer from "~/state/store";
-
-import { Geometry } from "homotopy-core";
+import reducer, { initialState } from "~/state/store";
 
 import * as Rx from "rxjs";
 import * as RxOps from "rxjs/operators";
@@ -21,20 +19,19 @@ import {
   setRenderer
 } from "~/state/actions/diagram";
 
-const store = Redux.createStore(reducer);
+const store = Redux.createStore(reducer, initialState);
 
 Rx.fromEvent(document, "keydown") 
   .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
   .pipe(RxOps.map(event => event.key))
   .subscribe(key => {
-    console.log(key);
     switch (key) {
-      case "s": return store.dispatch(setSource());
-      case "t": return store.dispatch(setTarget());
-      case "i": return store.dispatch(takeIdentity());
-      case "c": return store.dispatch(clearDiagram());
-      case "r": return store.dispatch(setRenderer(2));
-      case "R": return store.dispatch(setRenderer(3));
+    case "s": return store.dispatch(setSource());
+    case "t": return store.dispatch(setTarget());
+    case "i": return store.dispatch(takeIdentity());
+    case "c": return store.dispatch(clearDiagram());
+    case "r": return store.dispatch(setRenderer(2));
+    case "R": return store.dispatch(setRenderer(3));
     }
   });
 
@@ -47,14 +44,12 @@ const render = () => ReactDOM.render(
 
 
 if (module.hot) {
-  console.log("Setup HMR");
-
-  module.hot.accept('./components/App.js', () => {
+  module.hot.accept("./components/App.js", () => {
     console.log("Render");
     setTimeout(render);
   });
 
-  module.hot.accept(["homotopy-core", './state/store'], () => {
+  module.hot.accept(["homotopy-core", "./state/store"], () => {
     console.log("Replaced store");
     store.replaceReducer(reducer);
   });

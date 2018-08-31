@@ -552,7 +552,6 @@ export class Diagram {
       height: Math.floor(x / 2),
       regular: x % 2 == 0
     }));
-    console.log("Location: ", location);
 
     let height = location[location.length - 1];
 
@@ -585,7 +584,6 @@ export class Diagram {
     //throw "not yet implemented";
     let backward_limit = this.getExpansionLimit(data.coordinates, data.directions[0] == 1);
     let forward_limit = new ForwardLimit(this.n, []);
-    console.log("Expansion successful");
     return new Content(this.n, forward_limit, backward_limit);
   }
 
@@ -770,7 +768,6 @@ export class Diagram {
         regular: false
       });
       let L1 = this.data[height].backward_limit;
-      let L1_forward = L1.getForwardLimit(regular, D1);
       let L2 = this.data[height + 1].forward_limit;
 
       let upper = [D1, D2];

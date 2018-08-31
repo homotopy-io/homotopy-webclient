@@ -1,42 +1,33 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 
 import IconButton from "~/components/misc/IconButton";
 
 export const Tool = ({
   title,
   actions = [],
-  children,
-  className
+  children
 }) =>
-  <div className={`${css(styles.tool)} ${className}`}>
-    <div className={css(styles.header)}>
-      <div className={css(styles.title)}>
-        {title}
-      </div>
-      <div className={css(styles.actions)}>
-        {actions.map(action => 
-          <Action {...action} />
-        )}
-      </div>
-    </div>
-    <div className={css(styles.content)}>
-      {children}
-    </div>
-  </div>
+  <Wrapper>
+    <Header>
+      <Title>{title}</Title>
+      <Actions>{actions.map((action, index) => <Action key={index} {...action} />)}</Actions>
+    </Header>
+    <Content>{children}</Content>
+  </Wrapper>;
 
 export const Control = ({
   label,
   children
 }) =>
-  <div className={css(styles.control)}>
-    <div className={css(styles.controlLabel)}>
+  <ControlWrapper>
+    <ControlLabel>
       {label}
-    </div>
-    <div className={css(styles.controlContent)}>
+    </ControlLabel>
+    <ControlContent>
       {children}
-    </div>
-  </div>
+    </ControlContent>
+  </ControlWrapper>;
 
 export const Action = ({
   label,
@@ -47,52 +38,37 @@ export const Action = ({
     label={label}
     icon={icon}
     onClick={onClick}
-    className={css(styles.action)}
-  />
+  />;
 
 
 export default Tool;
 
-const styles = StyleSheet.create({
-  tool: {
-    //boxShadow: "5px 5px 10px #aaaaaa",
-  },
+const Wrapper = styled.div``;
+const Content = styled.div``;
+const Actions = styled.div``;
 
-  content: {
-    padding: 8
-  },
+const Header = styled.div`
+  font-weight: 500;
+  font-size: 1.2em;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: #34495e;
+`;
 
-  header: {
-    fontWeight: 500,
-    fontSize: "1.2em",
-    display: "flex",
-    justifyContent: "space-between",
-    padding: 8,
-    background: "#34495e"
-  },
+const Title = styled.div`
+  padding: 8px;
+`;
 
-  title: {
-    padding: 8
-  },
+const ControlWrapper = styled.div`
+  display: flex;
+`;
 
-  actions: {
-  },
+const ControlLabel = styled.div`
+  padding: 8px;
+`;
 
-  action: {
-    fontSize: "1.2em",
-  },
-
-  control: {
-    display: "flex"
-  },
-
-  controlLabel: {
-    width: 100,
-    padding: 8,
-  },
-
-  controlContent: {
-    padding: 8,
-    flex: 1
-  }
-});
+const ControlContent = styled.div`
+  padding: 8px;
+  flex: 1;
+`;

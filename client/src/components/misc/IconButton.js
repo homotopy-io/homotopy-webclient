@@ -1,34 +1,23 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 
 export const IconButton = ({
   icon,
   label,
-  className,
   onClick
 }) =>
-  <button
-    className={`${css(styles.button)} ${className}`}
-    onClick={onClick}
-    title={label}>
-    <i className={`s7 s7-${icon} ${css(styles.icon)}`} />
-  </button>
+  <Button onClick={onClick} title={label}>
+    <i className={`s7 s7-${icon}`} />
+  </Button>;
 
 export default IconButton;
 
-const styles = StyleSheet.create({
-  button: {
-    display: "inline",
-    border: "none",
-    background: "transparent",
-    color: "inherit",
-    verticalAlign: "middle",
-    padding: 8,
-    paddingBottom: 5,
-    cursor: "pointer"
-  },
-
-  icon: {
-    fontWeight: 600,
-  }
-});
+const Button = styled.button`
+  border: none;
+  background: transparent;
+  color: inherit;
+  vertical-align: middle;
+  padding: 8px;
+  padding-bottom: 5px;
+  cursor: pointer;
+`;

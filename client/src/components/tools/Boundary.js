@@ -1,11 +1,11 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 import { connect } from "react-redux";
 
 import { clearBoundary } from "~/state/actions/diagram";
 import { getSource, getTarget } from "~/state/store/diagram";
 
-import Tool, { Control } from "~/components/Tool";
+import Tool from "~/components/Tool";
 import Diagram2D from "~/components/diagram/Diagram2D";
 
 export const BoundaryTool = ({
@@ -24,14 +24,14 @@ export const BoundaryTool = ({
     <Tool title={boundary} actions={[
       { label: "Clear boundary", icon: "close", onClick: onClearBoundary }
     ]}>
-      <div className={css(styles.container)}>
-        <div className={css(styles.diagram)}>
+      <Container>
+        <Diagram>
           <Diagram2D diagram={diagram} dimension={Math.min(2, diagram.n)} slice={[]} />
-        </div>
-      </div>
+        </Diagram>
+      </Container>
     </Tool>
   );
-}
+};
 
 export default connect(
   state => ({
@@ -43,16 +43,14 @@ export default connect(
   })
 )(BoundaryTool);
 
-const styles = StyleSheet.create({
-  diagram: {
-    display: "flex",
-    flex: 1,
-    height: 100,
-  },
+const Diagram = styled.div`
+  display: flex;
+  flex: 1;
+  height: 100px;
+`;
 
-  container: {
-    display: "flex",
-    justifyContent: "center",
-    padding: 16,
-  }
-});
+const Container = styled.div`
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+`;

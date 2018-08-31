@@ -1,12 +1,8 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
+import styled from "styled-components";
 import Spinner from "react-spinkit";
 import panzoom from "svg-pan-zoom";
 import { connect } from "react-redux";
-import { createSelector } from "reselect";
-
-import * as Rx from "rxjs";
-import * as RxOps from "rxjs/operators";
 
 import * as Core from "homotopy-core";
 
@@ -223,10 +219,8 @@ export class Diagram2D extends React.Component {
     let points = this.props.layout.points;
     let surfaces = findSurfaces(this.diagram, this.props.layout);
 
-    console.log(this.props.highlight);
-
     return (
-      <svg className={css(styles.diagram)} width={this.props.width} height={this.props.height} ref={this.diagramRef}>
+      <DiagramSVG width={this.props.width} height={this.props.height} ref={this.diagramRef}>
         <g>
           <g shapeRendering="crispEdges">
             {surfaces.map(([a, b, c]) => this.renderSurface(a, b, c))}
@@ -234,7 +228,7 @@ export class Diagram2D extends React.Component {
           {edges.map(({source, target}) => this.renderWire(source, target))}
           {points.map(point => this.renderPoint(point))}
         </g>
-      </svg>
+      </DiagramSVG>
     );
   }
 
@@ -249,35 +243,33 @@ const findSurfaces = (diagram, layout) => {
   }
 
   let surfaces = [];
-  for (let [a, b, ab] of graph.edges()) {
+  for (let [a, b] of graph.edges()) {
     let aType = Core.Geometry.typeAt(diagram, a);
 
     if (aType.n < diagram.n - 2) {
       continue;
     }
 
-    for (let [c, bc] of graph.edgesFrom(b)) {
-      surfaces.push([a, b, c])
+    for (let [c] of graph.edgesFrom(b)) {
+      surfaces.push([a, b, c]);
     }
   }
 
   return surfaces;
-}
+};
 
-export const Loading = ({ className }) =>
-  <div className={`${css(styles.loading)} ${className}`}>
+export const Loading = () =>
+  <LoadingWrapper>
     <Spinner />
-  </div>
+  </LoadingWrapper>;
 
-const styles = StyleSheet.create({
-  loading: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    flex: 1,
-  },
+const DiagramSVG = styled.svg`
+  position: absolute;
+`;
 
-  diagram: {
-    position: "absolute"
-  }
-})
+const LoadingWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+`;

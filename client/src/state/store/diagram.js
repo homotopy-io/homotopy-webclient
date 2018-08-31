@@ -20,12 +20,12 @@ export const getDisplayDiagram = (state) => {
 }
 
 export const getDisplayDimension = (state) => {
-  let { diagram, projection } = state.diagram;
+  let { diagram, projection, renderer } = state.diagram;
 
   if (diagram == null) {
     return null;
   } else {
-    return Math.min(2, diagram.n - projection);
+    return Math.min(renderer, diagram.n - projection);
   }
 }
 
@@ -56,12 +56,16 @@ export const getSlice = (state) => {
   return state.diagram.slice;
 }
 
+export const getRenderer = (state) => {
+  return state.diagram.renderer;
+}
+
 export const getProjection = (state) => {
   return state.diagram.projection;
 }
 
 export const setDiagram = (state, diagram) => {
-  let slice = Array(Math.max(0, diagram.n - 2)).fill(0);
+  let slice = Array(Math.max(0, diagram.n - state.diagram.renderer)).fill(0);
 
   state = dotProp.set(state, `diagram.diagram`, diagram);
   state = dotProp.set(state, `diagram.projection`, 0);
@@ -70,8 +74,13 @@ export const setDiagram = (state, diagram) => {
 }
 
 export const updateSlices = (state) => {
-  let { slice, diagram, projection } = state.diagram;
-  let sliceCount = diagram.n - 2 - projection;
+  let { slice, diagram, projection, renderer } = state.diagram;
+
+  if (diagram == null) {
+    return state;
+  }
+
+  let sliceCount = diagram.n - renderer - projection;
 
   if (sliceCount > slice.length) {
     slice = [...slice, Array(sliceCount - slice.length).fill(0)];
@@ -122,6 +131,12 @@ export default createReducer({
       state = dotProp.set(state, `diagram.diagram`, null);
       return state;
     }
+  },
+
+  [DiagramActions.SET_RENDERER]: (state, { renderer }) => {
+    state = dotProp.set(state, `diagram.renderer`, renderer);
+    state = updateSlices(state);
+    return state;
   },
 
   [DiagramActions.CONTRACT]: (state, { point, direction }) => {

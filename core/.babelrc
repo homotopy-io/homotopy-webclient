@@ -1,6 +1,6 @@
 {
   "presets": [
-    ["@babel/env", {
+    ["@babel/preset-env", {
       "targets": {
         "node": 6
       },
@@ -16,6 +16,17 @@
         }
       }
     ],
-    "@babel/proposal-object-rest-spread"
-  ]
+    "@babel/plugin-proposal-object-rest-spread"
+  ],
+  "env": {
+    "test": {
+      "presets": [
+        ["@babel/preset-env", {
+          "targets": {
+            "node": "current"
+          }
+        }]
+      ]
+    }
+  }  
 }

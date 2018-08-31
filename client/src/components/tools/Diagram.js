@@ -1,5 +1,4 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
 import { connect } from "react-redux";
 
 import { clearDiagram, setProjection, setSlice } from "~/state/actions/diagram";
@@ -29,7 +28,7 @@ export const DiagramTool = ({
       <SliceControl slice={slice} bounds={sliceBounds} onChange={onSetSlice} />
     </Tool>
   );
-}
+};
 
 export default connect(
   state => ({
@@ -55,11 +54,9 @@ export const ProjectionControl = ({
     options.push(i);
   }
 
-  console.log(options);
-
   return (
     <Control label="Projection">
-      <select onChange={e => { console.log("on change"); onChange(Number(e.target.value)) }} value={value}>
+      <select onChange={e => onChange(Number(e.target.value)) } value={value}>
         {options.map(option =>
           <option value={option} key={option}>
             {option}
@@ -68,7 +65,7 @@ export const ProjectionControl = ({
       </select>
     </Control>
   );
-}
+};
 
 export const SliceControl = ({
   slice,
@@ -98,4 +95,4 @@ export const SliceControl = ({
       )}
     </Control>
   );
-}
+};

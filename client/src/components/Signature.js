@@ -1,7 +1,6 @@
 import * as React from "react";
-import { StyleSheet, css } from "aphrodite";
 import { connect } from "react-redux";
-import Icon from "react-ionicons";
+import styled from "styled-components";
 
 import Generator from "~/components/Generator";
 import { getDimensionGroups } from "~/state/store/signature";
@@ -12,65 +11,59 @@ import IconButton from "~/components/misc/IconButton";
 export const Signature = ({
   groups, onAddGenerator
 }) =>
-  <div className={css(styles.signature)}>
+  <Wrapper>
     {groups.map((generators, dimension) =>
-      <div key={dimension} className={css(styles.group)}>
-        <div className={css(styles.groupHeader)}>
-          <div className={css(styles.groupLabel)}>
+      <Group key={dimension}>
+        <GroupHeader>
+          <GroupLabel>
             {dimension}-Generators
-          </div>
-          <div className={css(styles.groupActions)}>
+          </GroupLabel>
+          <GroupActions>
             {dimension == 0 &&
               <IconButton
-                className={css(styles.groupAction)}
                 onClick={onAddGenerator}
                 icon="plus"
               />
             }
-          </div>
-        </div>
-        <div className={css(styles.groupContent)}>
+          </GroupActions>
+        </GroupHeader>
+        <GroupContent>
           {generators.map(generator => <Generator key={generator} id={generator} />)}
-        </div>
-      </div>
+        </GroupContent>
+      </Group>
     )}
-  </div>
+  </Wrapper>;
 
 export default connect(
   state => ({ groups: getDimensionGroups(state) }),
   dispatch => ({ onAddGenerator: () => dispatch(createGenerator()) })
 )(Signature);
 
-const styles = StyleSheet.create({
-  header: {
-    fontSize: "1.8em"
-  },
+const Wrapper = styled.div``;
 
-  group: {
-  },
+const Group = styled.div``;
 
-  groupHeader: {
-    padding: 8,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    background: "#34495e"
-  },
+const GroupHeader = styled.div`
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #34495e;
+`;
 
-  groupLabel: {
-    fontSize: "1.2em",
-    fontWeight: 500,
-    padding: 8
-  },
+const GroupLabel = styled.div`
+  font-size: 1.2em;
+  font-weight: 500;
+  padding: 8;
+`;
 
-  groupAction: {
-    padding: 8,
-    fontWeight: 600,
-    "cursor": "pointer",
-  },
+const GroupActions = styled.div`
+  padding: 8px;
+  font-weight: 600;
+  cursor: pointer;
+`;
 
-  groupContent: {
-    paddingTop: 16,
-    paddingBottom: 16
-  }
-});
+const GroupContent = styled.div`
+  padding-top: 16px;
+  padding-bottom: 16px;
+`;
