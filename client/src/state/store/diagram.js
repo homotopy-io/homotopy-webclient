@@ -7,7 +7,7 @@ import { createGenerator } from "~/state/store/signature";
 
 export const getDiagram = (state) => {
   return state.diagram.diagram;
-}
+};
 
 export const getDisplayDiagram = (state) => {
   let { diagram, slice } = state.diagram;
@@ -17,7 +17,7 @@ export const getDisplayDiagram = (state) => {
   } else {
     return Core.Geometry.getSlice(diagram, ...slice);
   }
-}
+};
 
 export const getDisplayDimension = (state) => {
   let { diagram, projection, renderer } = state.diagram;
@@ -27,7 +27,7 @@ export const getDisplayDimension = (state) => {
   } else {
     return Math.min(renderer, diagram.n - projection);
   }
-}
+};
 
 export const getSliceBounds = (state) => {
   let { diagram, slice } = state.diagram;
@@ -42,36 +42,36 @@ export const getSliceBounds = (state) => {
     }
     return options;
   }
-}
+};
 
 export const getSource = (state) => {
   return state.diagram.source;
-}
+};
 
 export const getTarget = (state) => {
   return state.diagram.target;
-}
+};
 
 export const getSlice = (state) => {
   return state.diagram.slice;
-}
+};
 
 export const getRenderer = (state) => {
   return state.diagram.renderer;
-}
+};
 
 export const getProjection = (state) => {
   return state.diagram.projection;
-}
+};
 
 export const setDiagram = (state, diagram) => {
   let slice = Array(Math.max(0, diagram.n - state.diagram.renderer)).fill(0);
 
-  state = dotProp.set(state, `diagram.diagram`, diagram);
-  state = dotProp.set(state, `diagram.projection`, 0);
-  state = dotProp.set(state, `diagram.slice`, slice);
+  state = dotProp.set(state, "diagram.diagram", diagram);
+  state = dotProp.set(state, "diagram.projection", 0);
+  state = dotProp.set(state, "diagram.slice", slice);
   return state;
-}
+};
 
 export const updateSlices = (state) => {
   let { slice, diagram, projection, renderer } = state.diagram;
@@ -94,47 +94,47 @@ export const updateSlices = (state) => {
     diagram = Core.Geometry.getSlice(diagram, slice[i]);
   }
 
-  state = dotProp.set(state, `diagram.slice`, slice);
+  state = dotProp.set(state, "diagram.slice", slice);
   return state;
-}
+};
 
 export default createReducer({
-  [DiagramActions.SET_SOURCE]: (state, {}) => {
+  [DiagramActions.SET_SOURCE]: (state) => {
     let { target, diagram } = state.diagram;
 
     if (diagram == null) {
       return state;
     } else if (target != null) {
       state = createGenerator(state, diagram, target);
-      state = dotProp.set(state, `diagram.diagram`, null);
-      state = dotProp.set(state, `diagram.target`, null);
+      state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "diagram.target", null);
       return state;
     } else {
-      state = dotProp.set(state, `diagram.source`, diagram);
-      state = dotProp.set(state, `diagram.diagram`, null);
+      state = dotProp.set(state, "diagram.source", diagram);
+      state = dotProp.set(state, "diagram.diagram", null);
       return state;
     }
   },
 
-  [DiagramActions.SET_TARGET]: (state, {}) => {
+  [DiagramActions.SET_TARGET]: (state) => {
     let { source, diagram } = state.diagram;
 
     if (diagram == null) {
       return state;
     } else if (source != null) {
       state = createGenerator(state, source, diagram);
-      state = dotProp.set(state, `diagram.diagram`, null);
-      state = dotProp.set(state, `diagram.source`, null);
+      state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "diagram.source", null);
       return state;
     } else {
-      state = dotProp.set(state, `diagram.target`, diagram);
-      state = dotProp.set(state, `diagram.diagram`, null);
+      state = dotProp.set(state, "diagram.target", diagram);
+      state = dotProp.set(state, "diagram.diagram", null);
       return state;
     }
   },
 
   [DiagramActions.SET_RENDERER]: (state, { renderer }) => {
-    state = dotProp.set(state, `diagram.renderer`, renderer);
+    state = dotProp.set(state, "diagram.renderer", renderer);
     state = updateSlices(state);
     return state;
   },
@@ -148,31 +148,40 @@ export default createReducer({
 
     point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
 
+    let path = Core.Boundary.getPath(diagram, point);
+    path.point[path.point.length - 1] -= direction[1] < 0 ? 2 : 0;
+
     try {
-      let content = diagram.contract(point, direction);
-      console.log(content);
+      diagram = Core.attach(
+        diagram,
+        (boundary, point) => {
+          return boundary.contract(point.slice(0, -1), direction);
+        },
+        path
+      );
+
+      state = dotProp.set(state, "diagram.diagram", diagram);
+      state = updateSlices(state);
       return state;
-      // let path = Core.Boundary.getPath(diagram, point);
 
     } catch(error) {
-      console.error(error);
       return state;
     }
   },
 
-  [DiagramActions.CLEAR_DIAGRAM]: (state, {}) => {
-    state = dotProp.set(state, `diagram.diagram`, null);
+  [DiagramActions.CLEAR_DIAGRAM]: (state) => {
+    state = dotProp.set(state, "diagram.diagram", null);
     return state;
   },
 
-  [DiagramActions.TAKE_IDENTITY]: (state, {}) => {
-    state = dotProp.set(state, `diagram.diagram`, diagram => diagram.boost());
+  [DiagramActions.TAKE_IDENTITY]: (state) => {
+    state = dotProp.set(state, "diagram.diagram", diagram => diagram.boost());
     state = updateSlices(state);
     return state;
   },
 
   [DiagramActions.SET_PROJECTION]: (state, { projection }) => {
-    state = dotProp.set(state, `diagram.projection`, projection);
+    state = dotProp.set(state, "diagram.projection", projection);
     state = updateSlices(state);
     return state;
   },
@@ -183,9 +192,9 @@ export default createReducer({
     return state;
   },
 
-  [DiagramActions.CLEAR_BOUNDARY]: (state, {}) => {
-    state = dotProp.set(state, `diagram.source`, null);
-    state = dotProp.set(state, `diagram.target`, null);
+  [DiagramActions.CLEAR_BOUNDARY]: (state) => {
+    state = dotProp.set(state, "diagram.source", null);
+    state = dotProp.set(state, "diagram.target", null);
     return state;
   },
 
@@ -202,4 +211,4 @@ export default createReducer({
     }
   }
 
-})
+});

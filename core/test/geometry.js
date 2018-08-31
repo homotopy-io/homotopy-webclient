@@ -1,12 +1,12 @@
 import test from "tape";
-import attach from "~/attach";
+import { attachGenerator } from "~/attach";
 import { Generator } from "~/generator";
 import { unprojectPoint } from "~/layout/geometry";
 
 test("Unproject point in projected 2-diagram.", t => {
   let x = new Generator("x");
   let f = new Generator("f", x.diagram, x.diagram);
-  let g = attach(f.diagram, f, { boundary: "source", depth: 1, point: [] });
+  let g = attachGenerator(f.diagram, f, { boundary: "source", depth: 1, point: [] });
   let a = new Generator("a", g, f.diagram);
   let diagram = a.diagram;
 
@@ -27,5 +27,5 @@ test("Unproject point in projected 2-diagram.", t => {
 
 test.skip("Edges of 1-diagram.");
 test.skip("Edges of 2-diagram.");
-test.skip("Edges of 2-diagram with multiple parallel scalars.")
+test.skip("Edges of 2-diagram with multiple parallel scalars.");
 test.skip("Edges of 3-diagram.");

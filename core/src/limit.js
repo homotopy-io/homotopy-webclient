@@ -323,21 +323,20 @@ export class LimitComponent {
     _assert(false); // ... to write ...
   }
 
-  copy() {
+  copy({
+    first = this.first,
+    last = this.last,
+    sublimits = this.sublimits,
+    data = this.data
+  } = {}) {
     _validate(this);
+
     if (this.n == 0) {
-      let type = this.type;
       return new LimitComponent(0, {
-        type
+        type: this.type
       });
     }
-    let data = Content.copyData(this.data);
-    let sublimits = [];
-    for (let i = 0; i < this.sublimits.length; i++) {
-      sublimits.push(this.sublimits[i].copy());
-    }
-    let first = this.first;
-    let last = this.last;
+
     return new LimitComponent(this.n, {
       data,
       sublimits,
@@ -472,16 +471,20 @@ export class Limit extends Array {
     }
     return singular_classification;
   }
+
   // For each component, find its target index in the codomain diagram
   getComponentTargets() {
     let component_targets = [];
     let offset = 0;
-    for (let i = 0; i < this.length; i++) {
-      component_targets.push(this[i].first - offset);
-      offset += this[i].last - this[i].first - 1;
+
+    for (let component of this) {
+      component_targets.push(component.first - offset);
+      offset += component.last - component.first - 1;
     }
+
     return component_targets;
   }
+
   getTargetComponentIndex(target) {
     let offset = 0;
     for (let i = 0; i < this.length; i++) {
@@ -532,19 +535,30 @@ export class Limit extends Array {
     let component_targets = this.getComponentTargets();
     let components = [];
     let offset = null;
+
     for (let i = 0; i < this.length; i++) {
-      if (component_targets[i] < range.first) continue;
-      if (component_targets[i] >= range.last) continue;
-      let component = this[i].copy();
+      let component = this[i];
+      let target = component_targets[i];
+
+      if (target < range.first) continue;
+      if (target >= range.last) continue;
+
       if (offset == null) offset = component.first - (component_targets[i] - range.first);
-      component.first -= offset;
-      component.last -= offset;
-      _assert(component.first >= 0 && component.last >= 0);
-      _validate(component);
-      components.push(component);
+
+      let shifted = component.copy({
+        first: component.first - offset,
+        last: component.last - offset
+      });
+
+      _assert(shifted.first >= 0 && shifted.last >= 0);
+      _validate(shifted);
+
+      components.push(shifted);
     }
+
     return forward ? new ForwardLimit(this.n, components) : new BackwardLimit(this.n, components);
   }
+
   subLimit(n, forward) {
     for (let i = 0; i < this.length; i++) {
       let component = this[i];
@@ -561,25 +575,36 @@ export class Limit extends Array {
     if (!forward) _assert(second instanceof BackwardLimit && first instanceof BackwardLimit);
     _validate(first, second);
     _assert(first.n == second.n);
+
     if (first.length == 0) return second.copy();
     if (second.length == 0) return first.copy();
+
     if (first.n == 0) {
-      let composite = forward ? second.copy() : first.copy();
-      if (first.framing != null) composite.framing = first.framing;
-      return composite;
+      let framing = first.framing;
+      return forward ? second.copy({ framing }) : first.copy({ framing });
     }
+
     let analysis1 = first.getComponentTargets();
     let c1 = 0;
     let c2 = 0;
     let new_components = [];
     let c2_component = {
       sublimits: [],
-      data: []
+      data: [],
+      first: null,
+      last: null
     };
+
     while (c1 < first.length) {
       let target1 = analysis1[c1];
-      if (c2 == second.length || target1 < second[c2].first) { // c1 comes before c2, so copy it to the composed limit
-        new_components.push(first[c1].copy());
+
+      // If the target of c1 comes before c2, the image of c1 is unaffected by
+      // the second limit and hence passes through to the composed limit
+      // unchanged.
+      // NOTE: For backwards limits the condition should probably take into
+      // account the amount of content in the image of c1.
+      if (c2 == second.length || target1 < second[c2].first) {
+        new_components.push(first[c1]);
         c1++;
         continue;
       }
@@ -595,10 +620,10 @@ export class Limit extends Array {
       while (c2_component.sublimits.length < height_target) {
         let index = c2_component.sublimits.length;
         let second_sublimit = second[c2].sublimits[index];
-        c2_component.sublimits.push(second_sublimit.copy());
+        c2_component.sublimits.push(second_sublimit);
         if (!forward) {
           let second_data = second[c2].data[index];
-          c2_component.data.push(second_data.copy());
+          c2_component.data.push(second_data);
         }
       }
 
@@ -612,7 +637,7 @@ export class Limit extends Array {
           let composed_sublimit = second_sublimit.compose(first_sublimit);
           c2_component.sublimits.push(composed_sublimit);
           //if (!forward) c2_component.data.push(Content.copyData(first[c1].data[i]));
-          if (!forward) c2_component.data.push(first[c1].data[i].copy());
+          if (!forward) c2_component.data.push(first[c1].data[i]);
           // DO WE NEED TO UPDATE C2??
         }
         c1++;
@@ -621,13 +646,13 @@ export class Limit extends Array {
         //if (target1 == second[c2].last - 1) {
         //if (c1 == first.length || first[c1].first >= second[c2].last) {
         if (c1 == first.length || analysis1[c1] >= second[c2].last) {
-          if (forward) c2_component.data = Content.copyData(second[c2].data);
+          if (forward) c2_component.data = second[c2].data.slice();
           while (c2_component.sublimits.length < c2_component.last - c2_component.first) {
             let index = second[c2].sublimits.length - c2_component.last +
               c2_component.first + c2_component.sublimits.length;
             let second_sublimit = second[c2].sublimits[index];
-            c2_component.sublimits.push(second_sublimit.copy());
-            if (!forward) c2_component.data.push(second[c2].data[index].copy());
+            c2_component.sublimits.push(second_sublimit);
+            if (!forward) c2_component.data.push(second[c2].data[index]);
           }
           new_components.push(new LimitComponent(this.n, c2_component));
           c2_component = {
@@ -638,7 +663,7 @@ export class Limit extends Array {
         }
       } else if (target1 >= second[c2].last) {
         //c2_component.last = c2_component.first + c2_component.sublimits.length;
-        if (forward) c2_component.data = Content.copyData(second[c2].data);
+        if (forward) c2_component.data = second[c2].data.slice();
         new_components.push(new LimitComponent(this.n, c2_component));
         c2_component = {
           sublimits: [],
@@ -653,16 +678,16 @@ export class Limit extends Array {
     // Finish off any unpropagated uppermost components of the second limit
     for (; c2 < second.length; c2++) {
       if (c2_component.first == null) {
-        c2_component.first = first.last().last + second[c2].first - analysis1.last() - 1;
+        c2_component.first = first[first.length - 1].last + second[c2].first - analysis1[analysis1.length - 1] - 1;
         c2_component.last = c2_component.first + second[c2].last - second[c2].first;
       }
-      if (forward) c2_component.data = Content.copyData(second[c2].data);
+      if (forward) c2_component.data = second[c2].data.slice();
       while (c2_component.sublimits.length < c2_component.last - c2_component.first) {
         let index = c2_component.sublimits.length;
         let second_sublimit = second[c2].sublimits[index];
-        c2_component.sublimits.push(second_sublimit.copy());
+        c2_component.sublimits.push(second_sublimit);
       }
-      if (!forward) c2_component.data = Content.copyData(second[c2].data);
+      if (!forward) c2_component.data = second[c2].data.slice();
       new_components.push(new LimitComponent(this.n, c2_component));
       c2_component = {
         sublimits: []

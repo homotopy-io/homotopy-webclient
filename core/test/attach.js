@@ -1,16 +1,7 @@
 import test from "tape";
-import attach from "~/attach";
+import { attachGenerator } from "~/attach";
 import { Generator } from "~/generator";
-
-const checkDiagram = (t, diagram, ...generators) => {
-  for (let [point, generator] of generators) {
-    t.equal(
-      diagram.getSlice(...point).type,
-      generator,
-      `Type at position ${point.join(",")}`
-    );
-  }
-}
+import { checkDiagram } from "./util/diagram";
 
 test("Rewrite 0-diagrams via attachment", t => {
   let x = new Generator("x");
@@ -18,7 +9,7 @@ test("Rewrite 0-diagrams via attachment", t => {
   let f = new Generator("f", x.diagram, y.diagram);
 
   let xd = x.diagram;
-  let yd = attach(xd, f, { boundary: null, depth: null, point: [] });
+  let yd = attachGenerator(xd, f, { boundary: null, depth: null, point: [] });
 
   t.equal(yd.n, 0, "Dimension");
   t.equal(yd.type, y, "Type");
@@ -34,8 +25,8 @@ test("Attach sequences of 1-diagrams", t => {
   let g = new Generator("g", x.diagram, y.diagram);
   let h = new Generator("h", y.diagram, z.diagram);
 
-  let attach0 = attach(g.diagram, f, { boundary: "source", depth: 1, point: [] });
-  let attach1 = attach(attach0, h, { boundary: "target", depth: 1, point: [] });
+  let attach0 = attachGenerator(g.diagram, f, { boundary: "source", depth: 1, point: [] });
+  let attach1 = attachGenerator(attach0, h, { boundary: "target", depth: 1, point: [] });
 
   t.equal(attach0.n, 1, "Dimension of left composition");
   t.equal(attach0.data.length, 2, "Size of left composition");
@@ -76,8 +67,8 @@ test("Whiskering 2-diagrams.", t => {
   let left = new Generator("left", z.diagram, x.diagram);
   let right = new Generator("right", x.diagram, z.diagram);
 
-  let whiskerLeft = attach(a.diagram, left, { boundary: "source", depth: 2, point: [] });
-  let whiskerRight = attach(a.diagram, right, { boundary: "target", depth: 2, point: [] });
+  let whiskerLeft = attachGenerator(a.diagram, left, { boundary: "source", depth: 2, point: [] });
+  let whiskerRight = attachGenerator(a.diagram, right, { boundary: "target", depth: 2, point: [] });
 
   t.equal(whiskerLeft.n, 2, "Dimension of left whiskering.");
   t.equal(whiskerRight.n, 2, "Dimension of right whiskering.");

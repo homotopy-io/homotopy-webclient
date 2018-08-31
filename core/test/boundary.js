@@ -1,6 +1,6 @@
 import test from "tape";
-import attach from "~/attach";
-import { getPath, followPath } from "~/boundary";
+import { attachGenerator } from "~/attach";
+import { getPath } from "~/boundary";
 import { Generator } from "~/generator";
 
 test("Simplex to boundary coordinates in 1-diagram.", t => {
@@ -9,7 +9,7 @@ test("Simplex to boundary coordinates in 1-diagram.", t => {
   let z = new Generator("z");
   let f = new Generator("f", x.diagram, y.diagram);
   let g = new Generator("g", y.diagram, z.diagram);
-  let d = attach(f.diagram, g, { boundary: "target", depth: 1, point: [] });
+  let d = attachGenerator(f.diagram, g, { boundary: "target", depth: 1, point: [] });
 
   let pairs = [
     [[-1], { boundary: "source", depth: 1, point: [] }],
@@ -35,7 +35,7 @@ test("Simplex to boundary coordinates in 2-diagram.", t => {
   let f = new Generator("f", x.diagram, y.diagram);
   let g = new Generator("g", y.diagram, z.diagram);
   let h = new Generator("h", x.diagram, z.diagram);
-  let s = attach(f.diagram, g, { boundary: "target", depth: 1, point: [] });
+  let s = attachGenerator(f.diagram, g, { boundary: "target", depth: 1, point: [] });
   let a = new Generator("a", s, h.diagram);
   let d = a.diagram;
 

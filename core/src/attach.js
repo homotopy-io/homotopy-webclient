@@ -4,31 +4,26 @@ import { Diagram } from "~/diagram";
 import { LimitComponent, ForwardLimit, BackwardLimit, Content } from "~/limit";
 import * as Boundary from "~/boundary";
 
-export const attach = (diagram, generator, path) => {
-  _assert(generator instanceof Generator);
+export const attach = (diagram, build, path) => {
   _assert(diagram instanceof Diagram);
 
   if (path.boundary == null) {
-    _assert(generator.n - 1 == diagram.n);
-    return diagram.rewrite(generator.content);
+    let content = build(diagram, path.point, null);
+    return diagram.rewrite(content);
   }
 
-  _assert(generator.n > 0);
-  _assert(generator.n + path.depth - 1 == diagram.n);
-
-  // Follow the path
   if (path.depth > 1) {
     if (path.boundary == "source") {
       diagram = diagram.pad(path.depth);
     }
 
-    let source = attach(diagram.source, generator, { ...path, depth: path.depth - 1 });
+    let source = attach(diagram.source, build, { ...path, depth: path.depth - 1});
     return new Diagram(diagram.n, { source, data: diagram.data });
   }
 
-  // Create attachment content
+  // Build the content
   let boundary = Boundary.followPath(diagram, path);
-  let content = buildAttachmentContent(boundary, generator, path.point, path.boundary == "source");
+  let content = build(boundary, path.point, path.boundary);
 
   // Attach the content to the diagram
   if (path.boundary == "source") {
@@ -40,17 +35,23 @@ export const attach = (diagram, generator, path) => {
     let data = [...diagram.data, content];
     return new Diagram(diagram.n, { source, data });
   }
-}
+};
 
-export default attach;
+export const attachGenerator = (diagram, generator, path) => {
+  _assert(generator instanceof Generator);
+  return attach(diagram, buildAttachmentContent(generator), path);
+};
 
 /**
  * @param {Diagram} diagram
  * @param {Generator} generator
- * @param {number[]} point Attachment point in algebraic coordinates.
- * @param {boolean} inverse
+ * @param {number[]} point Attachment point in geometric coordinates.
+ * @param {string|null} boundary
  */
-const buildAttachmentContent = (diagram, generator, point, inverse) => {
+const buildAttachmentContent = generator => (diagram, point, boundary) => {
+  point = point.map(x => x / 2);
+
+  let inverse = boundary == "source";
   let source = !inverse ? generator.source : generator.target;
   let target = !inverse ? generator.target : generator.source;
 

@@ -20,6 +20,7 @@ import {
 } from "~/state/actions/diagram";
 
 const store = Redux.createStore(reducer, initialState);
+window.store = store;
 
 Rx.fromEvent(document, "keydown") 
   .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
@@ -35,22 +36,22 @@ Rx.fromEvent(document, "keydown")
     }
   });
 
-const render = () => ReactDOM.render(
-  <ReactRedux.Provider store={store}>
-    <App />
-  </ReactRedux.Provider>,
-  document.getElementById("app")
-);
+const render = () => {
+  ReactDOM.render(
+    <ReactRedux.Provider store={store}>
+      <App />
+    </ReactRedux.Provider>,
+    document.getElementById("app")
+  );
+};
 
 
 if (module.hot) {
   module.hot.accept("./components/App.js", () => {
-    console.log("Render");
     setTimeout(render);
   });
 
   module.hot.accept(["homotopy-core", "./state/store"], () => {
-    console.log("Replaced store");
     store.replaceReducer(reducer);
   });
 }

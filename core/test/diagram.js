@@ -1,6 +1,5 @@
 import test from "tape";
 import { Generator } from "~/generator";
-import { Diagram } from "~/diagram";
 
 test("Identity of 0-diagram.", t => {
   let x = new Generator("x");

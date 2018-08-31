@@ -1,4 +1,5 @@
 import { _assert, isNatural, _propertylist } from "~/util/debug";
+import * as ArrayUtil from "~/util/array";
 import { ForwardLimit, BackwardLimit, Content, LimitComponent } from "~/limit";
 import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
@@ -14,7 +15,7 @@ export class Diagram {
       this.type = args.type;
     } else {
       _assert(args.source && (args.source.n + 1 == n));
-      _assert(args.data);
+      _assert(args.data instanceof Array);
       this.source = args.source;
       this.data = args.data;
       Object.freeze(this.data);
@@ -1287,8 +1288,8 @@ export class Diagram {
           height: j,
           regular: false
         }); 
-        let left_limit = l.left_limit.subLimit(j).copy();
-        let right_limit = l.right_limit.subLimit(j).copy();
+        let left_limit = l.left_limit.subLimit(j);
+        let right_limit = l.right_limit.subLimit(j);
         let lower_offset = lower_ranges[i].first;
         let upper_right_offset = upper_ranges[l.right_index].first;
         let upper_left_offset = upper_ranges[l.left_index].first;
@@ -1325,11 +1326,11 @@ export class Diagram {
     let nu = upper[nonempty_upper];
     let recursive_first = recursive.limits[upper_slice_position[nonempty_upper][0]];
     let forward = recursive_first.compose(nu.data[upper_ranges[nonempty_upper].first].forward_limit);
-    let last_slice_position = upper_slice_position[nonempty_upper].last();
+    let last_slice_position = ArrayUtil.last(upper_slice_position[nonempty_upper]);
     let recursive_last = recursive.limits[last_slice_position];
     let recursive_last_backward = recursive_last.getBackwardLimit(upper_exploded[last_slice_position], recursive.target);
     let backward = recursive_last_backward.compose(nu.data[upper_ranges[nonempty_upper].last - 1].backward_limit);
-    let target_content = new Content(nu.n, forward, backward);
+    let target_content = new Content(nu.n - 1, forward, backward);
 
     /*
     if ((left_sublimits.length > 1) || (left_sublimits[0].length > 0)) {
@@ -1346,12 +1347,12 @@ export class Diagram {
       let sublimits = [];
       for (let j = first; j < last; j++) {
         let sublimit = recursive.limits[upper_slice_position[i][j - first]];
-        sublimits.push(sublimit.copy());
+        sublimits.push(sublimit);
       }
       if (sublimits.length == 1 && sublimits[0].length == 0) {
         cocone_components[i] = null;
       } else {
-        let data = [target_content.copy()];
+        let data = [target_content];
         cocone_components[i] = new LimitComponent(upper[0].n, {
           first,
           last,
