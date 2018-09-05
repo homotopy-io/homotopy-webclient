@@ -61,7 +61,6 @@ export default createReducer({
     let keep = {};
     for (let generator of Object.values(generators)) {
       if (!generator.generator.usesCell(removedGenerator)) {
-        console.log("Keep", generator.generator.id);
         keep[generator.generator.id] = generator;
       }
     }

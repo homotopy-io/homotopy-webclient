@@ -346,13 +346,16 @@ export class LimitComponent {
   }
 
   usesCell(generator) {
-    if (this.n == 0) return this.type == generator.id;
-    for (let i = 0; i < this.data.length; i++) {
-      if (this.data[i].usesCell(generator)) return true;
+    if (this.n == 0) return this.type.id == generator.id;
+
+    for (let content of this.data) {
+      if (content.usesCell(generator)) return true;
     }
-    for (let i = 0; i < this.sublimits.length; i++) {
-      if (this.sublimits[i].usesCell(generator)) return true;
+
+    for (let sublimit of this.sublimits) {
+      if (sublimit.usesCell(generator)) return true;
     }
+
     return false;
   }
 
@@ -421,10 +424,12 @@ export class Limit extends Array {
     if (this.n == 0) _propertylist(this, ["n"], ["framing"]);
     else _propertylist(this, ["n"]);
   }
+
   usesCell(generator) {
-    for (let i = 0; i < this.length; i++) {
-      if (this[i].usesCell(generator)) return true;
+    for (let component of this) {
+      if (component.usesCell(generator)) return true;
     }
+
     return false;
   }
 
@@ -435,6 +440,7 @@ export class Limit extends Array {
     }
     return true;
   }
+
   getMonotone(source_height, target_height) {
     _validate(this);
     if (source_height instanceof Diagram) source_height = source_height.data.length;
