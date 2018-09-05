@@ -35,7 +35,7 @@ export class Diagram2D extends React.Component {
 
   componentDidMount() {
     this.panzoom = panzoom(this.diagramRef.current, {
-      panEnabled: false,
+      panEnabled: this.props.interactive,
       zoomEnabled: this.props.interactive,
       dblClickZoomEnabled: this.props.interactive,
       zoomScaleSensitivity: 0.4,

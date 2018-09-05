@@ -27,6 +27,15 @@ export class Graph {
     }
   }
 
+  getEdge(source, target) {
+    let sourceKey = this._key(source);
+    let targetKey = this._key(target);
+
+    if (this._out.has(sourceKey)) {
+      return this._out.get(sourceKey).get(targetKey);
+    }
+  }
+
   *edgesFrom(source) {
     let sourceKey = this._key(source);
     if (this._out.get(sourceKey)) {

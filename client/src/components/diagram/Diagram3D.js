@@ -13,6 +13,8 @@ import withSize from "~/components/misc/Sized";
 import withLayout from "~/components/diagram/withLayout";
 import { getGenerators } from "~/state/store/signature";
 
+import { Geometry } from "~/util/3d/geometry";
+
 export default compose(
   withLayout,
   connect(
@@ -39,7 +41,7 @@ export class Diagram3D extends React.Component {
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
-    this.camera.position.set(0, 1, -3);
+    this.camera.position.set(0, 0, -10);
     this.camera.lookAt(new THREE.Vector3());
     this.scene.add(this.camera);
 
@@ -50,13 +52,13 @@ export class Diagram3D extends React.Component {
 
     // Create point light
     this.pointLight = new THREE.PointLight(0xFFFFFF);
-    this.pointLight.position.x = 10;
-    this.pointLight.position.y = 10;
-    this.pointLight.position.z = -10;
+    this.pointLight.position.x = 20;
+    this.pointLight.position.y = 20;
+    this.pointLight.position.z = -20;
     this.scene.add(this.pointLight);
 
     // Create ambient light
-    this.ambientLight = new THREE.AmbientLight(0x444444);
+    this.ambientLight = new THREE.AmbientLight(0x666666);
     this.scene.add(this.ambientLight);
 
     // Create controls
@@ -126,11 +128,126 @@ export class Diagram3D extends React.Component {
       this.createWire(source, target);
     }
 
-    for (let { a, b, c, ab, bc } of findSurfaces(this.diagram, this.props.layout)) {
-      this.createSurface(a, b, c, ab, bc);
-    }
+    this.createSurfaces();
 
     // this.createScaffold();
+  }
+
+  createSurfaces() {
+    let geometry = new Geometry(0);
+    let indices = new Map();
+
+    // Add points
+    for (let point of this.props.layout.points) {
+      let generator = this.getGenerator(point);
+
+      if (generator.generator.n < this.diagram.dimension - 2) {
+        continue;
+      }
+
+      let position = this.getPosition(point);
+      indices.set(point.join(":"), geometry.addVertex(
+        [position.x, position.y, position.z]
+      ));
+    }
+
+    // Create edge graph
+    let graph = new Graph(p => p.join(":"));
+
+    for (let { source, target, codim, dir } of this.props.layout.edges) {
+      graph.addEdge(source, target, { codim, dir });
+    }
+
+    // Create triangle faces
+    let faces = new Map();
+
+    for (let { a, b, c, ab, bc } of findSurfaces(this.diagram, this.props.layout, graph)) {
+      let generator = this.getGenerator(a);
+      let id = generator.generator.id;
+
+      if (!faces.has(id)) {
+        faces.set(id, []);
+      }
+
+      if ((ab.dir * bc.dir) * (ab.codim - bc.codim) <= 0) {
+        [a, c] = [c, a];
+      }
+
+      let aIndex = indices.get(a.join(":"));
+      let bIndex = indices.get(b.join(":"));
+      let cIndex = indices.get(c.join(":"));
+
+      faces.get(id).push(...geometry.addSurface(aIndex, bIndex, cIndex));
+    }
+
+    // Fix wires and boundary points
+    for (let { source, target } of this.props.layout.edges) {
+      let sGenerator = this.getGenerator(source);
+      let tGenerator = this.getGenerator(target);
+
+      let boundary = (
+        this.onBoundary(source) &&
+        this.onBoundary(target) &&
+        sGenerator.generator.n >= this.diagram.n - 2 &&
+        tGenerator.generator.n >= this.diagram.n - 2
+      );
+
+      let wire = (
+        sGenerator.generator.n >= this.diagram.n - 1 &&
+        tGenerator.generator.n >= this.diagram.n - 1
+      );
+
+      if (!wire && !boundary) {
+        continue;
+      }
+
+      let sourceIndex = indices.get(source.join(":"));
+      let targetIndex = indices.get(target.join(":"));
+      geometry.fixLine(sourceIndex, targetIndex);
+    }
+
+    // Optimize
+    // geometry.optimize(100);
+
+    // Create geometry
+    for (let [id, surfaceFaces] of faces) {
+      let generator = this.props.generators[id];
+      let surfaceGeometry = new THREE.Geometry();
+      surfaceGeometry.vertices.push(...geometry.vertices.map(v => new THREE.Vector3(...v)));
+      surfaceGeometry.faces.push(...surfaceFaces.map(face => new THREE.Face3(...face)));
+      surfaceGeometry.computeVertexNormals();
+      surfaceGeometry.computeFaceNormals();
+
+      let material = new THREE.MeshLambertMaterial({
+        color: new THREE.Color(generator.color),
+        side: THREE.DoubleSide
+      });
+      let mesh = new THREE.Mesh(surfaceGeometry, material);
+      this.scene.add(mesh);
+
+
+      let wireGeo = new THREE.WireframeGeometry( surfaceGeometry ); // or WireframeGeometry( geometry )
+      let wireMat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
+      let wireframe = new THREE.LineSegments( wireGeo, wireMat );
+      this.scene.add( wireframe );
+    }
+  }
+
+  onBoundary(point) {
+    const check = (diagram, point) => {
+      if (diagram.n == 0) {
+        return false;
+      }
+
+      let [height, ...rest] = point;
+      if (height < 0 || height > diagram.data.length * 2) {
+        return true;
+      } else {
+        return check(diagram.getSlice(height), rest);
+      }
+    };
+
+    return check(this.diagram, point);
   }
 
   createScaffold() {
@@ -183,36 +300,6 @@ export class Diagram3D extends React.Component {
     this.scene.add(wire);
   }
 
-  createSurface(a, b, c, ab, bc) {
-    let aPosition = this.getPosition(a);
-    let bPosition = this.getPosition(b);
-    let cPosition = this.getPosition(c);
-
-    let aGenerator = this.getGenerator(a);
-    let color = new THREE.Color(aGenerator.color);
-
-    let geometry = new THREE.Geometry();
-    geometry.vertices.push(
-      aPosition,
-      bPosition,
-      cPosition
-    );
-
-    if ((ab.dir * bc.dir) * (ab.codim - bc.codim) > 0) {
-      geometry.faces.push(new THREE.Face3(0, 1, 2));
-    } else {
-      geometry.faces.push(new THREE.Face3(2, 1, 0));
-    }
-
-    geometry.computeVertexNormals();
-    geometry.computeFaceNormals();
-
-    let material = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
-    let surface = new THREE.Mesh(geometry, material);
-
-    this.scene.add(surface);
-  }
-
   getGenerator(point) {
     let diagram = this.diagram;
     let id = Core.Geometry.typeAt(diagram, point).id;
@@ -221,19 +308,19 @@ export class Diagram3D extends React.Component {
 
   getPosition(point) {
     let positions = this.props.layout.positions;
-    let position = positions.get(point.join(":"));
-    return new THREE.Vector3(...position);
+    let position = positions.get(point.join(":")).slice();
+
+    while (position.length < 3) {
+      position.unshift(0);
+    }
+
+    return new THREE.Vector3(position[2], position[1], position[0]);
   }
 
 }
 
-const findSurfaces = (diagram, layout) => {
-  let graph = new Graph();
-
-  for (let { source, target, codim, dir } of layout.edges) {
-    graph.addEdge(source, target, { codim, dir });
-  }
-
+const findSurfaces = (diagram, layout, graph) => {
+  // Triangles
   let surfaces = [];
   for (let [a, b, ab] of graph.edges()) {
     let aType = Core.Geometry.typeAt(diagram, a);

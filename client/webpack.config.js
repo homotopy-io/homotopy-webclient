@@ -36,7 +36,6 @@ module.exports = {
     ]
   },
   plugins: [
-    new webpack.HotModuleReplacementPlugin()
   ],
   output: {
     path: path.resolve(__dirname, "dist"),
