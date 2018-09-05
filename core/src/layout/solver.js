@@ -108,7 +108,7 @@ class Solver {
       }
     }
 
-    console.log(min, max);
+    //console.log(min, max);
 
     return { min, max };
   }

@@ -218,43 +218,25 @@ export class Diagram {
 
   // Get apparent wire depths for displaying homotopies
   getWireDepths(up, across) {
-    let r1 = this.getSlice({
-      height: up,
-      regular: true
-    });
-    let s = this.getSlice({
-      height: up,
-      regular: false
-    });
+    let r1 = this.getSlice({ height: up, regular: true });
+    let s = this.getSlice({ height: up, regular: false });
     //let limit_target = s.getSlice({ height: across, regular: false });
     let source_depths = Diagram.getLimitWireDepths(this.data[up].forward_limit, r1, s, across);
-    let r2 = this.getSlice({
-      height: up + 1,
-      regular: true
-    });
+    let r2 = this.getSlice({ height: up + 1, regular: true });
     let target_depths = Diagram.getLimitWireDepths(this.data[up].backward_limit, r2, s, across);
-    return {
-      source_depths,
-      target_depths
-    };
+    return { source_depths, target_depths };
   }
 
   static getLimitWireDepths(limit, source, target, singular_index) {
     let m = limit.getMonotone(source.data.length, target.data.length);
     let p = m.preimage(singular_index);
-    let sublimit_target = target.getSlice({
-      height: singular_index,
-      regular: false
-    });
+    let sublimit_target = target.getSlice({ height: singular_index, regular: false });
     let depths = [];
     for (let i = p.first; i < p.last; i++) {
       let n = source.data[i].getFirstSingularNeighbourhood();
       _assert(n != null);
       let sublimit = limit.subLimit(i);
-      let sublimit_source = source.getSlice({
-        height: i,
-        regular: false
-      });
+      let sublimit_source = source.getSlice({ height: i, regular: false });
       let sublimit_mono = sublimit.getMonotone(sublimit_source.data.length, sublimit_target.data.length);
       depths.push(sublimit_mono[n]);
     }
@@ -288,10 +270,7 @@ export class Diagram {
     for (let i = 0; i < this.data.length; i++) {
 
       // Obtain this singular slice
-      let slice = this.getSlice({
-        regular: false,
-        height: i
-      });
+      let slice = this.getSlice({ regular: false, height: i });
 
       // List all the incoming limits
       let level_limits = [];
@@ -369,10 +348,7 @@ export class Diagram {
       i--;
     }
 
-    return {
-      diagram,
-      embedding
-    };
+    return { diagram, embedding };
   }
 
   // Typecheck this diagram
@@ -398,10 +374,7 @@ export class Diagram {
   getLocationBoundingBox(location) {
     _assert(this.n == location.length);
 
-    if (this.n == 0) return {
-      min: [],
-      max: []
-    };
+    if (this.n == 0) return { min: [], max: [] };
     if (location.length == 0) debugger;
     var box = this.getSliceBoundingBox(location);
     if (box == null) return null;
@@ -416,9 +389,7 @@ export class Diagram {
    * Pad the diagram content to remain consistent with a higher source attachment.
    */
   pad(depth) {
-    if (depth == 1) {
-      return;
-    }
+    if (depth == 1) return;
 
     let source = this.source;
     let data = this.data.map(content => content.pad(depth - 1));
@@ -435,44 +406,26 @@ export class Diagram {
     _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
-      return new ForwardLimit(0, [new LimitComponent(0, {
-        type
-      })], framing);
+      return new ForwardLimit(0, [new LimitComponent(0, { type })], framing);
     }
 
     let [height, ...rest] = position;
     let sublimits = [];
     for (let i = 0; i < subdiagram.data.length; i++) {
-      let singular_slice = this.getSlice({
-        height: height + i,
-        regular: false
-      });
-      let subdiagram_singular_slice = subdiagram.getSlice({
-        height: i,
-        regular: false
-      });
-      sublimits.push(singular_slice.contractForwardLimit(
-        type, rest, subdiagram_singular_slice, framing
-      ));
+      let singular_slice = this.getSlice({ height: height + i, regular: false });
+      let subdiagram_singular_slice = subdiagram.getSlice({ height: i, regular: false });
+      sublimits.push(singular_slice.contractForwardLimit( type, rest, subdiagram_singular_slice, framing ));
     }
     let source_first_limit = this.source.contractForwardLimit(type, rest, subdiagram.source, framing);
     let singular = source_first_limit.rewrite(this.source);
 
-    let target = this.getSlice({
-      height: height + subdiagram.data.length,
-      regular: true
-    });
+    let target = this.getSlice({ height: height + subdiagram.data.length, regular: true });
 
     let source_second_limit_forward = target.contractForwardLimit(type, rest, subdiagram.target, !framing);
     let source_second_limit_backward = source_second_limit_forward.getBackwardLimit(target, singular);
 
     let data = [new Content(this.n - 1, source_first_limit, source_second_limit_backward)];
-    let forward_limit_component = new LimitComponent(this.n, {
-      first: height,
-      last: height + subdiagram.data.length,
-      data,
-      sublimits
-    });
+    let forward_limit_component = new LimitComponent(this.n, { first: height, last: height + subdiagram.data.length, data, sublimits });
     return new ForwardLimit(this.n, [forward_limit_component], null);
   }
 
@@ -485,24 +438,16 @@ export class Diagram {
     _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
-      let forward_component = new LimitComponent(0, {
-        type: subdiagram.type
-      });
+      let forward_component = new LimitComponent(0, { type: subdiagram.type });
       return new BackwardLimit(0, [forward_component], framing);
     }
 
     let sublimits = [];
-    let singular_slice = this.getSlice({
-      height: position[0],
-      regular: false
-    });
+    let singular_slice = this.getSlice({ height: position[0], regular: false });
     let slice_position = position.slice(1);
 
     for (let i = 0; i < subdiagram.data.length; i++) {
-      let subdiagram_singular_slice = subdiagram.getSlice({
-        height: i,
-        regular: false
-      });
+      let subdiagram_singular_slice = subdiagram.getSlice({ height: i, regular: false });
       sublimits.push(singular_slice.contractBackwardLimit(
         type, slice_position, subdiagram_singular_slice, framing
       ));
@@ -512,12 +457,7 @@ export class Diagram {
     let last = position[0] + subdiagram.data.length;
     let data = Content.deepPadData(subdiagram.data, slice_position);
 
-    let backward_limit_component = new LimitComponent(this.n, {
-      first,
-      last,
-      data,
-      sublimits
-    });
+    let backward_limit_component = new LimitComponent(this.n, { first, last, data, sublimits });
     return new BackwardLimit(this.n, [backward_limit_component], null);
   }
 
@@ -525,10 +465,9 @@ export class Diagram {
     if (this.n == 0) return this.type;
     let array = [];
     for (let i = 0; i < this.data.length; i++) {
-      let slice_array = this.getSlice({
-        height: i,
-        regular: false
-      }).singularData();
+      let slice_array = this
+        .getSlice({ height: i, regular: false })
+        .singularData();
       array.push(slice_array);
     }
     return array;
@@ -545,13 +484,9 @@ export class Diagram {
     return d1.source.equals(d2.source);
   }
 
-
   // Produce the Content object that contracts a diagram
   contract(point, directions) {
-    let location = point.map(x => ({
-      height: Math.floor(x / 2),
-      regular: x % 2 == 0
-    }));
+    let location = point.map(x => ({ height: Math.floor(x / 2), regular: x % 2 == 0 }));
 
     let height = location[location.length - 1];
 
@@ -595,18 +530,9 @@ export class Diagram {
       // Expansion base case
       _assert(!location[0].regular && !location[1].regular); // both coordinates must be singular
       if (up) {
-        let r1 = this.getSlice({
-          height: location[0].height,
-          regular: true
-        });
-        let r2 = this.getSlice({
-          height: location[0].height + 1,
-          regular: true
-        });
-        let s = this.getSlice({
-          height: location[0].height,
-          regular: false
-        });
+        let r1 = this.getSlice({ height: location[0].height, regular: true });
+        let r2 = this.getSlice({ height: location[0].height + 1, regular: true });
+        let s = this.getSlice({ height: location[0].height, regular: false });
         let expansion = this.data[location[0].height].getExpansionData(location[1].height, r1, r2, s);
         let component = new LimitComponent(this.n, {
           data: expansion.data,
@@ -1167,45 +1093,6 @@ export class Diagram {
     if (types.type1 != null && types.type2 != null && types.type1.n > types.type2.n) {
       [types.type1, types.type2] = [types.type2, types.type1];
     }
-
-    /*
-            if (type1.n == type2.n && type1 != type2) throw "inconsistent types A";
-            if (type1 == type2) {
-                if (types.type1 == null) {
-                    types.type1 = type1;
-                } else if (types.type2 == null) {
-                    types.type2 = type1;
-                } else if (types.type1 != type1 && types.type2 != type1) {
-                    throw "inconsistent types B";
-                }
-            } else {
-                if (types.type1 == null && types.type2 == null) {
-                    types.type1 = type1;
-                    types.type2 = type2;
-                } else if (types.type2 == null) {
-                    if (type1 != types.type1 && type2 != types.type1) {
-                        throw "inconsistent types C";
-                    } else if (type1 == types.type1) {
-                        types.type2 = type2;
-                    } else if (type2 == types.type1) {
-                        types.type1 = type1;
-                    } else _assert(false);
-                } else {
-                    _assert(types.type1 != types.type2 && type1 != type2);
-                    if (types.type1 == type1 && types.type2 == type2) {
-                        // that's fine, nothing to do
-                    } else if (types.type1 == type2 && types.type2 == type1) {
-                        // that's fine, nothing to do
-                    } else {
-                        throw "inconsistent types C";
-                    }
-                }
-            }
-        
-            // Ensure any null is second, and if neither is null, that they are in dimension order
-            if (types.type1 == null) [types.type1, types.type2] = [types.type2, types.type1];
-            else if (types.type2 != null && types.type1.n > types.type2.n) [types.type1, types.type2] = [types.type2, types.type1];
-            */
   }
 
   static multiUnifyComponent({
@@ -1385,10 +1272,7 @@ export class Diagram {
   }
 
   // Compute one component of the given unification, given by the preimage at height h in the target
-  unifyComponent({
-    D1,
-    D2,
-    L1,
+  unifyComponent({ D1, D2, L1,
     L2,
     right,
     depth,
@@ -1589,14 +1473,7 @@ export class Diagram {
           height: index_d2,
           regular: false
         });
-        let unif = regular.unify({
-          D1: current_target,
-          L1: xy,
-          D2: d2_singular_above,
-          L2: z,
-          right,
-          depth
-        });
+        let unif = regular.unify({ D1: current_target, L1: xy, D2: d2_singular_above, L2: z, right, depth });
 
         // Update left sublimits
         for (let i = 0; i < left_sublimits.length; i++) {
@@ -1792,17 +1669,8 @@ export class Diagram {
 
   // Turns an n-diagram into an identity (n+1)-diagram
   boost() {
-    return new Diagram(this.n + 1, {
-      source: this,
-      data: []
-    });
+    return new Diagram(this.n + 1, { source: this, data: [] });
   }
-
-  //////////////////// NOT REVISED ////////////////////////
-  /*
-      Check for equality of two diagrams, recursively on their sources.
-  */
-  
 }
 
 function sub_content(content, subcontent, position) {
@@ -1848,42 +1716,6 @@ function sub_limit_component(component, subcomponent, offset) {
   return true;
 }
 
-/*
-// Check lower parts of this limit
-if (max_index > 0 && !sub_limit(limit, sublimit, offset, max_index - 1)) return false;
-let a = limit[max_index];
-let b = sublimit[max_index];
-_assert(a.n == b.n);
-if (a.n == 0) return a.type == b.type;
-if (a.first != b.first + offset[0]) return false;
-if (a.last != b.last + offset[0]) return false;
-let offset_slice = offset.slice(1);
-if (!sub_limit(a.data, b.data, offset_slice)) return false;
-
-// If present, check type data
-if (a.data && !sub_limit(a.data, b.data, offset_slice)) return false;
-
-return true;
-}
-*/
-
-/*
-// Make a new copy of data
-function copy_data(old_data) {
-    if ((typeof old_data) === 'string') return old_data;
-    if (old_data == null) return null;
-    let new_data = [];
-    for (let i=0; i<old_data.length; i++) {
-        new_data.push()
-        let x = old_data[i];
-        let entry = {};
-        entry.type = x.type;
-        entry.forward_limit = x.forward_limit.copy();
-        entry.backward_limit = x.backward_limit.copy();
-    }
-    return new_data;
-}
-*/
 // Make a new copy of a limit
 function copy_limit(old_limit) {
   if (old_limit == null) return null;
