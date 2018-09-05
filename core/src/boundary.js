@@ -94,7 +94,7 @@ export const containsPoint = (diagram, point, path, subdiagram) => {
     }, subdiagram);
   }
 
-  return Match.containsPoint(subdiagram, path.point, point);
+  return Match.containsPoint(subdiagram, path.point.map(x => Math.floor(x / 2)), point);
 };
 
 export const shiftPath = (path, depth) => {
