@@ -36,7 +36,7 @@ const SignatureBar = styled.div`
   flex-direction: column;
   background: #2c3e50;
   color: #ecf0f1;
-  width: 350px;
+  min-width: 350px;
   overflow: auto;
 `;
 
@@ -45,7 +45,8 @@ const ToolBar = styled.div`
   flex-direction: column;
   background: #2c3e50;
   color: #ecf0f1;
-  width: 250px;
+  min-width: 250px;
+  overflow: auto;
 `;
 
 const Logo = styled.div`

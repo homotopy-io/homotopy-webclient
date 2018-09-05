@@ -16,6 +16,7 @@ const Actions = styled.div`
   justify-content: flex-end;
   padding: 8px;
   margin: 0px;
+  overflow: hidden;
 `;
 
 const Action = styled.div`
