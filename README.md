@@ -3,10 +3,18 @@
 
 ## Build Instructions
 
-This repository contains the `client` and `core` packages. Run `yarn` in the
-root directory to install all dependencies and link the included packages
-together. The packages can then be built individually by running `npm run
-build` in their respective directory. By running `npm run dev` a package can
-be continuously rebuilt upon changes to the source. Running `npm run dev` in
-the client directory also starts a webserver and enables hot reloading for
-development.
+First time:
+
+	- `npm install -g yarn`
+
+Subsequent times:
+
+	- in root directory, run `yarn` to install all dependencies and link the included packages together.
+
+Production:
+
+	- in `client` and `core`, run `npm run build`.
+
+Development:
+
+	- in `client` and `core`, run `npm run dev`, which automatically rebuilds when the source changes. In `client`, this also starts a webserver.
