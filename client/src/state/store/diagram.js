@@ -150,14 +150,14 @@ export default createReducer({
   [DiagramActions.CONTRACT]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;
 
-    if (diagram == null) {
+    if (diagram == null || point.length < 2) {
       return state;
     }
 
     point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
 
     let path = Core.Boundary.getPath(diagram, point);
-    path.point[path.point.length - 1] -= direction[1] < 0 ? 2 : 0;
+    path.point[path.point.length - 2] -= direction[1] < 0 ? 2 : 0;
 
     try {
       diagram = Core.attach(
@@ -172,6 +172,32 @@ export default createReducer({
       state = updateSlices(state);
       return state;
 
+    } catch(error) {
+      console.error(error);
+      return state;
+    }
+  },
+
+  [DiagramActions.EXPAND]: (state, { point, direction }) => {
+    let { diagram, slice } = state.diagram;
+
+    if (diagram == null || point.length < 2) {
+      return state;
+    }
+
+    point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+    let path = Core.Boundary.getPath(diagram, point);
+
+    try {
+      diagram = Core.attach(
+        diagram,
+        (boundary, point) => boundary.expand(point, direction),
+        path
+      );
+
+      state = dotProp.set(state, "diagram.diagram", diagram);
+      state = updateSlices(state);
+      return state;
     } catch(error) {
       console.error(error);
       return state;

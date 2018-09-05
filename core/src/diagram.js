@@ -515,9 +515,10 @@ export class Diagram {
   }
 
   // Produce the Content object that contracts a diagram
-  expand(data) {
+  expand(point, directions) {
+    let location = point.map(x => ({ height: Math.floor(x / 2), regular: x % 2 == 0 }));
     //throw "not yet implemented";
-    let backward_limit = this.getExpansionLimit(data.coordinates, data.directions[0] == 1);
+    let backward_limit = this.getExpansionLimit(location, directions[1] == 1);
     let forward_limit = new ForwardLimit(this.n, []);
     return new Content(this.n, forward_limit, backward_limit);
   }

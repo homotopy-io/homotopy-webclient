@@ -55,12 +55,16 @@ export class Content {
     _assert(false);
   }
 
-  copy() {
-    return new Content(this.n, this.forward_limit.copy(), this.backward_limit.copy());
+  copy({
+    forward_limit = this.forward_limit,
+    backward_limit = this.backward_limit,
+    n = this.n
+  } = this) {
+    return new Content(n, forward_limit, backward_limit);
   }
 
   rewrite(source) {
-    let singular = this.forward_limit.rewrite(source.copy());
+    let singular = this.forward_limit.rewrite(source);
     let target = this.backward_limit.rewrite(singular);
     return target;
   }
@@ -135,8 +139,12 @@ export class Content {
     if (f.length == 1 && b.length == 1 && f_old && b_old) throw "can't expand a single component";
 
     // E - Prepare the first new forward limit by deleting the chosen component
-    let f_new_1 = f.copy();
-    if (f_index >= 0) f_new_1.splice(f_index, 1);
+    let f_new_1 = f;
+    if (f_index >= 0) {
+      let components = [...f_new_1];
+      components.splice(f_index, 1);
+      f_new_1 = f_new_1.copy({ components });
+    }
 
     // Compute delta offset
     let f_delta = 0;
@@ -151,47 +159,65 @@ export class Content {
     }
 
     // G - Prepare the second new forward limit by selecting only the chosen component, and adjusting first/last
-    let f_new_2 = f_old ? new ForwardLimit(this.n, [f_old.copy()], null) : new ForwardLimit(this.n, [], null);
-    if (f_old) {
-      f_new_2[0].first += f_delta + b_delta;
-      f_new_2[0].last += f_delta + b_delta;
-    }
+    let f_new_2 = f_old
+      ? new ForwardLimit(this.n, [f_old.copy({
+        first: f_old.first + f_delta + b_delta,
+        last: f_old.last + f_delta + b_delta
+      })], null)
+      : new ForwardLimit(this.n, [], null);
 
     // F - Prepare the first new backward limit
-    let b_new_1 = b.copy();
+    let b_new_1 = b;
     if (b_old) {
-      b_new_1.splice(b_index, 1);
       let f_old_delta = f_old ? f_old.last - f_old.first - 1 : 0; // weird f/b mixing here!
       let b_old_delta = b_old ? b_old.last - b_old.first - 1 : 0;
-      for (let i = b_index + 1; i < b.length; i++) {
-        b_new_1[i - 1].first += f_old_delta - b_old_delta;
-        b_new_1[i - 1].last += f_old_delta - b_old_delta;
-      }
+
+      let components = [...b_new_1];
+      components.splice(b_index, 1);
+      components = components.map((component, i) => {
+        if (i >= b_index) {
+          return component.copy({
+            first: component.first + f_old_delta - b_old_delta,
+            last: component.last + f_old_delta - b_old_delta
+          });
+        } else {
+          return component;
+        }
+      });
+
+      b_new_1 = b_new_1.copy({ components }); 
     }
 
     // H - Prepare the second new backward limit
 
-    let b_new_2 = b_old ? new BackwardLimit(this.n, [b_old.copy()], null) : new BackwardLimit(this.n, [], null);
+    let b_new_2 = b_old ? new BackwardLimit(this.n, [b_old], null) : new BackwardLimit(this.n, [], null);
 
     // C - Prepare the first sublimit - tricky as we need the reversed version of f_old
     // OPTIMIZATION: we don't really need to reverse all of f, just f_old
     let f_backward = f.getBackwardLimit(r1, s);
-    let sublimit_1 = f_old ? new BackwardLimit(this.n, [f_backward[f_index].copy()], null) : new BackwardLimit(this.n, [], null);
-    if (f_old) {
-      sublimit_1[0].first += f_delta;
-      sublimit_1[0].last += f_delta;
-    }
+    let sublimit_1 = f_old ? new BackwardLimit(this.n, [f_backward[f_index].copy({
+      first: f_backward[f_index].first + f_delta,
+      last: f_backward[f_index].last + f_delta
+    })], null) : new BackwardLimit(this.n, [], null);
     _validate(sublimit_1);
 
     // D - Prepare the second sublimit
-    let sublimit_2 = b.copy();
+    let sublimit_2 = b;
     if (b_old) {
-      sublimit_2.splice(b_index, 1);
       let local_delta = b_old.last - b_old.first - 1;
-      for (let i = b_index + 1; i < b.length; i++) {
-        b[i].first -= local_delta;
-        b[i].last -= local_delta;
-      }
+      let components = [...sublimit_2];
+      components.splice(b_index, 1);
+      components = components.map((component, index) => {
+        if (index > b_index) {
+          return component.copy({
+            first: component.first - local_delta,
+            last: component.last - local_delta
+          });
+        } else {
+          return component;
+        }
+      });
+      sublimit_2 = sublimit_2.copy({ components });
     }
     _validate(sublimit_2);
 
@@ -791,12 +817,12 @@ export class ForwardLimit extends Limit {
     return new Diagram(diagram.n, { source: diagram.source, data });
   }
 
-  copy() {
-    let new_components = [];
-    for (let i = 0; i < this.length; i++) {
-      new_components.push(this[i].copy());
-    }
-    return new ForwardLimit(this.n, new_components, this.framing);
+  copy({
+    components = [...this],
+    n = this.n,
+    framing = this.framing
+  } = this) {
+    return new ForwardLimit(n, components, framing);
   }
 
   compose(second) {
@@ -892,13 +918,15 @@ export class BackwardLimit extends Limit {
     }
     return new Diagram(diagram.n, { source: diagram.source, data });
   }
-  copy() {
-    let new_components = [];
-    for (let i = 0; i < this.length; i++) {
-      new_components.push(this[i].copy());
-    }
-    return new BackwardLimit(this.n, new_components, this.framing);
+
+  copy({
+    n = this.n,
+    components = [...this],
+    framing = this.framing
+  } = this) {
+    return new BackwardLimit(n, components, framing);
   }
+
   compose(second) {
     return super.compose(second, false);
   }

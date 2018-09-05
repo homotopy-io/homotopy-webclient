@@ -11,7 +11,6 @@ import * as RxOps from "rxjs/operators";
 import compose from "~/util/compose";
 import Graph from "~/util/graph";
 import withSize from "~/components/misc/Sized";
-// import withPanZoom from "~/components/misc/PanZoom";
 import withLayout from "~/components/diagram/withLayout";
 import { getGenerators } from "~/state/store/signature";
 
@@ -66,6 +65,7 @@ export class Diagram2D extends React.Component {
     let move$ = Rx.fromEvent(window, "pointermove");
     let up$ = Rx.fromEvent(window, "pointerup");
 
+    let expand = e.shiftKey;
     let startX = e.clientX;
     let startY = e.clientY;
 
@@ -88,8 +88,12 @@ export class Diagram2D extends React.Component {
         }
       })))
       .subscribe(dirs => {
-        if (this.props.onContract) {
+        if (!expand && this.props.onContract) {
           this.props.onContract(point, dirs);
+        }
+
+        if (expand && this.props.onExpand) {
+          this.props.onExpand(point, dirs);
         }
       });
   }

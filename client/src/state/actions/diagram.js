@@ -8,6 +8,7 @@ export const CLEAR_DIAGRAM = "diagram/clear-diagram";
 export const TAKE_IDENTITY = "diagram/take-identity";
 export const SELECT_CELL = "diagram/select-cell";
 export const CONTRACT = "diagram/contract";
+export const EXPAND = "diagram/expand";
 
 export const setSource = () => ({
   type: SET_SOURCE
@@ -51,5 +52,10 @@ export const selectCell = (point) => ({
 
 export const contract = (point, direction) => ({
   type: CONTRACT,
+  payload: { point, direction }
+});
+
+export const expand = (point, direction) => ({
+  type: EXPAND,
   payload: { point, direction }
 });
