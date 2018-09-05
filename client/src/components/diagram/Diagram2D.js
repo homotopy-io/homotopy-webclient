@@ -5,6 +5,8 @@ import panzoom from "svg-pan-zoom";
 import { connect } from "react-redux";
 
 import * as Core from "homotopy-core";
+import * as Rx from "rxjs";
+import * as RxOps from "rxjs/operators";
 
 import compose from "~/util/compose";
 import Graph from "~/util/graph";
@@ -58,6 +60,38 @@ export class Diagram2D extends React.Component {
     if (this.props.interactive) {
       this.props.onSelect && this.props.onSelect(point);
     }
+  }
+
+  onStartDrag(e, point) {
+    let move$ = Rx.fromEvent(window, "pointermove");
+    let up$ = Rx.fromEvent(window, "pointerup");
+
+    let startX = e.clientX;
+    let startY = e.clientY;
+
+    move$
+      .pipe(RxOps.takeUntil(up$))
+      .pipe(RxOps.map(e => {
+        let x = e.clientX;
+        let y = e.clientY;
+        return [x - startX, startY - y];
+      }))
+      .pipe(RxOps.filter(dirs => dirs.some(dir => Math.abs(dir) > 100)))
+      .pipe(RxOps.take(1))
+      .pipe(RxOps.map(dirs => dirs.map(dir => {
+        if (dir > 80) {
+          return 1;
+        } else if (dir < -80) {
+          return -1;
+        } else {
+          return 0;
+        }
+      })))
+      .subscribe(dirs => {
+        if (this.props.onContract) {
+          this.props.onContract(point, dirs);
+        }
+      });
   }
 
   getPosition(point) {
@@ -126,6 +160,7 @@ export class Diagram2D extends React.Component {
         strokeWidth={0}
         fill={generator.color}
         onClick={e => this.onSelect(e, point)}
+        onMouseDown={e => this.onStartDrag(e, point)}
         key={`point#${point.join(":")}`}>
         {this.props.interactive && <title>{generator.name}</title>}
       </circle>

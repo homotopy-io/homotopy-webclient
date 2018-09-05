@@ -6,7 +6,7 @@ import Diagram3D from "~/components/diagram/Diagram3D";
 
 import { getDiagram, getDisplayDimension, getSlice, getRenderer } from "~/state/store/diagram";
 import { getHighlight } from "~/state/store/attach";
-import { selectCell } from "~/state/actions/diagram";
+import { selectCell, contract } from "~/state/actions/diagram";
 
 export const Workspace = ({
   diagram,
@@ -14,7 +14,8 @@ export const Workspace = ({
   highlight,
   slice,
   renderer,
-  onSelectCell
+  onSelectCell,
+  onContract
 }) => {
   let Diagram = renderer == 2 ? Diagram2D : Diagram3D;
 
@@ -28,6 +29,7 @@ export const Workspace = ({
           slice={slice}
           interactive
           onSelect={onSelectCell}
+          onContract={onContract}
         />
       }
     </Wrapper>
@@ -43,7 +45,8 @@ export default connect(
     renderer: getRenderer(state)
   }),
   dispatch => ({
-    onSelectCell: (points) => dispatch(selectCell(points))
+    onSelectCell: (point) => dispatch(selectCell(point)),
+    onContract: (point, direction) => dispatch(contract(point, direction))
   })
 )(Workspace);
 
