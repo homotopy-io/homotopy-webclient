@@ -254,7 +254,7 @@ export class Diagram2D extends React.Component {
         d={path}
         stroke={sGenerator.color}
         strokeWidth={1}
-        vector-effect={"non-scaling-stroke"}
+        vectorEffect={"non-scaling-stroke"}
         fill={highlight ? "#f1c40f" : sGenerator.color}
         key={`surface#${s.join(":")}#${m.join(" ")}#${t.join(":")}`}
         onClick={e => this.onSelect(e, s, m, t)}>
