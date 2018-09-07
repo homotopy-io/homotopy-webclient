@@ -20,7 +20,6 @@ import { Monotone } from "~/monotone";
 - Limit(n) extends Array comprises: (this is a limit between n-diagrams)
     - for all n:
         - Array(LimitComponent(n))
-        - framing :: Boolean, the local framing data. "Is this the source?"
 - LimitComponent(n) comprises: (this is a component of a limit between n-diagrams)
     - for n > 0:
         - data :: Array(Content(n-1))
@@ -430,24 +429,21 @@ export class LimitComponent {
 
 export class Limit extends Array {
 
-  constructor(n, components, framing) {
+  constructor(n, components) {
     super(...components);
     this.n = n;
-    if (framing != null) this.framing = framing;
     this.validate();
   }
 
   validate() {
     _assert(isNatural(this.n));
-    if (this.n == 0 && this.length > 0) _assert(typeof this.framing === "boolean");
-    if (this.n > 0) _assert(this.framing == undefined);
     for (let i = 0; i < this.length; i++) {
       _assert(this[i] instanceof LimitComponent);
       _assert(this[i].n == this.n);
       if (i != 0) _assert(this[i].first >= this[i - 1].last);
       this[i].validate();
     }
-    if (this.n == 0) _propertylist(this, ["n"], ["framing"]);
+    if (this.n == 0) _propertylist(this, ["n"]);
     else _propertylist(this, ["n"]);
   }
 
@@ -612,8 +608,7 @@ export class Limit extends Array {
     if (second.length == 0) return first.copy();
 
     if (first.n == 0) {
-      let framing = first.framing;
-      return forward ? second.copy({ framing }) : first.copy({ framing });
+      return forward ? second.copy() : first.copy();
     }
 
     let analysis1 = first.getComponentTargets();
@@ -771,12 +766,10 @@ export class Limit extends Array {
 
 export class ForwardLimit extends Limit {
 
-  constructor(n, components, framing) {
-    super(n, components, framing);
+  constructor(n, components) {
+    super(n, components);
     if (n == 0) {
       _assert(this.length <= 1);
-      if (this.length == 0) _assert(framing == null);
-      if (this.length == 1) _assert(framing != null);
     }
     Object.freeze(this);
     _validate(this);
@@ -789,12 +782,12 @@ export class ForwardLimit extends Limit {
 
   pad(depth) {
     let components = [...this].map(component => component.pad(depth));
-    return new ForwardLimit(this.n, components, this.framing);
+    return new ForwardLimit(this.n, components);
   }
 
   deepPad(position) {
     let components = [...this].map(component => component.deepPad(position));
-    return new ForwardLimit(this.n, components, this.framing);
+    return new ForwardLimit(this.n, components);
   }
 
   validate() {
@@ -820,9 +813,8 @@ export class ForwardLimit extends Limit {
   copy({
     components = [...this],
     n = this.n,
-    framing = this.framing
   } = this) {
-    return new ForwardLimit(n, components, framing);
+    return new ForwardLimit(n, components);
   }
 
   compose(second) {
@@ -845,9 +837,7 @@ export class ForwardLimit extends Limit {
     _assert(target.n == this.n);
     if (this.n == 0) {
       if (this.length == 0) return new BackwardLimit(0, []);
-      else return new BackwardLimit(0, [new LimitComponent(0, {
-        type: source.type
-      })], this.framing);
+      else return new BackwardLimit(0, [new LimitComponent(0, { type: source.type })]);
     }
     let new_components = [];
     let monotone = this.getMonotone(source.data.length, target.data.length);
@@ -884,12 +874,12 @@ export class ForwardLimit extends Limit {
 }
 
 export class BackwardLimit extends Limit {
-  constructor(n, components, framing) {
+  constructor(n, components) {
     if (components === undefined) return super(n);
-    super(n, components, framing);
+    super(n, components);
     _validate(this);
     Object.freeze(this);
-    //return super(n, components, framing); // call the Limit constructor
+    //return super(n, components); // call the Limit constructor
   }
 
   validate() {
@@ -919,12 +909,8 @@ export class BackwardLimit extends Limit {
     return new Diagram(diagram.n, { source: diagram.source, data });
   }
 
-  copy({
-    n = this.n,
-    components = [...this],
-    framing = this.framing
-  } = this) {
-    return new BackwardLimit(n, components, framing);
+  copy({ n = this.n, components = [...this] } = this) {
+    return new BackwardLimit(n, components);
   }
 
   compose(second) {
@@ -941,12 +927,12 @@ export class BackwardLimit extends Limit {
 
   pad(depth) {
     let components = [...this].map(component => component.pad(depth));
-    return new BackwardLimit(this.n, components, this.framing);
+    return new BackwardLimit(this.n, components);
   }
 
   deepPad(position) {
     let components = [...this].map(component => component.deepPad(position));
-    return new BackwardLimit(this.n, components, this.framing);
+    return new BackwardLimit(this.n, components);
   }
 
   // Supposing this limit goes from source to target, construct the equivalent backward limit.
@@ -956,10 +942,11 @@ export class BackwardLimit extends Limit {
     _assert(source.n == this.n);
     _assert(target.n == this.n);
     if (this.n == 0) {
-      if (this.length == 0) return new ForwardLimit(0, []);
-      else return new ForwardLimit(0, [new LimitComponent(0, {
-        type: target.type
-      })], this.framing);
+      if (this.length == 0) {
+        return new ForwardLimit(0, []);
+      } else {
+        return new ForwardLimit(0, [new LimitComponent(0, { type: target.type })]);
+      }
     }
     let new_components = [];
     let monotone = this.getMonotone(source.data.length, target.data.length);
@@ -969,26 +956,15 @@ export class BackwardLimit extends Limit {
       let sublimits = [];
       let target_slice_index = component.first - offset; //monotone[component.first];
       offset += component.last - component.first - 1;
-      let slice_target = target.getSlice({
-        height: target_slice_index,
-        regular: false
-      });
+      let slice_target = target.getSlice({ height: target_slice_index, regular: false });
       for (let j = component.first; j < component.last; j++) {
-        let slice_source = source.getSlice({
-          height: j,
-          regular: false
-        });
+        let slice_source = source.getSlice({ height: j, regular: false });
         sublimits.push(component.sublimits[j - component.first].getForwardLimit(slice_source, slice_target));
       }
       let data = [target.data[target_slice_index].copy()];
       let first = component.first;
       let last = component.last;
-      new_components.push(new LimitComponent(this.n, {
-        first,
-        last,
-        data,
-        sublimits
-      }));
+      new_components.push(new LimitComponent(this.n, { first, last, data, sublimits }));
     }
     return new ForwardLimit(this.n, new_components, null);
   }

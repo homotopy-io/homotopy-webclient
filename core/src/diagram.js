@@ -242,10 +242,7 @@ export class Diagram {
 
     // Base case: 0-diagrams always normalize to themselves.
     if (this.n == 0) {
-      return {
-        diagram: this,
-        embedding: new ForwardLimit(0, [])
-      };
+      return { diagram: this, embedding: new ForwardLimit(0, []) };
     }
 
     // Recursive case
@@ -374,7 +371,6 @@ export class Diagram {
    */
   pad(depth) {
     if (depth == 1) return;
-
     let source = this.source;
     let data = this.data.map(content => content.pad(depth - 1));
     return new Diagram(this.n, { source, data });
@@ -382,7 +378,7 @@ export class Diagram {
 
 
   // Create the forward limit which contracts the a subdiagram at a given position, to a given type
-  contractForwardLimit(type, position, subdiagram, framing) {
+  contractForwardLimit(type, position, subdiagram) {
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
@@ -390,7 +386,7 @@ export class Diagram {
     _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
-      return new ForwardLimit(0, [new LimitComponent(0, { type })], framing);
+      return new ForwardLimit(0, [new LimitComponent(0, { type })]);
     }
 
     let [height, ...rest] = position;
@@ -398,14 +394,14 @@ export class Diagram {
     for (let i = 0; i < subdiagram.data.length; i++) {
       let singular_slice = this.getSlice({ height: height + i, regular: false });
       let subdiagram_singular_slice = subdiagram.getSlice({ height: i, regular: false });
-      sublimits.push(singular_slice.contractForwardLimit( type, rest, subdiagram_singular_slice, framing ));
+      sublimits.push(singular_slice.contractForwardLimit( type, rest, subdiagram_singular_slice ));
     }
-    let source_first_limit = this.source.contractForwardLimit(type, rest, subdiagram.source, framing);
+    let source_first_limit = this.source.contractForwardLimit(type, rest, subdiagram.source );
     let singular = source_first_limit.rewrite(this.source);
 
     let target = this.getSlice({ height: height + subdiagram.data.length, regular: true });
 
-    let source_second_limit_forward = target.contractForwardLimit(type, rest, subdiagram.target, !framing);
+    let source_second_limit_forward = target.contractForwardLimit(type, rest, subdiagram.target);
     let source_second_limit_backward = source_second_limit_forward.getBackwardLimit(target, singular);
 
     let data = [new Content(this.n - 1, source_first_limit, source_second_limit_backward)];
@@ -414,7 +410,7 @@ export class Diagram {
   }
 
   // Create the backward limit which inflates the point at the given position, to a given subdiagram
-  contractBackwardLimit(type, position, subdiagram, framing) {
+  contractBackwardLimit(type, position, subdiagram) {
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
@@ -423,7 +419,7 @@ export class Diagram {
 
     if (this.n == 0) {
       let forward_component = new LimitComponent(0, { type: subdiagram.type });
-      return new BackwardLimit(0, [forward_component], framing);
+      return new BackwardLimit(0, [forward_component]);
     }
 
     let sublimits = [];
@@ -432,9 +428,7 @@ export class Diagram {
 
     for (let i = 0; i < subdiagram.data.length; i++) {
       let subdiagram_singular_slice = subdiagram.getSlice({ height: i, regular: false });
-      sublimits.push(singular_slice.contractBackwardLimit(
-        type, slice_position, subdiagram_singular_slice, framing
-      ));
+      sublimits.push(singular_slice.contractBackwardLimit(type, slice_position, subdiagram_singular_slice));
     }
 
     let first = position[0];
@@ -519,42 +513,21 @@ export class Diagram {
         let r2 = this.getSlice({ height: location[0].height + 1, regular: true });
         let s = this.getSlice({ height: location[0].height, regular: false });
         let expansion = this.data[location[0].height].getExpansionData(location[1].height, r1, r2, s);
-        let component = new LimitComponent(this.n, {
-          data: expansion.data,
-          sublimits: expansion.sublimits,
-          first: location[0].height,
-          last: location[0].height + 2
-        });
+        let component = new LimitComponent(this.n, { data: expansion.data, sublimits: expansion.sublimits, first: location[0].height, last: location[0].height + 2 });
         return new BackwardLimit(this.n, [component]);
       } else {
-        let r1 = this.getSlice({
-          height: location[0].height,
-          regular: true
-        });
-        let r2 = this.getSlice({
-          height: location[0].height + 1,
-          regular: true
-        });
-        let s = this.getSlice({
-          height: location[0].height,
-          regular: false
-        });
+        let r1 = this.getSlice({ height: location[0].height, regular: true });
+        let r2 = this.getSlice({ height: location[0].height + 1, regular: true });
+        let s = this.getSlice({ height: location[0].height, regular: false });
         let content = this.data[location[0].height];
         let reverse_content = content.reverse(r1);
         let reverse_expansion = reverse_content.getExpansionData(location[1].height, r2, r1, s);
         let data_0_rev = reverse_expansion.data[0].reverse(r2);
-
         let new_regular_slice = reverse_expansion.data[0].rewrite(r2);
         let data_1_rev = reverse_expansion.data[1].reverse(new_regular_slice);
         let data = [data_1_rev, data_0_rev];
-
         let sublimits = reverse_expansion.sublimits.reverse();
-        let component = new LimitComponent(this.n, {
-          data,
-          sublimits,
-          first: location[0].height,
-          last: location[0].height + 2
-        });
+        let component = new LimitComponent(this.n, { data, sublimits, first: location[0].height, last: location[0].height + 2 });
         return new BackwardLimit(this.n, [component]);
       }
     } else if (location[0].regular) {
@@ -625,12 +598,7 @@ export class Diagram {
   }
 
   // Compute a simultaneous unification of monotones
-  // YES
-  static multiUnify({
-    lower,
-    upper,
-    depth
-  }) {
+  static multiUnify({ lower, upper, depth }) {
 
     let n = upper[0].n;
     for (let i = 0; i < upper.length; i++) {
@@ -662,82 +630,12 @@ export class Diagram {
       if (top_types.length > 1) throw "no unification, multiple top types in base case";
       let type = top_types[0];
 
-      // Find framings for cocone maps
-      let upper_framings = [];
-      // Count how many upper framings we need to determine
-      let framings_to_determine = 0;
-      for (let i = 0; i < upper.length; i++) {
-        if (upper[i].type != type) framings_to_determine++;
-      }
-      while (framings_to_determine > 0) {
-        let start_determined = framings_to_determine;
-        for (let i = 0; i < lower.length; i++) {
-          let l = lower[i];
-          let ll = l.left_limit;
-          let rl = l.right_limit;
-          let llf = ll.framing;
-          let rlf = rl.framing;
-          let li = l.left_index;
-          let ri = l.right_index;
-          if (llf != null && rlf != null && llf != rlf) throw "no unification, base case has inconsistent framings";
-          if (upper[li].type != type && upper[ri].type != type) {
-            if (upper_framings[li] != null && upper_framings[ri] != null) {
-              if (upper_framings[li] != upper_framings[ri]) throw "no unification, base case has inconsistent framings";
-              continue;
-            } else if (upper_framings[li] != null) {
-              upper_framings[ri] = upper_framings[li];
-            } else if (upper_framings[ri] != null) {
-              upper_framings[li] = upper_framings[ri];
-            }
-            continue; // Handle later when we have more information
-          }
-          if (upper[li].type != type) {
-            _assert(upper[ri].type == type);
-            _assert(rlf != null);
-            if (upper_framings[li] == null) {
-              upper_framings[li] = rlf;
-              framings_to_determine--;
-            } else if (upper_framings[l.left_index] != rlf) throw "no unification, base case has no colimit";
-          }
-          if (upper[l.right_index].type != type) {
-            _assert(upper[l.left_index].type == type);
-            _assert(llf != null);
-            if (upper_framings[l.right_index] == null) {
-              upper_framings[l.right_index] = llf;
-              framings_to_determine--;
-            } else if (upper_framings[l.right_index] != llf) throw "no unification, base case has no colimit";
-          }
-        }
-        if (framings_to_determine == start_determined) throw "no unification, base case cannot complete";
-      }
-
-      // We must be approaching the top type with a consistent framing
-      /*
-      let framing = null;
-      for (let i = 0; i < lower.length; i++) {
-          let l = lower[i];
-          if (upper[l.left_index].type == type && l.diagram.type != type) {
-              _assert(l.left_limit.framing != null);
-              if (framing == null) framing = l.left_limit.framing;
-              if (framing != l.left_limit.framing) throw "no unification, base case has inconsistent framings";
-          }
-          if (upper[l.right_index].type == type && l.diagram.type != type) {
-              _assert(l.right_limit.framing != null);
-              if (framing == null) framing = l.right_limit.framing;
-              if (framing != l.right_limit.framing) throw "no unification, base case has inconsistent framings";
-          }
-      }*/
-
       // Build the cocone maps
       let limits = [];
       for (let i = 0; i < upper.length; i++) {
         if (upper[i].type == type) limits.push(new ForwardLimit(0, []));
         else {
-          let framing = upper_framings[i];
-          _assert(framing != null);
-          limits.push(new ForwardLimit(0, [new LimitComponent(0, {
-            type
-          })], framing));
+          limits.push(new ForwardLimit(0, [new LimitComponent(0, { type })]));
         }
       }
 
@@ -750,13 +648,8 @@ export class Diagram {
       }
 
       // Return the final data
-      let target = new Diagram(0, {
-        type
-      });
-      return {
-        limits,
-        target
-      };
+      let target = new Diagram(0, { type });
+      return { limits, target };
     }
 
     // Get the unification of the singular monotones
@@ -828,11 +721,7 @@ export class Diagram {
     }
   }
 
-// YES
-  static multiUnifyComponent({
-    upper,
-    lower
-  }, m_cocone, m_lower, height) {
+  static multiUnifyComponent({ upper, lower }, m_cocone, m_lower, height) {
 
     // Restrict upper, lower to the appropriate heights
     let upper_preimage = [];
@@ -854,18 +743,9 @@ export class Diagram {
       let left_preimage = left_monotone.preimage(upper_ranges[l.left_index]);
       lower_ranges.push(left_preimage);
       let diagram = l.diagram.restrict(left_preimage);
-      lower_preimage.push({
-        left_index,
-        right_index,
-        left_limit,
-        right_limit,
-        diagram
-      });
+      lower_preimage.push({ left_index, right_index, left_limit, right_limit, diagram });
     }
-    let preimage = {
-      upper: upper_preimage,
-      lower: lower_preimage
-    };
+    let preimage = { upper: upper_preimage, lower: lower_preimage };
 
     // Explode the upper singular and regular diagrams
     let upper_exploded = [];
@@ -876,26 +756,14 @@ export class Diagram {
       let slice_positions = [];
       for (let j = 0; j < u.data.length; j++) {
         slice_positions.push(upper_exploded.length);
-        upper_exploded.push(u.getSlice({
-          height: j,
-          regular: false
-        }));
+        upper_exploded.push(u.getSlice({ height: j, regular: false }));
         if (j == 0) continue; // one less regular level than singular level to include
-        let diagram = u.getSlice({
-          height: j,
-          regular: true
-        });
+        let diagram = u.getSlice({ height: j, regular: true });
         let left_limit = u.data[j - 1].backward_limit;
         let right_limit = u.data[j].forward_limit;
         let left_index = upper_exploded.length - 2;
         let right_index = upper_exploded.length - 1;
-        lower_exploded.push({
-          diagram,
-          left_limit,
-          right_limit,
-          left_index,
-          right_index
-        });
+        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index });
       }
       upper_slice_position.push(slice_positions);
     }
@@ -904,10 +772,7 @@ export class Diagram {
     for (let i = 0; i < lower.length; i++) {
       let l = lower_preimage[i];
       for (let j = 0; j < l.diagram.data.length; j++) {
-        let diagram = l.diagram.getSlice({
-          height: j,
-          regular: false
-        }); 
+        let diagram = l.diagram.getSlice({ height: j, regular: false }); 
         let left_limit = l.left_limit.subLimit(j);
         let right_limit = l.right_limit.subLimit(j);
         let lower_offset = lower_ranges[i].first;
@@ -915,19 +780,10 @@ export class Diagram {
         let upper_left_offset = upper_ranges[l.left_index].first;
         let left_index = upper_slice_position[l.left_index][m_lower[i].left.monotone[j + lower_offset] - upper_left_offset];
         let right_index = upper_slice_position[l.right_index][m_lower[i].right.monotone[j + lower_offset] - upper_right_offset];
-        lower_exploded.push({
-          diagram,
-          left_limit,
-          right_limit,
-          left_index,
-          right_index
-        });
+        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index });
       }
     }
-    let exploded = {
-      upper: upper_exploded,
-      lower: lower_exploded
-    };
+    let exploded = { upper: upper_exploded, lower: lower_exploded };
     _assert(upper_exploded.length > 0);
     let nonempty_upper = null;
     for (let i = 0; i < upper.length; i++) {
@@ -973,20 +829,11 @@ export class Diagram {
         cocone_components[i] = null;
       } else {
         let data = [target_content];
-        cocone_components[i] = new LimitComponent(upper[0].n, {
-          first,
-          last,
-          data,
-          sublimits
-        });
+        cocone_components[i] = new LimitComponent(upper[0].n, { first, last, data, sublimits });
       }
     }
 
-    return {
-      target_content,
-      cocone_components
-    };
-
+    return { target_content, cocone_components };
   }
 
   restrict(range) {
@@ -1005,6 +852,7 @@ export class Diagram {
     });
   }
 
+/*
   // Compute one component of the given unification, given by the preimage at height h in the target
   unifyComponent({ D1, D2, L1,
     L2,
@@ -1234,10 +1082,10 @@ export class Diagram {
         let advance_2 = (L2m[index_main] > L2m[index_main - 1]);
         _assert(!advance_1 || !advance_2); // if both sides were advancing, the component would have split into two
         if (!advance_1 && !advance_2) {
-          /* See 2018-1-ANC-28. Unclear what to do.
-          For now do a simple consistency check and fail, with logging,
-          if the check fails. Maybe there's some further unification that
-          could be done */
+          // See 2018-1-ANC-28. Unclear what to do.
+          // For now do a simple consistency check and fail, with logging,
+          // if the check fails. Maybe there's some further unification that
+          // could be done.
           let err_msg = "no unification at codimension " + depth + ", inconsistent slice unifications (?)";
           if (!slice_unifications[index_main].T.equals(slice_unifications[index_main - 1].T)) throw err_msg;
           if (!slice_unifications[index_main].I1.equals(slice_unifications[index_main - 1].I1)) throw err_msg;
@@ -1272,7 +1120,7 @@ export class Diagram {
           }
 
           // Store the new left limit
-          /* IS IT NECESSARY TO CHECK IF THIS NEW LEFT LIMIT SATISFIES A COMMUTATIVITY EQUATION? SEE 2018-ANC-27 */
+          // IS IT NECESSARY TO CHECK IF THIS NEW LEFT LIMIT SATISFIES A COMMUTATIVITY EQUATION? SEE 2018-ANC-27
           unif.I2_forward = unif.I2.getForwardLimit(slice_unifications[index_main].T, unif.T);
           left_sublimits.push(unif.I2_forward.compose(slice_unifications[index_main].I1));
 
@@ -1308,7 +1156,7 @@ export class Diagram {
           }
 
           // Store the new right limit
-          /* IS IT NECESSARY TO CHECK IF THIS NEW LEFT LIMIT SATISFIES A COMMUTATIVITY EQUATION? SEE 2018-ANC-27 */
+          // IS IT NECESSARY TO CHECK IF THIS NEW LEFT LIMIT SATISFIES A COMMUTATIVITY EQUATION? SEE 2018-ANC-27
           //unif.I2_forward = unif.I2.getForwardLimit(slice_unifications[index_main].T, unif.T);
           right_sublimits.push(unif.I2.compose(slice_unifications[index_main].I2));
 
@@ -1361,7 +1209,9 @@ export class Diagram {
       T_content
     };
   }
+  */
 
+  /*
   // Find the coequalizer of two limits out of this diagram. See 2018-2-ANC-46.
   coequalize(L1, L2, target, n) {
     _assert(L1.n == this.n && L2.n == this.n && target.n == this.n);
@@ -1388,6 +1238,7 @@ export class Diagram {
     let max = Math.max(L1_image, L2_image);
 
   }
+  */
 
   /*
       // Expand a diagram
