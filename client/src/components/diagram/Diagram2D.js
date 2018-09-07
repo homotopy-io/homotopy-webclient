@@ -164,7 +164,7 @@ export class Diagram2D extends React.Component {
       <circle
         cx={position[0]}
         cy={position[1]}
-        r={10}
+        r={12.5}
         strokeWidth={0}
         fill={generator.color}
         onClick={e => this.onSelect(e, point)}
