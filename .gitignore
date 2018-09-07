@@ -5,3 +5,4 @@ client/dist
 core/node_modules
 core/dist
 core/.cache
+.vscode
