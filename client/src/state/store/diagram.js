@@ -103,21 +103,17 @@ export default createReducer({
     let { target, diagram } = state.diagram;
 
     if (diagram == null) {
-      return state;
     } else if (target != null) {
       if (target.n == diagram.n) {
         state = createGenerator(state, diagram, target);
         state = dotProp.set(state, "diagram.diagram", null);
         state = dotProp.set(state, "diagram.target", null);
-        return state;
-      } else {
-        return state;
       }
     } else {
       state = dotProp.set(state, "diagram.source", diagram);
       state = dotProp.set(state, "diagram.diagram", null);
-      return state;
     }
+    return state;
   },
 
   [DiagramActions.SET_TARGET]: (state) => {
@@ -150,9 +146,7 @@ export default createReducer({
   [DiagramActions.CONTRACT]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;
 
-    if (diagram == null || point.length < 2) {
-      return state;
-    }
+    if (diagram == null || point.length < 2) return state;
 
     point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
 
@@ -160,11 +154,8 @@ export default createReducer({
     path.point[path.point.length - 2] -= direction[1] < 0 ? 2 : 0;
 
     try {
-      diagram = Core.attach(
-        diagram,
-        (boundary, point) => {
-          return boundary.contract(point.slice(0, -1), direction);
-        },
+      diagram = Core.attach(diagram,
+        (boundary, point) => { return boundary.contract(point.slice(0, -1), direction); },
         path
       );
 

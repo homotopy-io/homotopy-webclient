@@ -204,11 +204,14 @@ export class Diagram2D extends React.Component {
     );
   }
 
+  getGeneratorPosition(p) {
+    return { generator: this.getGenerator(p), position: this.getPosition(p) };
+  }
+
   renderSurface(s, m, t) {
     let sGenerator = this.getGenerator(s);
     let mGenerator = this.getGenerator(m);
     let tGenerator = this.getGenerator(t);
-
     let sPosition = this.getPosition(s);
     let mPosition = this.getPosition(m);
     let tPosition = this.getPosition(t);
@@ -281,10 +284,6 @@ const findSurfaces = (diagram, layout) => {
   let surfaces = [];
   for (let [a, b] of graph.edges()) {
     let aType = Core.Geometry.typeAt(diagram, a);
-
-    if (aType.n < diagram.n - 2) {
-      continue;
-    }
 
     for (let [c] of graph.edgesFrom(b)) {
       surfaces.push([a, b, c]);

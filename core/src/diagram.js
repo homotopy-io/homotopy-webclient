@@ -56,9 +56,7 @@ export class Diagram {
   }
 
   getSlice(...locations) {
-    if (locations.length == 0) {
-      return this;
-    }
+    if (locations.length == 0) return this;
 
     _assert(this.n > 0);
 
@@ -87,21 +85,13 @@ export class Diagram {
     _assert((pos.regular && pos.height <= this.data.length) || (!pos.regular && pos.height < this.data.length));
     _assert(pos.height <= this.data.length);
 
-    if (pos.height == 0 && pos.regular) {
-      return this.source;
-    }
+    if (pos.height == 0 && pos.regular) return this.source;
 
     if (pos.regular) {
-      let singular = this.getSlice({
-        height: pos.height - 1,
-        regular: false
-      });
+      let singular = this.getSlice({ height: pos.height - 1, regular: false });
       return this.data[pos.height - 1].backward_limit.rewrite(singular);
     } else {
-      let regular = this.getSlice({
-        height: pos.height,
-        regular: true
-      });
+      let regular = this.getSlice({ height: pos.height, regular: true });
       return this.data[pos.height].forward_limit.rewrite(regular);
     }
   }
@@ -196,13 +186,8 @@ export class Diagram {
 
   // Find the ID of the last cell that appears in the diagram
   getLastPoint() {
-    if (this.n == 0) {
-      return this;
-    }
-
-    if (this.data.length == 0) {
-      return this.source.getLastPoint();
-    }
+    if (this.n == 0) return this;
+    if (this.data.length == 0) return this.source.getLastPoint();
 
     let k = this.data.length - 1;
 
@@ -210,10 +195,9 @@ export class Diagram {
       k--;
     }
 
-    return this.getSlice({
-      height: k,
-      regular: false
-    }).getLastPoint();
+    return this
+      .getSlice({ height: k, regular: false })
+      .getLastPoint();
   }
 
   // Get apparent wire depths for displaying homotopies
@@ -682,35 +666,15 @@ export class Diagram {
       _assert(!location[0].regular); // The UI should never trigger contraction from a regular slice
       _assert(height >= 0);
       _assert(height < this.data.length - 1);
-      let regular = this.getSlice({
-        height: height + 1,
-        regular: true
-      });
-      let D1 = this.getSlice({
-        height,
-        regular: false
-      });
-      let D2 = this.getSlice({
-        height: height + 1,
-        regular: false
-      });
+      let regular = this.getSlice({ height: height + 1, regular: true });
+      let D1 = this.getSlice({ height, regular: false });
+      let D2 = this.getSlice({ height: height + 1, regular: false });
       let L1 = this.data[height].backward_limit;
       let L2 = this.data[height + 1].forward_limit;
 
       let upper = [D1, D2];
-      let lower = [{
-        diagram: regular,
-        left_index: 0,
-        right_index: 1,
-        left_limit: L1,
-        right_limit: L2,
-        bias: right == 1 // true means right, false means left, null means none
-      }];
-      let contract_data = Diagram.multiUnify({
-        lower,
-        upper,
-        right: right == 1
-      });
+      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: right == 1 /* true means right, false means left, null means none */ }];
+      let contract_data = Diagram.multiUnify({ lower, upper, right: right == 1 });
 
       // Build the limit to the contracted diagram
       let first = location[0].height;
@@ -721,12 +685,7 @@ export class Diagram {
       let cocone1_backward = sublimits[1].getBackwardLimit(upper[1], contract_data.target);
       let data_backward = cocone1_backward.compose(this.data[height + 1].backward_limit);
       let data = [new Content(this.n - 1, data_forward, data_backward)];
-      let forward_component = new LimitComponent(this.n, {
-        first,
-        last,
-        data,
-        sublimits
-      });
+      let forward_component = new LimitComponent(this.n, { first, last, data, sublimits });
       return new ForwardLimit(n, [forward_component]);
     } else if (location.length > 1) {
       // Recursive case
@@ -738,12 +697,7 @@ export class Diagram {
         // Contraction recursive case on regular slice: insert bubble.
         let data = [new Content(this.n - 1, recursive, recursive_backward)];
         let sublimits = [];
-        let component = new LimitComponent(this.n, {
-          data,
-          first: height,
-          last: height,
-          sublimits
-        });
+        let component = new LimitComponent(this.n, { data, first: height, last: height, sublimits });
         return new ForwardLimit(this.n, [component]);
       } else {
         // Contraction recursive case on singular slice: postcompose.
@@ -754,124 +708,15 @@ export class Diagram {
         let new_forward = forward_second.compose(forward_first);
         let new_backward = backward_second.compose(backward_first);
         let data = [new Content(this.n - 1, new_forward, new_backward)];
-        let component = new LimitComponent(this.n, {
-          data,
-          first: height,
-          last: height + 1,
-          sublimits: [recursive]
-        });
+        let component = new LimitComponent(this.n, { data, first: height, last: height + 1, sublimits: [recursive] });
         return new ForwardLimit(this.n, [component]);
       }
     }
     _assert(false);
   }
 
-  // Unify two diagrams, at given recursive depth, with a given tendency to the right
-  unify({
-    D1,
-    D2,
-    L1,
-    L2,
-    right,
-    depth,
-    fibre
-  }) {
-    _assert(fibre == null || _propertylist(fibre, ["L1F1", "L1F2", "L2F1", "L2F2", "F1", "F2"]));
-    _assert(right == null || (typeof(right) == "boolean"));
-    _assert(D1 instanceof Diagram);
-    _assert(D2 instanceof Diagram);
-    if (L1 instanceof ForwardLimit) L1 = L1.getBackwardLimit(this, D1); // correct L1 if necessary
-    if (L2 instanceof BackwardLimit) L2 = L2.getForwardLimit(this, D2); // correct L2 if necessary
-    _assert(L1 instanceof BackwardLimit);
-    _assert(L2 instanceof ForwardLimit);
-    _assert(this.n == D1.n);
-    _assert(this.n == D2.n);
-    if (depth == null) depth = 0;
-
-    // Base case
-    if (this.n == 0) {
-      _assert(D1.type instanceof Generator && D2.type instanceof Generator);
-      let I1, I2, T;
-      if (D1.type == this.type)[I1, I2, T] = [L2, new BackwardLimit(0, [], null, 0), D2];
-      else if (this.type == D2.type)[I1, I2, T] = [new ForwardLimit(0, [], null, 0), L1, D1];
-      else if (D1.type != D2.type) throw "no unification at codimension " + depth + ", base case has all types distinct";
-      else if (L1.framing != L2.framing) throw "no unification at codimension " + depth + ", base case has inconsistent framings";
-      else [I1, I2, T] = [new ForwardLimit(0, [], null, 0), new BackwardLimit(0, [], null, 0), D1];
-      _assert(T instanceof Diagram && I1 instanceof ForwardLimit && I2 instanceof BackwardLimit);
-      return {
-        T,
-        I1,
-        I2
-      };
-    }
-
-    // Get the monotones for the fibre maps
-    let L1F1M, L1F2M, L2F1M, L2F2M;
-    if (fibre) {
-      L1F1M = fibre.L1F1.getMonotone(D1.data.length, F1.data.length);
-      L1F2M = fibre.L1F2.getMonotone(D1.data.length, F2.data.length);
-      L2F1M = fibre.L2F1.getMonotone(D2.data.length, F1.data.length);
-      L2F2M = fibre.L2F2.getMonotone(D2.data.length, F2.data.length);
-    }
-
-    // Get the unification of the singular monotones
-    let L1m = L1.getMonotone(this.data.length, D1.data.length);
-    let L2m = L2.getMonotone(this.data.length, D2.data.length);
-    let m_unif = L1m.unify({
-      second: L2m,
-      right,
-      fibre: fibre ? {
-        L1F1M,
-        L1F2M,
-        L2F1M,
-        L2F2M
-      } : null
-    });
-    let I1m = m_unif.first;
-    let I2m = m_unif.second;
-    let target_size = m_unif.first.target_size;
-
-    // Get component data from each target slice
-    let I1_content = [];
-    let I2_content = [];
-    let T_content = [];
-    for (let h = 0; h < target_size; h++) {
-      let c = this.unifyComponent({
-        D1,
-        D2,
-        L1,
-        L2,
-        right,
-        fibre,
-        depth
-      }, h, {
-        L1m,
-        L2m,
-        I1m,
-        I2m
-      });
-      T_content.push(c.T_content);
-      if (c.I1_content) I1_content.push(c.I1_content);
-      if (c.I2_content) I2_content.push(c.I2_content);
-    }
-
-    // Construct and return the necessary objects
-    let T = new Diagram(this.n, {
-      t: this.t,
-      n: this.n,
-      source: this.source.copy(),
-      data: T_content
-    });
-    let I1 = new ForwardLimit(this.n, I1_content);
-    let I2 = new BackwardLimit(this.n, I2_content);
-    return {
-      T,
-      I1,
-      I2
-    };
-  }
-
   // Compute a simultaneous unification of monotones
+  // YES
   static multiUnify({
     lower,
     upper,
@@ -1013,26 +858,13 @@ export class Diagram {
     let m_lower = [];
     for (let i = 0; i < lower.length; i++) {
       let m_left = lower[i].left_limit.getMonotone(lower[i].diagram, upper[lower[i].left_index]);
-      let left = {
-        target: lower[i].left_index,
-        monotone: m_left
-      };
+      let left = { target: lower[i].left_index, monotone: m_left };
       let m_right = lower[i].right_limit.getMonotone(lower[i].diagram, upper[lower[i].right_index]);
-      let right = {
-        target: lower[i].right_index,
-        monotone: m_right
-      };
+      let right = { target: lower[i].right_index, monotone: m_right };
       let bias = lower[i].bias;
-      m_lower.push({
-        left,
-        right,
-        bias
-      });
+      m_lower.push({ left, right, bias });
     }
-    let m_unif = Monotone.multiUnify({
-      lower: m_lower,
-      upper: m_upper
-    });
+    let m_unif = Monotone.multiUnify({ lower: m_lower, upper: m_upper });
 
     // Find size of unification set
     let target_size = m_unif[0].target_size;
@@ -1042,10 +874,7 @@ export class Diagram {
     for (let i = 0; i < upper.length; i++) limit_components[i] = [];
     let target_content = [];
     for (let i = 0; i < target_size; i++) {
-      let component = Diagram.multiUnifyComponent({
-        upper,
-        lower
-      }, m_unif, m_lower, i);
+      let component = Diagram.multiUnifyComponent({ upper, lower }, m_unif, m_lower, i);
       target_content.push(component.target_content);
       for (let j = 0; j < upper.length; j++) {
         if (!component.cocone_components[j]) continue;
@@ -1054,20 +883,14 @@ export class Diagram {
     }
 
     // Build final data
-    let target = new Diagram(n, {
-      source: upper[0].source,
-      data: target_content
-    });
+    let target = new Diagram(n, { source: upper[0].source, data: target_content });
     let limits = [];
     for (let i = 0; i < upper.length; i++) {
       limits.push(new ForwardLimit(n, limit_components[i]));
     }
 
     // Return final data
-    return {
-      limits,
-      target
-    };
+    return { limits, target };
   }
 
   static updateTopTypes(top_types, type) {
@@ -1096,6 +919,7 @@ export class Diagram {
     }
   }
 
+// YES
   static multiUnifyComponent({
     upper,
     lower

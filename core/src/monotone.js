@@ -90,11 +90,7 @@ export class Monotone extends Array {
   }
 
   // Unify with a second monotone, with the indicated tendency to the right if specified. Throws exception on failure.
-  unify({
-    second,
-    right,
-    fibre
-  }, n) {
+  unify({ second, right, fibre }, n) {
     let first = this;
     _assert(second instanceof Monotone);
     _assert(first.length == second.length);
@@ -330,10 +326,7 @@ export class Monotone extends Array {
     while (pos < this.length && this[pos] < max) pos++;
     //if (pos == monotone.length) pos --;
     last = pos;
-    return {
-      first,
-      last
-    };
+    return { first, last };
   }
 
   static identity(n) {
@@ -419,10 +412,7 @@ export class Monotone extends Array {
   }
 
   // Simultaneously unify an entire diagram of monotones
-  static multiUnify({
-    lower,
-    upper
-  }) {
+  static multiUnify({ lower, upper }) {
     for (let i of upper) {
       _assert(isNatural(i));
     }
@@ -447,13 +437,7 @@ export class Monotone extends Array {
     upper_included[0] = true;
 
     // Pass through repeatedly until no further unifications can be made
-    while (Monotone.multiUnify_singlePass({
-      lower_included,
-      upper_included,
-      lower,
-      upper,
-      cocone
-    })) {}
+    while (Monotone.multiUnify_singlePass({ lower_included, upper_included, lower, upper, cocone })) {}
 
     // Check that all levels have been included
     for (let i = 0; i < lower.length; i++) _assert(lower_included[i]);
@@ -463,13 +447,7 @@ export class Monotone extends Array {
     return cocone;
   }
 
-  static multiUnify_singlePass({
-    lower_included,
-    upper_included,
-    lower,
-    upper,
-    cocone
-  }) {
+  static multiUnify_singlePass({ lower_included, upper_included, lower, upper, cocone }) {
 
     let changed = false;
     for (let i = 0; i < lower.length; i++) {
@@ -484,39 +462,18 @@ export class Monotone extends Array {
       if (!left_inc && !right_inc) continue;
 
       if (left_inc && right_inc) { // If both upper targets are included, then glue in the lower object
-        Monotone.multiUnify_glueLower({
-          i,
-          lower_included,
-          upper_included,
-          lower,
-          upper,
-          cocone
-        });
+        Monotone.multiUnify_glueLower({ i, lower_included, upper_included, lower, upper, cocone });
       } else { // Only one upper target is included, so glue the other one in with respect to the base.
         if (left_inc) {
           //let bias_new = (lower[i].bias == null ? null : (lower[i].bias ? true : false)); // can be simplified
           let bias_new = lower[i].bias == null ? true : lower[i].bias; // bias is helpful as it lets us temporarily resolve local conflicts
           //if (bias_new != null) debugger;
-          Monotone.multiUnify_glueBoth({
-            lower,
-            upper,
-            cocone,
-            new_data: lower[i].right,
-            old_data: lower[i].left,
-            bias_new
-          });
+          Monotone.multiUnify_glueBoth({ lower, upper, cocone, new_data: lower[i].right, old_data: lower[i].left, bias_new });
         } else {
           //let bias_new = (lower[i].bias == null ? null : (lower[i].bias ? false : true)); // can be simplified
           let bias_new = lower[i].bias == null ? true : !lower[i].bias;
           //if (bias_new != null) debugger;
-          Monotone.multiUnify_glueBoth({
-            lower,
-            upper,
-            cocone,
-            new_data: lower[i].left,
-            old_data: lower[i].right,
-            bias_new
-          });
+          Monotone.multiUnify_glueBoth({ lower, upper, cocone, new_data: lower[i].left, old_data: lower[i].right, bias_new });
         }
       }
       lower_included[i] = true;
@@ -529,22 +486,12 @@ export class Monotone extends Array {
   }
 
   // Glue in new_data with respect to old_data
-  static multiUnify_glueBoth({
-    lower,
-    upper,
-    cocone,
-    new_data,
-    old_data,
-    bias_new
-  }) {
+  static multiUnify_glueBoth({ lower, upper, cocone, new_data, old_data, bias_new }) {
 
     // Get the pushout of the old data with the new data
     let leg_1 = cocone[old_data.target].compose(old_data.monotone);
     let leg_2 = new_data.monotone;
-    let pushout = leg_1.unify({
-      second: leg_2,
-      right: bias_new
-    });
+    let pushout = leg_1.unify({ second: leg_2, right: bias_new });
 
     // Compose this pushout with existing cocone data
     for (let k = 0; k < upper.length; k++) {
@@ -556,14 +503,7 @@ export class Monotone extends Array {
     cocone[new_data.target] = pushout.second;
   }
 
-  static multiUnify_glueLower({
-    i,
-    lower_included,
-    upper_included,
-    lower,
-    upper,
-    cocone
-  }) {
+  static multiUnify_glueLower({ i, lower_included, upper_included, lower, upper, cocone }) {
     let base = lower[i];
     for (let j = 0; j < base.left.monotone.length; j++) {
       let left_element = cocone[base.left.target][base.left.monotone[j]];
