@@ -144,7 +144,11 @@ export class Diagram2D extends React.Component {
 
     let codim = this.diagram.n - generator.generator.n;
     let control = from.slice();
-    control[codim] = (control[codim] + to[codim]) / 2;
+    if (codim == 0) {
+      control[codim] = to[codim];
+    } else if (codim == 1) {
+      control[codim] = (4 * control[codim] + 1 * to[codim]) / 5;
+    }
     return control;
   }
 
