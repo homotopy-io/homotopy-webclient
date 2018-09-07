@@ -248,9 +248,13 @@ export class Diagram2D extends React.Component {
       `  ${sPosition.join(" ")}`,
     ].join(" ");
 
+    /* Remove stroke here to see triangles when debugging */
     return (
       <path
         d={path}
+        stroke={sGenerator.color}
+        strokeWidth={1}
+        vector-effect={"non-scaling-stroke"}
         fill={highlight ? "#f1c40f" : sGenerator.color}
         key={`surface#${s.join(":")}#${m.join(" ")}#${t.join(":")}`}
         onClick={e => this.onSelect(e, s, m, t)}>
