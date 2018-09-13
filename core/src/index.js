@@ -2,7 +2,7 @@ import "babel-polyfill";
 
 export { Generator } from "./generator";
 export { Diagram } from "./diagram";
-export { Content, Limit, LimitComponent, ForwardLimit, BackwardLimit } from "./limit";
+export { Content, SLimit, SLimitComponent } from "./slimit";
 export { Monotone } from "./monotone";
 export { attachGenerator, attach } from "./attach";
 

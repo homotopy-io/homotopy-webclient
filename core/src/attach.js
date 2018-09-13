@@ -1,7 +1,7 @@
 import { _assert } from "~/util/debug";
 import { Generator } from "~/generator";
 import { Diagram } from "~/diagram";
-import { LimitComponent, ForwardLimit, BackwardLimit, Content } from "~/limit";
+import { SLimitComponent, SLimit, Content } from "~/slimit";
 import * as Boundary from "~/boundary";
 
 export const attach = (diagram, build, path) => {

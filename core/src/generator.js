@@ -1,6 +1,6 @@
 import { _assert } from "~/util/debug";
 import { Diagram } from "~/diagram";
-import { Content } from "~/limit";
+import { Content } from "~/slimit";
 
 export class Generator {
 
