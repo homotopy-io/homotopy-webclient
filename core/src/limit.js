@@ -357,17 +357,10 @@ export class LimitComponent {
     _validate(this);
 
     if (this.n == 0) {
-      return new LimitComponent(0, {
-        type: this.type
-      });
+      return new LimitComponent(0, { type: this.type });
     }
 
-    return new LimitComponent(this.n, {
-      data,
-      sublimits,
-      first,
-      last
-    });
+    return new LimitComponent(this.n, { data, sublimits, first, last });
   }
 
   usesCell(generator) {
@@ -416,6 +409,9 @@ export class LimitComponent {
     return new LimitComponent(this.n, { data, sublimits, first, last });
   }
 
+  /**
+   * This is where the real meat of type checking happens
+   */
   typecheck(subdata, target_slice) {
     _assert(this.sublimits.length == subdata.length);
     _assert(this.n == target_slice.n + 1);
@@ -423,6 +419,7 @@ export class LimitComponent {
       // Find the preimage of this height
       let sublimit = this.sublimits[i];
       let preimage = sublimit.getTargetHeightPreimage(i);
+      // ... unfinished ...
     }
   }
 }
@@ -488,6 +485,7 @@ export class Limit extends Array {
     }
     return monotone;
   }
+
   // For each singular height, computes whether its neighbourhood is nontrivial
   analyzeSingularNeighbourhoods() {
     var singular_classification = [];
@@ -522,6 +520,7 @@ export class Limit extends Array {
     }
     return null;
   }
+
   getTargetHeightPreimage(target) {
     let offset = 0;
     let component_target = null;
@@ -606,21 +605,13 @@ export class Limit extends Array {
 
     if (first.length == 0) return second.copy();
     if (second.length == 0) return first.copy();
-
-    if (first.n == 0) {
-      return forward ? second.copy() : first.copy();
-    }
+    if (first.n == 0) return forward ? second.copy() : first.copy();
 
     let analysis1 = first.getComponentTargets();
     let c1 = 0;
     let c2 = 0;
     let new_components = [];
-    let c2_component = {
-      sublimits: [],
-      data: [],
-      first: null,
-      last: null
-    };
+    let c2_component = { sublimits: [], data: [], first: null, last: null };
 
     while (c1 < first.length) {
       let target1 = analysis1[c1];
@@ -675,27 +666,21 @@ export class Limit extends Array {
         if (c1 == first.length || analysis1[c1] >= second[c2].last) {
           if (forward) c2_component.data = second[c2].data.slice();
           while (c2_component.sublimits.length < c2_component.last - c2_component.first) {
-            let index = second[c2].sublimits.length - c2_component.last +
-              c2_component.first + c2_component.sublimits.length;
+            let index = second[c2].sublimits.length - c2_component.last
+              + c2_component.first + c2_component.sublimits.length;
             let second_sublimit = second[c2].sublimits[index];
             c2_component.sublimits.push(second_sublimit);
             if (!forward) c2_component.data.push(second[c2].data[index]);
           }
           new_components.push(new LimitComponent(this.n, c2_component));
-          c2_component = {
-            sublimits: [],
-            data: []
-          };
+          c2_component = { sublimits: [], data: [] };
           c2++;
         }
       } else if (target1 >= second[c2].last) {
         //c2_component.last = c2_component.first + c2_component.sublimits.length;
         if (forward) c2_component.data = second[c2].data.slice();
         new_components.push(new LimitComponent(this.n, c2_component));
-        c2_component = {
-          sublimits: [],
-          data: []
-        };
+        c2_component = { sublimits: [], data: [] };
         c2++;
 
       } else _assert(false);

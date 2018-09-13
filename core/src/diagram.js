@@ -119,42 +119,25 @@ export class Diagram {
       }
     }
 
-    if (goal_size === undefined) {
-      goal_size = goal.data.length;
-    }
+    if (goal_size === undefined) goal_size = goal.data.length;
 
-    if (max_height === undefined) {
-      max_height = this.data.length;
-    }
+    if (max_height === undefined) max_height = this.data.length;
 
     // If this diagram is too short to yield a possible match, return empty
-    if (start_height === undefined && max_height < goal_size) {
-      return [];
-    }
+    if (start_height === undefined && max_height < goal_size) return [];
 
-    if (start_height !== undefined && max_height < start_height + goal_size) {
-      return [];
-    }
+    if (start_height !== undefined && max_height < start_height + goal_size) return [];
 
     // The matches at least contain all the matches in the history of the diagram
     let matches = [];
-    if (max_height > 0 /*1*/ && start_height == undefined) {
-      matches = this.enumerate({
-        goal,
-        goal_size,
-        start_height,
-        max_height: max_height - 1
-      });
+    if (max_height > 0 && start_height == undefined) {
+      matches = this.enumerate({ goal, goal_size, start_height, max_height: max_height - 1 });
     }
 
     // If goal_size == 0, we can try to find a match to a subslice
     if (goal_size == 0) {
-      let slice_matches = this.getSlice({
-        height: max_height,
-        regular: true
-      }).enumerate({
-        goal: goal.source
-      });
+      let slice_matches = this.getSlice({ height: max_height, regular: true })
+        .enumerate({ goal: goal.source });
 
       for (let slice_match of slice_matches) {
         matches.push([max_height, ...slice_match]);
@@ -227,7 +210,13 @@ export class Diagram {
     return depths;
   }
 
-  // Normalizes the diagram with respect to the given incoming limits
+  /* Normalizes the diagram with respect to the given incoming limits
+   * Returns object with the following properties:
+   *  - diagram, the normalized diagram;
+   *  - embedding, a limit from the normalized diagram into the original diagram;
+   *  - factorizations, limits into the normalized diagram that factorize the originally-provided
+   *    limits through the embedding.
+   */
   normalize(limits) {
     for (let i = 0; i < limits.length; i++) {
       let limit = limits[i];
@@ -236,9 +225,7 @@ export class Diagram {
     }
 
     // Starting point is that all limits have themselves as the factorization
-    for (let limit of limits) {
-      limit.factorization = limit.copy();
-    }
+    let factorizations = limits.slice();
 
     // Base case: 0-diagrams always normalize to themselves.
     if (this.n == 0) {
@@ -247,7 +234,7 @@ export class Diagram {
 
     // Recursive case
     let new_data = [];
-    let new_sublimits = [];
+    let new_components = [];
     for (let i = 0; i < this.data.length; i++) {
 
       // Obtain this singular slice
@@ -272,10 +259,15 @@ export class Diagram {
       let r = slice.normalize(level_limits);
 
       // Store the embedding data to build the final embedding limit
+      if (r.embedding.length > 0) {
+        //new_components.push(new LimitComponent()
+      }
       new_sublimits.push(r.embedding);
 
       // Store the new data for the normalized diagram at this level
-      let new_content = new Content(this.data[i].forward_limit.factorization, this.data[i].backward_limit.factorization);
+      let new_content = new Content(
+        this.data[i].forward_limit.factorization,
+        this.data[i].backward_limit.factorization);
       new_data.push(new_content);
 
       // Update the factorizations of the limits which have been passed in
@@ -298,9 +290,7 @@ export class Diagram {
     }
 
     // Build new diagram and its embedding
-    let diagram = new Diagram(this.n, {
-      data: new_data
-    });
+    let diagram = new Diagram(this.n, { data: new_data });
 
     // TODO: Here is a bug: new_components is not defined.
     let embedding = new ForwardLimit(this.n, new_components);
@@ -318,6 +308,7 @@ export class Diagram {
         in_image = true;
         break;
       }
+      
       if (in_image) continue;
 
       // We've found a vacuum bubble not in the image of any incoming limit, so remove it.
