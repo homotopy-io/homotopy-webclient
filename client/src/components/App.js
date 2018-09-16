@@ -54,8 +54,8 @@ const Logo = styled.div`
   padding: 16px;
 `;
 
+//background: #bdc3c7;
 const Content = styled.div`
-  background: #bdc3c7;
   display: flex;
   flex-direction: column;
   flex: 1;

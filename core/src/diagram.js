@@ -795,7 +795,6 @@ export class Diagram {
       if (D1.type == this.type)[I1, I2, T] = [L2, new BackwardLimit(0, [], null, 0), D2];
       else if (this.type == D2.type)[I1, I2, T] = [new ForwardLimit(0, [], null, 0), L1, D1];
       else if (D1.type != D2.type) throw "no unification at codimension " + depth + ", base case has all types distinct";
-      else if (L1.framing != L2.framing) throw "no unification at codimension " + depth + ", base case has inconsistent framings";
       else [I1, I2, T] = [new ForwardLimit(0, [], null, 0), new BackwardLimit(0, [], null, 0), D1];
       _assert(T instanceof Diagram && I1 instanceof ForwardLimit && I2 instanceof BackwardLimit);
       return {
@@ -908,54 +907,6 @@ export class Diagram {
       if (top_types.length > 1) throw "no unification, multiple top types in base case";
       let type = top_types[0];
 
-      // Find framings for cocone maps
-      let upper_framings = [];
-      // Count how many upper framings we need to determine
-      let framings_to_determine = 0;
-      for (let i = 0; i < upper.length; i++) {
-        if (upper[i].type != type) framings_to_determine++;
-      }
-      while (framings_to_determine > 0) {
-        let start_determined = framings_to_determine;
-        for (let i = 0; i < lower.length; i++) {
-          let l = lower[i];
-          let ll = l.left_limit;
-          let rl = l.right_limit;
-          let llf = ll.framing;
-          let rlf = rl.framing;
-          let li = l.left_index;
-          let ri = l.right_index;
-          if (llf != null && rlf != null && llf != rlf) throw "no unification, base case has inconsistent framings";
-          if (upper[li].type != type && upper[ri].type != type) {
-            if (upper_framings[li] != null && upper_framings[ri] != null) {
-              if (upper_framings[li] != upper_framings[ri]) throw "no unification, base case has inconsistent framings";
-              continue;
-            } else if (upper_framings[li] != null) {
-              upper_framings[ri] = upper_framings[li];
-            } else if (upper_framings[ri] != null) {
-              upper_framings[li] = upper_framings[ri];
-            }
-            continue; // Handle later when we have more information
-          }
-          if (upper[li].type != type) {
-            _assert(upper[ri].type == type);
-            _assert(rlf != null);
-            if (upper_framings[li] == null) {
-              upper_framings[li] = rlf;
-              framings_to_determine--;
-            } else if (upper_framings[l.left_index] != rlf) throw "no unification, base case has no colimit";
-          }
-          if (upper[l.right_index].type != type) {
-            _assert(upper[l.left_index].type == type);
-            _assert(llf != null);
-            if (upper_framings[l.right_index] == null) {
-              upper_framings[l.right_index] = llf;
-              framings_to_determine--;
-            } else if (upper_framings[l.right_index] != llf) throw "no unification, base case has no colimit";
-          }
-        }
-        if (framings_to_determine == start_determined) throw "no unification, base case cannot complete";
-      }
 
       // We must be approaching the top type with a consistent framing
       /*
@@ -979,11 +930,9 @@ export class Diagram {
       for (let i = 0; i < upper.length; i++) {
         if (upper[i].type == type) limits.push(new ForwardLimit(0, []));
         else {
-          let framing = upper_framings[i];
-          _assert(framing != null);
           limits.push(new ForwardLimit(0, [new LimitComponent(0, {
             type
-          })], framing));
+          })], null));
         }
       }
 

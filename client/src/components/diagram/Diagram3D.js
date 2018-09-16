@@ -4,7 +4,6 @@ import Spinner from "react-spinkit";
 import * as THREE from "three";
 import OrbitControls from "three-orbit-controls";
 import { connect } from "react-redux";
-
 import * as Core from "homotopy-core";
 
 import compose from "~/util/compose";
@@ -13,7 +12,10 @@ import withSize from "~/components/misc/Sized";
 import withLayout from "~/components/diagram/withLayout";
 import { getGenerators } from "~/state/store/signature";
 
-import { Geometry } from "~/util/3d/geometry";
+import { Surface } from "~/util/3d/surface";
+import { subdivideSurface } from "~/util/3d/subdivision";
+import { groupSurface } from "~/util/3d/group";
+import { indexBuffer, vertexBuffer } from "~/util/3d/buffers";
 
 export default compose(
   withLayout,
@@ -121,133 +123,226 @@ export class Diagram3D extends React.Component {
     // TODO: Remove old scene contents for rerender
 
     for (let point of this.props.layout.points) {
-      this.createPoint(point);
+      // this.createPoint(point);
     }
 
     for (let { source, target } of this.props.layout.edges) {
-      this.createWire(source, target);
+      //this.createWire(source, target);
     }
 
-    this.createSurfaces();
+    // this.createSurfaces();
 
     // this.createScaffold();
+
+    this.createQuads();
   }
 
-  createSurfaces() {
-    let geometry = new Geometry(0);
-    let indices = new Map();
-
-    // Add points
-    for (let point of this.props.layout.points) {
-      let generator = this.getGenerator(point);
-
-      if (generator.generator.n < this.diagram.dimension - 2) {
-        continue;
-      }
-
-      let position = this.getPosition(point);
-      indices.set(point.join(":"), geometry.addVertex(
-        [position.x, position.y, position.z]
-      ));
-    }
-
+  createQuads() {
     // Create edge graph
     let graph = new Graph(p => p.join(":"));
-
     for (let { source, target, codim, dir } of this.props.layout.edges) {
       graph.addEdge(source, target, { codim, dir });
     }
 
-    // Create triangle faces
-    let faces = new Map();
+    // Obtain quads
+    let quads = [];
 
-    for (let { a, b, c, ab, bc } of findSurfaces(this.diagram, this.props.layout, graph)) {
-      let generator = this.getGenerator(a);
-      let id = generator.generator.id;
+    for (let [a, b, ab] of graph.edges()) {
+      for (let [c, ac] of graph.edgesFrom(a)) {
+        for (let [d, bd] of graph.edgesFrom(b)) {
+          let cd = graph.getEdge(c, d);
 
-      if (!faces.has(id)) {
-        faces.set(id, []);
+          if (!cd || b.join(":") == c.join(":")) {
+            continue;
+          }
+
+          quads.push({ a, b, c, d, ab, ac, bd, cd });
+        }
       }
-
-      if ((ab.dir * bc.dir) * (ab.codim - bc.codim) <= 0) {
-        [a, c] = [c, a];
-      }
-
-      let aIndex = indices.get(a.join(":"));
-      let bIndex = indices.get(b.join(":"));
-      let cIndex = indices.get(c.join(":"));
-
-      faces.get(id).push(...geometry.addSurface(aIndex, bIndex, cIndex));
     }
 
-    // Fix wires and boundary points
-    for (let { source, target } of this.props.layout.edges) {
-      let sGenerator = this.getGenerator(source);
-      let tGenerator = this.getGenerator(target);
+    let vertices = [];
+    let annotations = [];
+    let pointIndices = new Map();
+    let cells = [];
 
-      let boundary = (
-        this.onBoundary(source) &&
-        this.onBoundary(target) &&
-        sGenerator.generator.n >= this.diagram.n - 2 &&
-        tGenerator.generator.n >= this.diagram.n - 2
+    for (let point of this.props.layout.points) {
+      let generator = this.getGenerator(point);
+
+      if (generator.generator.n >= this.diagram.n - 2) {
+        pointIndices.set(point.join(":"), vertices.length);
+        vertices.push(this.getPosition(point));
+        annotations.push(generator);
+      }
+    }
+
+    // Render quads
+    for (let quad of quads) {
+      let ordinary = (
+        quad.ab.codim == 0 &&
+        quad.cd.codim == 0 &&
+        quad.ac.codim == 1 &&
+        quad.bd.codim == 1
       );
 
-      let wire = (
-        sGenerator.generator.n >= this.diagram.n - 1 &&
-        tGenerator.generator.n >= this.diagram.n - 1
+      let expand = (
+        quad.ab.codim == 0 &&
+        quad.ac.codim == 0 &&
+        quad.bd.codim == 1 &&
+        quad.cd.codim == 1 &&
+        quad.bd.dir > 0
       );
 
-      if (!wire && !boundary) {
+      let contract = (
+        quad.ab.codim == 1 &&
+        quad.ac.codim == 1 &&
+        quad.bd.codim == 0 &&
+        quad.cd.codim == 0 &&
+        quad.ab.dir > 0
+      );
+
+      if (!ordinary && !expand && !contract) {
         continue;
       }
 
-      let sourceIndex = indices.get(source.join(":"));
-      let targetIndex = indices.get(target.join(":"));
-      geometry.fixLine(sourceIndex, targetIndex);
-    }
+      let { a, b, c, d } = quad;
 
-    // Optimize
-    // geometry.optimize(100);
-
-    // Create geometry
-    for (let [id, surfaceFaces] of faces) {
-      let generator = this.props.generators[id];
-      let surfaceGeometry = new THREE.Geometry();
-      surfaceGeometry.vertices.push(...geometry.vertices.map(v => new THREE.Vector3(...v)));
-      surfaceGeometry.faces.push(...surfaceFaces.map(face => new THREE.Face3(...face)));
-      surfaceGeometry.computeVertexNormals();
-      surfaceGeometry.computeFaceNormals();
-
-      let material = new THREE.MeshLambertMaterial({
-        color: new THREE.Color(generator.color),
-        side: THREE.DoubleSide
-      });
-      let mesh = new THREE.Mesh(surfaceGeometry, material);
-      this.scene.add(mesh);
-
-
-      let wireGeo = new THREE.WireframeGeometry( surfaceGeometry ); // or WireframeGeometry( geometry )
-      let wireMat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
-      let wireframe = new THREE.LineSegments( wireGeo, wireMat );
-      this.scene.add( wireframe );
-    }
-  }
-
-  onBoundary(point) {
-    const check = (diagram, point) => {
-      if (diagram.n == 0) {
-        return false;
+      let aGenerator = this.getGenerator(a);
+      if (aGenerator.generator.n < this.diagram.n - 2) {
+        continue;
       }
 
-      let [height, ...rest] = point;
-      if (height < 0 || height > diagram.data.length * 2) {
-        return true;
-      } else {
-        return check(diagram.getSlice(height), rest);
+      if (ordinary) {
+        if (quad.ab.dir < 0) {
+          [a, b, c, d] = [b, a, d, c];
+        }
+
+        if (quad.ac.dir < 0) {
+          [a, b, c, d] = [c, d, a, b];
+        }
+
       }
+
+      if (contract) {
+        if (quad.bd.dir > 0) {
+          [a, b, c, d] = [a, c, b, d];
+        }
+      }
+
+      if (expand) {
+        if (quad.ab.dir < 0) {
+          [a, b, c, d] = [d, b, c, a];
+        }
+      }
+
+      cells.push([
+        pointIndices.get(a.join(":")),
+        pointIndices.get(b.join(":")),
+        pointIndices.get(d.join(":")),
+        pointIndices.get(c.join(":"))
+      ]);
+    }
+
+    let merge = (...generators) => {
+      generators.sort((a, b) => a.generator.n - b.generator.n);
+      return generators[0];
     };
 
-    return check(this.diagram, point);
+    let surface = Surface.fromCells(vertices.map(v => [v.x, v.y, v.z]), cells, annotations);
+    surface = subdivideSurface(surface, merge, merge);
+    surface = subdivideSurface(surface, merge, merge);
+    surface = subdivideSurface(surface, merge, merge);
+
+    // for (let edge of surface.edges.values()) {
+    //   const sourceVec = new THREE.Vector3(...edge.vertices[0].position);
+    //   const targetVec = new THREE.Vector3(...edge.vertices[1].position);
+    //   const dirVec = targetVec.clone();
+    //   dirVec.sub(sourceVec);
+    //   const length = dirVec.length();
+    //   dirVec.normalize();
+
+    //   let wire = edge.vertices[0].annotation.generator.n == 2 && edge.vertices[1].annotation.generator.n == 2;
+    //   let color = 0xFFFFFF;
+
+    //   if (!wire) continue;
+
+    //   const arrow = new THREE.ArrowHelper(dirVec, sourceVec, length, color, 0.05, 0.05);
+    //   this.scene.add(arrow);
+    // }
+
+    // for (let vertex of surface.vertices.values()) {
+    //   let color = [null, 0xFF0000, 0x00FF00, 0x0000FF][vertex.annotation.generator.n];
+    //   let sphere = new THREE.Mesh(
+    //     new THREE.SphereGeometry(0.1, 4, 4),
+    //     new THREE.MeshLambertMaterial({ color })
+    //   );
+
+    //   sphere.position.copy(new THREE.Vector3(...vertex.position));
+    //   this.scene.add(sphere);
+    // }
+    
+    let groups = groupSurface(surface, (a, b) => a.generator.n == b.generator.n);
+
+    for (let group of groups) {
+      let generator = group.values().next().value.annotation;
+      let codimension = this.diagram.n - generator.generator.n;
+
+      if (codimension == 2) {
+        let filter = (...vs) => vs.some(v => group.has(v));
+
+        let bufferGeometry = new THREE.BufferGeometry();
+        bufferGeometry.setIndex(new THREE.BufferAttribute(indexBuffer(surface, filter), 3));
+        bufferGeometry.addAttribute("position", new THREE.BufferAttribute(vertexBuffer(surface), 3));
+        bufferGeometry.computeVertexNormals();
+        bufferGeometry.computeFaceNormals();
+
+        let geometry = new THREE.Geometry();
+        geometry.fromBufferGeometry(bufferGeometry);
+        geometry.computeVertexNormals();
+        geometry.computeFaceNormals();
+
+        let material = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(generator.color),
+          side: THREE.DoubleSide
+        });
+
+        let mesh = new THREE.Mesh(geometry, material);
+        this.scene.add(mesh);
+
+        // let wireGeo = new THREE.WireframeGeometry( geometry ); // or WireframeGeometry( geometry )
+        // let wireMat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
+        // let wireframe = new THREE.LineSegments( wireGeo, wireMat );
+        // this.scene.add( wireframe );
+      } else if (codimension == 1) {
+        let vertices = getWireVertices(surface, group, this.diagram.n);
+        let curve = new THREE.CurvePath();
+
+        for (let i = 0; i < vertices.length - 1; i++) {
+          curve.add(new THREE.LineCurve3(
+            new THREE.Vector3(...vertices[i].position),
+            new THREE.Vector3(...vertices[i + 1].position)
+          ));
+        }
+
+        let color = new THREE.Color(generator.color);
+
+        let geometry = new THREE.TubeGeometry(curve, vertices.length, 0.05, 8, false, true);
+        let material = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+        let wire = new THREE.Mesh(geometry, material);
+
+        this.scene.add(wire);
+      } else if (codimension == 0) {
+        let color = new THREE.Color(generator.color); 
+        let sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(0.1, 32, 32),
+          new THREE.MeshLambertMaterial({ color })
+        );
+
+        sphere.position.set(...group.values().next().value.position);
+        this.scene.add(sphere);
+      }
+    }
+
   }
 
   createScaffold() {
@@ -259,45 +354,9 @@ export class Diagram3D extends React.Component {
       const length = dirVec.length();
       dirVec.normalize();
 
-      const arrow = new THREE.ArrowHelper(dirVec, sourceVec, length, 0xFFFFFF, 0.01, 0.01);
+      const arrow = new THREE.ArrowHelper(dirVec, sourceVec, length, 0xFFFFFF, 0.05, 0.05);
       this.scene.add(arrow);
     }
-  }
-
-  createPoint(point) {
-    let generator = this.getGenerator(point);
-
-    if (generator.generator.n < this.diagram.n) {
-      return;
-    }
-
-    let color = new THREE.Color(generator.color); 
-    let sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.1, 32, 32),
-      new THREE.MeshLambertMaterial({ color })
-    );
-
-    sphere.position.copy(this.getPosition(point));
-    this.scene.add(sphere);
-  }
-
-  createWire(s, t) {
-    let sGenerator = this.getGenerator(s);
-    let color = new THREE.Color(sGenerator.color);
-
-    if (sGenerator.generator.n < this.diagram.n - 1) {
-      return;
-    }
-
-    let sPosition = this.getPosition(s);
-    let tPosition = this.getPosition(t);
-
-    let path = new THREE.LineCurve3(sPosition, tPosition);
-    let geometry = new THREE.TubeGeometry(path, 8, 0.05, 8, false, true);
-    let material = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
-    let wire = new THREE.Mesh(geometry, material);
-
-    this.scene.add(wire);
   }
 
   getGenerator(point) {
@@ -319,24 +378,45 @@ export class Diagram3D extends React.Component {
 
 }
 
-const findSurfaces = (diagram, layout, graph) => {
-  // Triangles
-  let surfaces = [];
-  for (let [a, b, ab] of graph.edges()) {
-    let aType = Core.Geometry.typeAt(diagram, a);
 
-    if (aType.n < diagram.n - 2) {
-      continue;
-    }
+const getWireVertices = (surface, group, dimension) => {
+  let edgesFrom = new Map();
+  let edgesTo = new Map();
 
-    for (let [c, bc] of graph.edgesFrom(b)) {
-      surfaces.push({
-        a, b, c, ab, bc
-      });
+  let condition = vertex => (
+    group.has(vertex) ||
+    vertex.annotation.generator.n == dimension
+  );
+
+  for (let vertex of group) {
+    for (let edge of vertex.edges.values()) {
+      if (condition(edge.vertices[0]) && condition(edge.vertices[1])) {
+        edgesFrom.set(edge.vertices[0], edge.vertices[1]);
+        edgesTo.set(edge.vertices[1], edge.vertices[0]);
+      }
     }
   }
 
-  return surfaces;
+  // Find first vertex
+  let first = null;
+
+  for (let vertex of edgesFrom.keys()) {
+    if (!edgesTo.has(vertex)) {
+      first = vertex;
+      break;
+    }
+  }
+
+  // Now traverse in order
+  let current = first;
+  let wire = [current];
+
+  while (edgesFrom.has(current)) {
+    current = edgesFrom.get(current);
+    wire.push(current);
+  }
+
+  return wire;
 };
 
 export const Loading = () =>

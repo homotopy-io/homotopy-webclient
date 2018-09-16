@@ -26,6 +26,7 @@
     "babel-polyfill": "^6.26.0",
     "dot-prop-immutable": "^1.4.0",
     "homotopy-core": "0.1.0",
+    "mda": "^1.1.1",
     "react": "16.4.2",
     "react-color": "^2.14.1",
     "react-dom": "16.4.2",
