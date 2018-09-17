@@ -13,16 +13,16 @@ import { Monotone } from "~/monotone";
         - type :: String // Makes no sense to have an array here
 - Content(n) comprises:
     - for all n:
-        - forward_limit :: SLimit(n)
-        - backward_limit :: SLimit(n)
-- SLimit(n) extends Array comprises: (this is a limit between n-diagrams)
+        - forward_limit :: Limit(n)
+        - backward_limit :: Limit(n)
+- Limit(n) extends Array comprises: (this is a limit between n-diagrams)
     - for all n:
-        - Array(SLimitComponent(n))
-- SLimitComponent(n) comprises: (this is a component of a limit between n-diagrams)
+        - Array(LimitComponent(n))
+- LimitComponent(n) comprises: (this is a component of a limit between n-diagrams)
     - for n > 0:
         - source_data :: Array(Content(n-1))
         - target_data :: Content(n-1)
-        - sublimits :: Array(SLimit(n-1))
+        - sublimits :: Array(Limit(n-1))
         - first :: Natural, the first regular position that this affects
     - for n == 0:
         - type :: Generator
@@ -36,8 +36,8 @@ export class Content {
     this.backward_limit = backward_limit;
     _assert(isNatural(this.n));
     _assert(this.n >= 0);
-    _assert(this.forward_limit instanceof SLimit);
-    _assert(this.backward_limit instanceof SLimit);
+    _assert(this.forward_limit instanceof Limit);
+    _assert(this.backward_limit instanceof Limit);
     _assert(this.forward_limit.n == this.n);
     _assert(this.backward_limit.n == this.n);
     Object.freeze(this);
@@ -150,13 +150,13 @@ export class Content {
     // G - Prepare the second new forward limit by selecting only the chosen component, and adjusting first/last
     let f_new_2;
     if (f_old) {
-      f_new_2 = new SLimit(this.n, [f_old.copy({
+      f_new_2 = new Limit(this.n, [f_old.copy({
         first: f_old.first + f_delta + b_delta
         /*,
         last: f_old.last + f_delta + b_delta*/
       })], null);
     } else {
-      f_new_2 = new SLimit(this.n, [], null);
+      f_new_2 = new Limit(this.n, [], null);
     }
 
     // F - Prepare the first new backward limit
@@ -181,17 +181,17 @@ export class Content {
 
     // H - Prepare the second new backward limit
 
-    let b_new_2 = b_old ? new SLimit(this.n, [b_old], null) : new SLimit(this.n, [], null);
+    let b_new_2 = b_old ? new Limit(this.n, [b_old], null) : new Limit(this.n, [], null);
 
     // C - Prepare the first sublimit - tricky as we need the reversed version of f_old
     // OPTIMIZATION: we don't really need to reverse all of f, just f_old
     let sublimit_1;
     if (f_old) {
-      sublimit_1 = new SLimit(this.n, [f[f_index].copy(
+      sublimit_1 = new Limit(this.n, [f[f_index].copy(
           { first: f[f_index].first + f_delta, last: f[f_index].last + f_delta }
         )], null);
     } else {
-      new SLimit(this.n, [], null);
+      new Limit(this.n, [], null);
     }
     _validate(sublimit_1);
 
@@ -218,7 +218,7 @@ export class Content {
     _validate(f_new_1, b_new_1, f_new_2, b_new_2);
 
     // Return the data of the expansion, an array of Content of length 2,
-    // and the corresponding sublimits, an array of BackwardLimit of length 2.
+    // and the corresponding sublimits, an array of Limit of length 2.
     return {
       data: [new Content(this.n, f_new_1, b_new_1), new Content(this.n, f_new_2, b_new_2)],
       sublimits: [sublimit_1, sublimit_2]
@@ -265,7 +265,7 @@ export class Content {
 }
 
 
-export class SLimitComponent {
+export class LimitComponent {
 
   constructor(n, args) {
     this.n = n;
@@ -304,7 +304,7 @@ export class SLimitComponent {
       _assert(this.sublimits instanceof Array);
       _assert(this.sublimits.length == this.source_data.length);
       for (let i = 0; i < this.sublimits.length; i++) {
-        _assert(this.sublimits[i] instanceof SLimit);
+        _assert(this.sublimits[i] instanceof Limit);
         _assert(this.sublimits[i].n == this.n - 1);
         _validate(this.sublimits[i]);
         _assert(this.source_data[i] instanceof Content);
@@ -352,9 +352,9 @@ export class SLimitComponent {
     target_data = this.target_data, source_type = this.source_type, target_type = this.target_type} = this) {
     _validate(this);
     if (this.n == 0) {
-      return new SLimitComponent(0, { source_type, target_type });
+      return new LimitComponent(0, { source_type, target_type });
     }
-    return new SLimitComponent(this.n, { source_data, target_data, sublimits, first });
+    return new LimitComponent(this.n, { source_data, target_data, sublimits, first });
   }
 
   usesCell(generator) {
@@ -373,12 +373,12 @@ export class SLimitComponent {
 
   pad(depth) {
     if (depth == 1) {
-      return new SLimitComponent(this.n, { source_data: this.source_data, target_data: this.target_data, sublimits: this.sublimits, first: this.first + 1 });
+      return new LimitComponent(this.n, { source_data: this.source_data, target_data: this.target_data, sublimits: this.sublimits, first: this.first + 1 });
     } else if (depth > 1) {
       let target_data = this.target_data.map(content => content.pad(depth - 1));
       let source_data = this.source_data.map(content => content.pad(depth - 1));
       let sublimits = this.sublimits.map(sublimit => sublimit.pad(depth - 1));
-      return new SLimitComponent(this.n, { source_data, target_data, sublimits, first: this.first });
+      return new LimitComponent(this.n, { source_data, target_data, sublimits, first: this.first });
     }
   }
 
@@ -390,7 +390,7 @@ export class SLimitComponent {
     let source_data = this.source_data.map(content => content.deepPad(rest));
     let target_data = this.target_data.map(content => content.deepPad(rest));
     let sublimits = this.sublimits.map(limit => limit.deepPad(rest));
-    return new SLimitComponent(this.n, { source_data, target_data, sublimits, first: this.first + height });
+    return new LimitComponent(this.n, { source_data, target_data, sublimits, first: this.first + height });
   }
 
   /**
@@ -408,7 +408,7 @@ export class SLimitComponent {
   }
 }
 
-export class SLimit extends Array {
+export class Limit extends Array {
 
   constructor(n, components) {
     super(...components);
@@ -419,7 +419,7 @@ export class SLimit extends Array {
   validate() {
     _assert(isNatural(this.n));
     for (let i = 0; i < this.length; i++) {
-      _assert(this[i] instanceof SLimitComponent);
+      _assert(this[i] instanceof LimitComponent);
       _assert(this[i].n == this.n);
       if (i != 0) _assert(this[i].first >= this[i - 1].last);
       this[i].validate();
@@ -567,22 +567,22 @@ export class SLimit extends Array {
       components.push(shifted);
     }
 
-    return new SLimit(this.n, components);
+    return new Limit(this.n, components);
   }
 
   subLimit(n, forward) {
     for (let i = 0; i < this.length; i++) {
       let component = this[i];
-      if (n < component.first) return new SLimit(this.n - 1, []);
+      if (n < component.first) return new Limit(this.n - 1, []);
       if (n < component.last) return component.sublimits[n - component.first];
     }
-    return new SLimit(this.n - 1, []);
+    return new Limit(this.n - 1, []);
   }
 
   compose(first, forward) { // See 2017-ANC-19
     _assert(forward === undefined);
     let second = this;
-    _assert(first instanceof SLimit && second instanceof SLimit);
+    _assert(first instanceof Limit && second instanceof Limit);
     _validate(first, second);
     _assert(first.n == second.n);
 
@@ -590,7 +590,7 @@ export class SLimit extends Array {
     if (first.length == 0) return second;
     if (second.length == 0) return first;
     if (first.n == 0) {
-      return new SLimit(0, [ new SLimitComponent(0, {})])
+      return new Limit(0, [ new LimitComponent(0, {})])
       //return forward ? second.copy() : first.copy();
     }
 
@@ -659,14 +659,14 @@ export class SLimit extends Array {
             c2_component.sublimits.push(second_sublimit);
             if (!forward) c2_component.source_data.push(second[c2].source_data[index]);
           }
-          new_components.push(new SLimitComponent(this.n, c2_component));
+          new_components.push(new LimitComponent(this.n, c2_component));
           c2_component = { sublimits: [], source_data: [], target_data: [] };
           c2++;
         }
       } else if (target1 >= second[c2].last) {
         //c2_component.last = c2_component.first + c2_component.sublimits.length;
         c2_component.target_data = second[c2].target_data.slice();
-        new_components.push(new SLimitComponent(this.n, c2_component));
+        new_components.push(new LimitComponent(this.n, c2_component));
         c2_component = { sublimits: [], source_data: [], target_data: [] };
         c2++;
 
@@ -687,10 +687,10 @@ export class SLimit extends Array {
         c2_component.sublimits.push(second_sublimit);
       }
       c2_component.source_data = second[c2].source_data.slice();
-      new_components.push(new SLimitComponent(this.n, c2_component));
+      new_components.push(new LimitComponent(this.n, c2_component));
       c2_component = { sublimits: [] };
     }
-    return new SLimit(this.n, new_components);
+    return new Limit(this.n, new_components);
   }
 
   // Remove a particular level from the source of the limit, assumed to be acted on by a unique component
@@ -734,12 +734,12 @@ export class SLimit extends Array {
 
   pad(depth) {
     let components = [...this].map(component => component.pad(depth));
-    return new SLimit(this.n, components);
+    return new Limit(this.n, components);
   }
 
   deepPad(position) {
     let components = [...this].map(component => component.deepPad(position));
-    return new SLimit(this.n, components);
+    return new Limit(this.n, components);
   }
 
   /*
@@ -751,11 +751,11 @@ export class SLimit extends Array {
   }
   */
 
-  /*- SLimitComponent(n) comprises: (this is a component of a limit between n-diagrams)
+  /*- LimitComponent(n) comprises: (this is a component of a limit between n-diagrams)
     - for n > 0:
         - source_data :: Array(Content(n-1))
         - target_data :: Content(n-1)
-        - sublimits :: Array(SLimit(n-1))
+        - sublimits :: Array(Limit(n-1))
         - first :: Natural, the first regular position that this affects
     - for n == 0:
         - type :: Generator
@@ -794,7 +794,7 @@ export class SLimit extends Array {
   }
 
   copy({ components = [...this], n = this.n } = this) {
-    return new SLimit(n, components);
+    return new Limit(n, components);
   }
 
   subLimit(n) {

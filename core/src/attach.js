@@ -1,7 +1,7 @@
 import { _assert } from "~/util/debug";
 import { Generator } from "~/generator";
 import { Diagram } from "~/diagram";
-import { SLimitComponent, SLimit, Content } from "~/limit";
+import { LimitComponent, Limit, Content } from "~/limit";
 import * as Boundary from "~/boundary";
 
 export const attach = (diagram, build, path) => {
@@ -55,12 +55,12 @@ const buildAttachmentContent = generator => (diagram, point, boundary) => {
   let source = !inverse ? generator.source : generator.target;
   let target = !inverse ? generator.target : generator.source;
 
-  if (diagram.n == 0) { // Confused about how to convert this to SLimitComponent
-    let forwardComponent = new SLimitComponent(0, { source_type: diagram.type, target_type: generator });
-    let backwardComponent = new SLimitComponent(0, { source_type: target.type, target_type: generator });
+  if (diagram.n == 0) { // Confused about how to convert this to LimitComponent
+    let forwardComponent = new LimitComponent(0, { source_type: diagram.type, target_type: generator });
+    let backwardComponent = new LimitComponent(0, { source_type: target.type, target_type: generator });
 
-    let forwardLimit = new SLimit(0, [forwardComponent]);
-    let backwardLimit = new SLimit(0, [backwardComponent]);
+    let forwardLimit = new Limit(0, [forwardComponent]);
+    let backwardLimit = new Limit(0, [backwardComponent]);
 
     return new Content(0, forwardLimit, backwardLimit);
   }

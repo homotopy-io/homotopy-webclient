@@ -1,6 +1,6 @@
 import { _assert, isNatural, _propertylist } from "~/util/debug";
 import * as ArrayUtil from "~/util/array";
-import { SLimit, Content, SLimitComponent } from "~/limit";
+import { Limit, Content, LimitComponent } from "~/limit";
 import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
 
@@ -220,7 +220,7 @@ export class Diagram {
   normalize(limits) {
     for (let i = 0; i < limits.length; i++) {
       let limit = limits[i];
-      _assert(limit instanceof SLimit);
+      _assert(limit instanceof Limit);
       _assert(limit.n == this.n);
     }
 
@@ -229,7 +229,7 @@ export class Diagram {
 
     // Base case: 0-diagrams always normalize to themselves.
     if (this.n == 0) {
-      return { diagram: this, embedding: new SLimit(0, []) };
+      return { diagram: this, embedding: new Limit(0, []) };
     }
 
     // Recursive case
@@ -260,7 +260,7 @@ export class Diagram {
 
       // Store the embedding data to build the final embedding limit
       if (r.embedding.length > 0) {
-        //new_components.push(new SLimitComponent()
+        //new_components.push(new LimitComponent()
       }
       new_sublimits.push(r.embedding);
 
@@ -284,7 +284,7 @@ export class Diagram {
 
         // if it's a forward limit, update the data about its target
         // ??????????????
-        if (limit instanceof SLimit /* WRONG!! */ ) {
+        if (limit instanceof Limit /* WRONG!! */ ) {
           limit[index].data = [new_content.copy()];
         }
       }
@@ -294,7 +294,7 @@ export class Diagram {
     let diagram = new Diagram(this.n, { data: new_data });
 
     // TODO: Here is a bug: new_components is not defined.
-    let embedding = new SLimit(this.n, new_components);
+    let embedding = new Limit(this.n, new_components);
 
     // We might still have top-level bubbles, so adjust for this
     for (let i = 0; i < diagram.data.length; i++) {
@@ -377,7 +377,7 @@ export class Diagram {
     _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
-      return new SLimit(0, [new SLimitComponent(0, { source_type: subdiagram.type, target_type: type })]);
+      return new Limit(0, [new LimitComponent(0, { source_type: subdiagram.type, target_type: type })]);
     }
 
     let [height, ...rest] = position;
@@ -397,8 +397,8 @@ export class Diagram {
     let target_data = new Content(this.n - 1, source_first_limit, source_second_limit);
     //let source_data = subdiagram.data.slice(height, height + subdiagram.data.length);
     let source_data = this.data.slice(height, height + subdiagram.data.length);
-    let limit_component = new SLimitComponent(this.n, { first: height, source_data, target_data, sublimits });
-    return new SLimit(this.n, [limit_component], null);
+    let limit_component = new LimitComponent(this.n, { first: height, source_data, target_data, sublimits });
+    return new Limit(this.n, [limit_component], null);
   }
 
   // Create the limit which inflates the point at the given position, to a given subdiagram
@@ -410,8 +410,8 @@ export class Diagram {
     _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
-      let component = new SLimitComponent(0, { source_type: subdiagram.type, target_type: this.type });
-      return new SLimit(0, [component]);
+      let component = new LimitComponent(0, { source_type: subdiagram.type, target_type: this.type });
+      return new Limit(0, [component]);
     }
 
     let [first, ...rest] = position;
@@ -426,8 +426,8 @@ export class Diagram {
     let source_data = Content.deepPadData(subdiagram.data, rest);
     let target_data = this.data.slice(first, 1); // ??????
 
-    let limit_component = new SLimitComponent(this.n, { first, source_data, target_data, sublimits });
-    return new SLimit(this.n, [limit_component], null);
+    let limit_component = new LimitComponent(this.n, { first, source_data, target_data, sublimits });
+    return new Limit(this.n, [limit_component], null);
   }
 
   singularData() {
@@ -479,7 +479,7 @@ export class Diagram {
 
     let right = directions[1];
     let forward_limit = this.getContractionLimit(location, right);
-    let backward_limit = new SLimit(this.n, []);
+    let backward_limit = new Limit(this.n, []);
     return new Content(this.n, forward_limit, backward_limit);
   }
 
@@ -488,7 +488,7 @@ export class Diagram {
     let location = point.map(x => ({ height: Math.floor(x / 2), regular: x % 2 == 0 }));
     //throw "not yet implemented";
     let backward_limit = this.getExpansionLimit(location, directions[1] == 1);
-    let forward_limit = new SLimit(this.n, []);
+    let forward_limit = new Limit(this.n, []);
     return new Content(this.n, forward_limit, backward_limit);
   }
 
@@ -506,8 +506,8 @@ export class Diagram {
       let target_data = this.data[first];
       if (up) {
         let expansion = target_data.getExpansionData(location[1].height, r1, r2, s);
-        let component = new SLimitComponent(this.n, { source_data: expansion.data, target_data, sublimits: expansion.sublimits, first });
-        return new SLimit(this.n, [component]);
+        let component = new LimitComponent(this.n, { source_data: expansion.data, target_data, sublimits: expansion.sublimits, first });
+        return new Limit(this.n, [component]);
       } else {
         let reverse_content = target_data.reverse();
         let reverse_expansion = reverse_content.getExpansionData(location[1].height, r2, r1, s);
@@ -516,8 +516,8 @@ export class Diagram {
         let data_1_rev = reverse_expansion.data[1].reverse(new_regular_slice);
         let source_data = [data_1_rev, data_0_rev];
         let sublimits = reverse_expansion.sublimits.reverse();
-        let component = new SLimitComponent(this.n, { source_data, target_data, sublimits, first });
-        return new SLimit(this.n, [component]);
+        let component = new LimitComponent(this.n, { source_data, target_data, sublimits, first });
+        return new Limit(this.n, [component]);
       }
     } else if (location[0].regular) {
       throw "cannot perform expansion on regular slice";
@@ -555,8 +555,8 @@ export class Diagram {
       let data_backward = sublimits[1].compose(this.data[height + 1].backward_limit);
       let target_data = new Content(this.n - 1, data_forward, data_backward);
       let source_data = this.slice(first, first + 2);
-      let forward_component = new SLimitComponent(this.n, { first, source_data, target_data, sublimits });
-      return new SLimit(this.n, [forward_component]);
+      let forward_component = new LimitComponent(this.n, { first, source_data, target_data, sublimits });
+      return new Limit(this.n, [forward_component]);
 
     } else if (location.length > 1) {
 
@@ -569,8 +569,8 @@ export class Diagram {
 
         // Contraction recursive case on regular slice: insert bubble.
         let target_data = [new Content(this.n - 1, recursive, recursive)];
-        let component = new SLimitComponent(this.n, { source_data: [], target_data, first, sublimits: [] });
-        return new SLimit(this.n, [component]);
+        let component = new LimitComponent(this.n, { source_data: [], target_data, first, sublimits: [] });
+        return new Limit(this.n, [component]);
 
       } else {
 
@@ -581,8 +581,8 @@ export class Diagram {
         let new_backward = recursive.compose(backward_first);
         let target_data = new Content(this.n - 1, new_forward, new_backward);
         let source_data = this.data.slice(height, height + 1);
-        let component = new SLimitComponent(this.n, { source_data, target_data, first, sublimits: [recursive] });
-        return new SLimit(this.n, [component]);
+        let component = new LimitComponent(this.n, { source_data, target_data, first, sublimits: [recursive] });
+        return new Limit(this.n, [component]);
       }
     }
     _assert(false);
@@ -599,7 +599,7 @@ export class Diagram {
 
     for (let i = 0; i < lower.length; i++) {
       _propertylist(lower[i], ["left_index", "left_limit", "right_index", "right_limit", "diagram"], ["bias"]);
-      _assert(lower[i].diagram instanceof Diagram && lower[i].left_limit instanceof SLimit && lower[i].right_limit instanceof SLimit);
+      _assert(lower[i].diagram instanceof Diagram && lower[i].left_limit instanceof Limit && lower[i].right_limit instanceof Limit);
       _assert(isNatural(lower[i].left_index) && isNatural(lower[i].right_index));
       _assert(lower[i].left_index < upper.length && lower[i].right_index < upper.length);
       _assert(lower[i].diagram.n == n && lower[i].left_limit.n == n && lower[i].right_limit.n == n);
@@ -662,7 +662,7 @@ export class Diagram {
     let target = new Diagram(n, { source: upper[0].source, data: target_content });
     let limits = [];
     for (let i = 0; i < upper.length; i++) {
-      limits.push(new SLimit(n, limit_components[i]));
+      limits.push(new Limit(n, limit_components[i]));
     }
 
     // Return final data
@@ -794,7 +794,7 @@ export class Diagram {
         cocone_components[i] = null;
       } else {
         let source_data = upper_preimage[i].data.slice();
-        cocone_components[i] = new SLimitComponent(upper[0].n, { first, source_data, target_data, sublimits });
+        cocone_components[i] = new LimitComponent(upper[0].n, { first, source_data, target_data, sublimits });
       }
     }
 
