@@ -1,5 +1,6 @@
 export const _assert = (condition) => {
   if (!condition) {
+    debugger;
     throw new Error("Assertion failed.");
   }
 };

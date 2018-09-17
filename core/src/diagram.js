@@ -1,6 +1,6 @@
 import { _assert, isNatural, _propertylist } from "~/util/debug";
 import * as ArrayUtil from "~/util/array";
-import { SLimit, Content, SLimitComponent } from "~/slimit";
+import { SLimit, Content, SLimitComponent } from "~/limit";
 import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
 
@@ -89,10 +89,10 @@ export class Diagram {
 
     if (pos.regular) {
       let singular = this.getSlice({ height: pos.height - 1, regular: false });
-      return this.data[pos.height - 1].backward_limit.rewrite(singular);
+      return this.data[pos.height - 1].backward_limit.rewrite_backward(singular);
     } else {
       let regular = this.getSlice({ height: pos.height, regular: true });
-      return this.data[pos.height].forward_limit.rewrite(regular);
+      return this.data[pos.height].forward_limit.rewrite_forward(regular);
     }
   }
 
@@ -164,7 +164,7 @@ export class Diagram {
   }
 
   rewrite(data) {
-    return data.backward_limit.rewrite(data.forward_limit.rewrite(this));
+    return data.backward_limit.rewrite_backward(data.forward_limit.rewrite_forward(this));
   }
 
   // Find the ID of the last cell that appears in the diagram
@@ -220,7 +220,7 @@ export class Diagram {
   normalize(limits) {
     for (let i = 0; i < limits.length; i++) {
       let limit = limits[i];
-      _assert(limit instanceof ForwardLimit || limit instanceof BackwardLimit);
+      _assert(limit instanceof SLimit);
       _assert(limit.n == this.n);
     }
 
@@ -229,7 +229,7 @@ export class Diagram {
 
     // Base case: 0-diagrams always normalize to themselves.
     if (this.n == 0) {
-      return { diagram: this, embedding: new ForwardLimit(0, []) };
+      return { diagram: this, embedding: new SLimit(0, []) };
     }
 
     // Recursive case
@@ -283,7 +283,8 @@ export class Diagram {
         }
 
         // if it's a forward limit, update the data about its target
-        if (limit instanceof ForwardLimit) {
+        // ??????????????
+        if (limit instanceof SLimit /* WRONG!! */ ) {
           limit[index].data = [new_content.copy()];
         }
       }
@@ -293,7 +294,7 @@ export class Diagram {
     let diagram = new Diagram(this.n, { data: new_data });
 
     // TODO: Here is a bug: new_components is not defined.
-    let embedding = new ForwardLimit(this.n, new_components);
+    let embedding = new SLimit(this.n, new_components);
 
     // We might still have top-level bubbles, so adjust for this
     for (let i = 0; i < diagram.data.length; i++) {
@@ -478,16 +479,16 @@ export class Diagram {
 
     let right = directions[1];
     let forward_limit = this.getContractionLimit(location, right);
-    let backward_limit = new BackwardLimit(this.n, []);
+    let backward_limit = new SLimit(this.n, []);
     return new Content(this.n, forward_limit, backward_limit);
   }
 
-  // Produce the Content object that contracts a diagram
+  // Produce the Content object that expands a diagram
   expand(point, directions) {
     let location = point.map(x => ({ height: Math.floor(x / 2), regular: x % 2 == 0 }));
     //throw "not yet implemented";
     let backward_limit = this.getExpansionLimit(location, directions[1] == 1);
-    let forward_limit = new ForwardLimit(this.n, []);
+    let forward_limit = new SLimit(this.n, []);
     return new Content(this.n, forward_limit, backward_limit);
   }
 
@@ -511,7 +512,7 @@ export class Diagram {
         let reverse_content = target_data.reverse();
         let reverse_expansion = reverse_content.getExpansionData(location[1].height, r2, r1, s);
         let data_0_rev = reverse_expansion.data[0].reverse(r2);
-        let new_regular_slice = reverse_expansion.data[0].rewrite(r2);
+        let new_regular_slice = reverse_expansion.data[0].rewrite_backward(r2);
         let data_1_rev = reverse_expansion.data[1].reverse(new_regular_slice);
         let source_data = [data_1_rev, data_0_rev];
         let sublimits = reverse_expansion.sublimits.reverse();
@@ -598,7 +599,7 @@ export class Diagram {
 
     for (let i = 0; i < lower.length; i++) {
       _propertylist(lower[i], ["left_index", "left_limit", "right_index", "right_limit", "diagram"], ["bias"]);
-      _assert(lower[i].diagram instanceof Diagram && lower[i].left_limit instanceof BackwardLimit && lower[i].right_limit instanceof ForwardLimit);
+      _assert(lower[i].diagram instanceof Diagram && lower[i].left_limit instanceof SLimit && lower[i].right_limit instanceof SLimit);
       _assert(isNatural(lower[i].left_index) && isNatural(lower[i].right_index));
       _assert(lower[i].left_index < upper.length && lower[i].right_index < upper.length);
       _assert(lower[i].diagram.n == n && lower[i].left_limit.n == n && lower[i].right_limit.n == n);
@@ -661,7 +662,7 @@ export class Diagram {
     let target = new Diagram(n, { source: upper[0].source, data: target_content });
     let limits = [];
     for (let i = 0; i < upper.length; i++) {
-      limits.push(new ForwardLimit(n, limit_components[i]));
+      limits.push(new SLimit(n, limit_components[i]));
     }
 
     // Return final data

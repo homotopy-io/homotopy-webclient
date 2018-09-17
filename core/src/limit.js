@@ -148,12 +148,16 @@ export class Content {
     }
 
     // G - Prepare the second new forward limit by selecting only the chosen component, and adjusting first/last
-    let f_new_2 = f_old
-      ? new ForwardLimit(this.n, [f_old.copy({
-        first: f_old.first + f_delta + b_delta,
-        last: f_old.last + f_delta + b_delta
-      })], null)
-      : new ForwardLimit(this.n, [], null);
+    let f_new_2;
+    if (f_old) {
+      f_new_2 = new SLimit(this.n, [f_old.copy({
+        first: f_old.first + f_delta + b_delta
+        /*,
+        last: f_old.last + f_delta + b_delta*/
+      })], null);
+    } else {
+      f_new_2 = new SLimit(this.n, [], null);
+    }
 
     // F - Prepare the first new backward limit
     let b_new_1 = b;
@@ -177,7 +181,7 @@ export class Content {
 
     // H - Prepare the second new backward limit
 
-    let b_new_2 = b_old ? new SLimit(this.n, [b_old], null) : new BackwardLimit(this.n, [], null);
+    let b_new_2 = b_old ? new SLimit(this.n, [b_old], null) : new SLimit(this.n, [], null);
 
     // C - Prepare the first sublimit - tricky as we need the reversed version of f_old
     // OPTIMIZATION: we don't really need to reverse all of f, just f_old
@@ -274,12 +278,11 @@ export class SLimitComponent {
       _assert(this.target_type instanceof Generator);
       return this;
     }
-    this.source_data = args.data;
-    this.target_data = args.data;
+    this.source_data = args.source_data;
+    this.target_data = args.target_data;
     this.first = args.first;
     _assert(args.last === undefined);
     _assert(isNatural(this.first));
-    _assert(this.first >= 0);
     this.sublimits = args.sublimits;
     Object.freeze(this);
     _validate(this);
@@ -288,27 +291,29 @@ export class SLimitComponent {
   validate() {
     _assert(isNatural(this.n));
     if (this.n == 0) {
-      _propertylist(this, ["n", "type"]);
-      _assert(this.type instanceof Generator);
-      _validate(this.type);
+      _propertylist(this, ["n", "source_type", "target_type"]);
+      _assert(this.source_type instanceof Generator);
+      _assert(this.target_type instanceof Generator);
+      _validate(this.source_type);
+      _validate(this.target_type);
     } else {
-      _propertylist(this, ["n", "data", "first", "last", "sublimits"]);
+      _propertylist(this, ["n", "source_data", "target_data", "first", "sublimits"]);
       _assert(isNatural(this.first));
-      _assert(isNatural(this.last));
-      _assert(this.first <= this.last);
-      _assert(this.data instanceof Array);
+      _assert(this.target_data instanceof Content);
+      _assert(this.source_data instanceof Array);
       _assert(this.sublimits instanceof Array);
-      _assert(this.sublimits.length == this.last - this.first);
+      _assert(this.sublimits.length == this.source_data.length);
       for (let i = 0; i < this.sublimits.length; i++) {
         _assert(this.sublimits[i] instanceof SLimit);
         _assert(this.sublimits[i].n == this.n - 1);
         _validate(this.sublimits[i]);
+        _assert(this.source_data[i] instanceof Content);
+        _assert(this.source_data[i].n == this.n - 1);
+        _validate(this.source_data[i]);
       }
-      for (let i = 0; i < this.data.length; i++) {
-        _assert(this.data[i] instanceof Content);
-        _assert(this.data[i].n == this.n - 1);
-        _validate(this.data[i]);
-      }
+      _assert(this.target_data instanceof Content);
+      _assert(this.target_data.n == this.n - 1);
+      _validate(this.target_data);
     }
   }
 
@@ -562,16 +567,16 @@ export class SLimit extends Array {
       components.push(shifted);
     }
 
-    return forward ? new ForwardLimit(this.n, components) : new BackwardLimit(this.n, components);
+    return new SLimit(this.n, components);
   }
 
   subLimit(n, forward) {
     for (let i = 0; i < this.length; i++) {
       let component = this[i];
-      if (n < component.first) return forward ? new ForwardLimit(this.n - 1, [], null) : new BackwardLimit(this.n - 1, [], null);
+      if (n < component.first) return new SLimit(this.n - 1, []);
       if (n < component.last) return component.sublimits[n - component.first];
     }
-    return forward ? new ForwardLimit(this.n - 1, [], null) : new BackwardLimit(this.n - 1, [], null);
+    return new SLimit(this.n - 1, []);
   }
 
   compose(first, forward) { // See 2017-ANC-19
@@ -729,20 +734,22 @@ export class SLimit extends Array {
 
   pad(depth) {
     let components = [...this].map(component => component.pad(depth));
-    return new ForwardLimit(this.n, components);
+    return new SLimit(this.n, components);
   }
 
   deepPad(position) {
     let components = [...this].map(component => component.deepPad(position));
-    return new ForwardLimit(this.n, components);
+    return new SLimit(this.n, components);
   }
 
+  /*
   validate() {
-    super.validate();
+    //super.validate();
     for (let i = 0; i < this.length; i++) {
       _assert(this.n == 0 || this[i].data.length == 1);
     }
   }
+  */
 
   /*- SLimitComponent(n) comprises: (this is a component of a limit between n-diagrams)
     - for n > 0:
@@ -754,21 +761,23 @@ export class SLimit extends Array {
         - type :: Generator
   */
   rewrite_forward(diagram) {
-    if (this.n == 0) return new Diagram(0, { type: this[0].type });
-
-    let new_data = diagram.data.slice();
-    for (let i = this.length - 1; i >= 0; i--) {
-      let c = this[i];
-      new_data.splice(c.first, c.source_data.length, c.target_data);
+    if (this.n == 0) {
+      return new Diagram(0, { type: this[0].target_type });
     }
 
-    return new Diagram(diagram.n, { source: diagram.source, data: new_data });
+    let data = diagram.data.slice();
+    for (let i = this.length - 1; i >= 0; i--) {
+      let c = this[i];
+      data.splice(c.first, c.source_data.length, c.target_data);
+    }
+
+    return new Diagram(diagram.n, { source: diagram.source, data });
   }
 
   rewrite_backward(diagram) {
     _assert(diagram instanceof Diagram);
     _validate(this, diagram);
-    if (diagram.n == 0) return new Diagram(0, { type: this[0].type });
+    if (diagram.n == 0) return new Diagram(0, { type: this[0].source_type });
 
     //let offset = 0;
     let new_data = diagram.data.slice();
@@ -781,11 +790,11 @@ export class SLimit extends Array {
       //diagram.data = diagram.data.slice(0, c.first + offset).concat(c.data.concat(diagram.data.slice(c.first + offset + 1, diagram.data.length)));
       //offset += c.last - c.first - 1;
     }
-    return new Diagram(diagram.n, { source: diagram.source, new_data });
+    return new Diagram(diagram.n, { source: diagram.source, data: new_data });
   }
 
   copy({ components = [...this], n = this.n } = this) {
-    return new ForwardLimit(n, components);
+    return new SLimit(n, components);
   }
 
   subLimit(n) {

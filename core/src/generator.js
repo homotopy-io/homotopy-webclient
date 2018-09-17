@@ -1,6 +1,6 @@
 import { _assert } from "~/util/debug";
 import { Diagram } from "~/diagram";
-import { Content } from "~/slimit";
+import { Content } from "~/limit";
 
 export class Generator {
 
@@ -17,7 +17,7 @@ export class Generator {
     // Build content
     if (this.n > 0) {
       let first_limit = this.source.contractForwardLimit(this, null, null, true);
-      let singular_height = first_limit.rewrite(this.source);
+      let singular_height = first_limit.rewrite_forward(this.source);
       let second_limit_forwards = this.target.contractForwardLimit(this, null, null, false);
       this.content = new Content(this.n - 1, first_limit, second_limit_forwards);
     }
