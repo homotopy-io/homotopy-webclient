@@ -55,18 +55,18 @@ const buildAttachmentContent = generator => (diagram, point, boundary) => {
   let source = !inverse ? generator.source : generator.target;
   let target = !inverse ? generator.target : generator.source;
 
-  if (diagram.n == 0) {
-    let forwardComponent = new LimitComponent(0, { type: generator });
+  if (diagram.n == 0) { // Confused about how to convert this to SLimitComponent
+    let forwardComponent = new LimitComponent(0, {  type: generator });
     let backwardComponent = new LimitComponent(0, { type: target.type });
 
-    let forwardLimit = new ForwardLimit(0, [forwardComponent], !inverse);
-    let backwardLimit = new BackwardLimit(0, [backwardComponent], inverse);
+    let forwardLimit = new ForwardLimit(0, [forwardComponent]);
+    let backwardLimit = new BackwardLimit(0, [backwardComponent]);
 
     return new Content(0, forwardLimit, backwardLimit);
   }
 
   let forwardLimit = diagram.contractForwardLimit(generator, point, source, !inverse);
-  let singularSlice = forwardLimit.rewrite(diagram);
+  let singularSlice = forwardLimit.rewrite_forward(diagram);
   let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target, inverse);
 
   return new Content(diagram.n, forwardLimit, backwardLimit);
