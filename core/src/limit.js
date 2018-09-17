@@ -98,7 +98,7 @@ export class Content {
   // Reverse the content, exchanging fowrward and backward limits
   reverse(source) {
     _assert(source === undefined);
-    return new Content(this.n, backward_limit, forward_limit);
+    return new Content(this.n, this.backward_limit, this.forward_limit);
   }
 
   // Get data that describes an expansion of this Content object (2018-ANC-1-55)

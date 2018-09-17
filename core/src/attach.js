@@ -27,7 +27,7 @@ export const attach = (diagram, build, path) => {
 
   // Attach the content to the diagram
   if (path.boundary == "source") {
-    let data = [content.reverse(diagram.source), ...diagram.data];
+    let data = [content.reverse(), ...diagram.data];
     let source = diagram.source.rewrite(content);
     return new Diagram(diagram.n, { source, data });
   } else {
@@ -65,9 +65,9 @@ const buildAttachmentContent = generator => (diagram, point, boundary) => {
     return new Content(0, forwardLimit, backwardLimit);
   }
 
-  let forwardLimit = diagram.contractForwardLimit(generator, point, source, !inverse);
+  let forwardLimit = diagram.contractForwardLimit(generator, point, source);
   let singularSlice = forwardLimit.rewrite_forward(diagram);
-  let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target, inverse);
+  let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target);
 
   return new Content(diagram.n, forwardLimit, backwardLimit);
 };

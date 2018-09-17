@@ -369,7 +369,8 @@ export class Diagram {
   }
 
   // Create the limit which contracts the a subdiagram at a given position, to a given type
-  contractForwardLimit(type, position, subdiagram) {
+  contractForwardLimit(type, position, subdiagram, framing) {
+    _assert(framing === undefined);
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
@@ -402,7 +403,8 @@ export class Diagram {
   }
 
   // Create the limit which inflates the point at the given position, to a given subdiagram
-  contractBackwardLimit(type, position, subdiagram) {
+  contractBackwardLimit(type, position, subdiagram, framing) {
+    _assert(framing === undefined);
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
@@ -424,7 +426,7 @@ export class Diagram {
     }
 
     let source_data = Content.deepPadData(subdiagram.data, rest);
-    let target_data = this.data.slice(first, 1); // ??????
+    let target_data = this.data[first]; //= this.data.slice(first, 1); // ??????
 
     let limit_component = new LimitComponent(this.n, { first, source_data, target_data, sublimits });
     return new Limit(this.n, [limit_component], null);
