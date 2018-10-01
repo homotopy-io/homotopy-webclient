@@ -556,7 +556,7 @@ export class Diagram {
       let data_forward = sublimits[0].compose(this.data[height].forward_limit);
       let data_backward = sublimits[1].compose(this.data[height + 1].backward_limit);
       let target_data = new Content(this.n - 1, data_forward, data_backward);
-      let source_data = this.slice(first, first + 2);
+      let source_data = this.data.slice(first, first + 2);
       let forward_component = new LimitComponent(this.n, { first, source_data, target_data, sublimits });
       return new Limit(this.n, [forward_component]);
 
@@ -621,10 +621,17 @@ export class Diagram {
       // If there's more than one top-dimensional type, throw an error
       _assert(top_types.length > 0);
       if (top_types.length > 1) throw "no unification, multiple top types in base case";
-      let type = top_types[0];
+      let target_type = top_types[0];
+
+      // Build the cocone maps
+      let limits = [];
+      for (let i = 0; i < upper.length; i++) {
+        let source_type = upper[i].type;
+        limits.push(new Limit(0, source_type == target_type ? [] : [new LimitComponent(0, { source_type, target_type })]));
+      }
 
       // Return the final data
-      let target = new Diagram(0, { type });
+      let target = new Diagram(0, { type: target_type });
       return { limits, target };
     }
 
@@ -780,7 +787,7 @@ export class Diagram {
     let last_slice_position = ArrayUtil.last(upper_slice_position[nonempty_upper]);
     let recursive_last = recursive.limits[last_slice_position];
     let backward = recursive_last.compose(nu.data[upper_ranges[nonempty_upper].last - 1].backward_limit);
-    let target_data = new Content(nu.n - 1, forward, backward);
+    let target_content = new Content(nu.n - 1, forward, backward);
 
     // Get the cocone components as forward limits
     let cocone_components = [];
@@ -796,7 +803,7 @@ export class Diagram {
         cocone_components[i] = null;
       } else {
         let source_data = upper_preimage[i].data.slice();
-        cocone_components[i] = new LimitComponent(upper[0].n, { first, source_data, target_data, sublimits });
+        cocone_components[i] = new LimitComponent(upper[0].n, { first, source_data, target_data: target_content, sublimits });
       }
     }
 
@@ -804,19 +811,13 @@ export class Diagram {
   }
 
   restrict(range) {
-    let source = this.getSlice({
-      height: range.first,
-      regular: true
-    });
+    let source = this.getSlice({ height: range.first, regular: true });
     let data = [];
     for (let i = range.first; i < range.last; i++) {
-      data.push(this.data[i].copy());
+      data.push(this.data[i]);
     }
     let n = this.n;
-    return new Diagram(n, {
-      source,
-      data
-    });
+    return new Diagram(n, { source, data });
   }
 
   // Turns an n-diagram into an identity (n+1)-diagram
@@ -855,8 +856,8 @@ function sub_limit_component(component, subcomponent, offset) {
   _assert(offset.length == component.n);
   if (component.n == 0) return component.type == subcomponent.type;
   if (component.first != subcomponent.first + offset[0]) return false;
-  if (component.last != subcomponent.last + offset[0]) return false;
-  if (component.data.length != subcomponent.data.length) return false;
+  if (component.getLast() != subcomponent.getLast() + offset[0]) return false;
+  if (component.source_data.length != subcomponent.source_data.length) return false;
   let offset_slice = offset.slice(1);
   for (let i = 0; i < component.data.length; i++) {
     if (!sub_data(component.data[i], subcomponent.data[i], offset_slice)) return false;

@@ -199,10 +199,10 @@ const limitAction = (limit, point) => {
   }
 
   // After the last component
-  if (height > limit[limit.length - 1].last * 2) {
+  if (height > limit[limit.length - 1].getLast() * 2) {
     let offset = 0;
     for (let component of limit) {
-      offset += component.last * 2 - component.first * 2 - 2;
+      offset += component.getLast() * 2 - component.first * 2 - 2;
     }
     return [[height - offset, ...rest]];
   }
@@ -212,7 +212,7 @@ const limitAction = (limit, point) => {
 
   for (let component of limit) {
     let first = component.first * 2;
-    let last = component.last * 2;
+    let last = component.getLast() * 2;
 
     if (height < first) {
       targets.set(height - offset, rest);
