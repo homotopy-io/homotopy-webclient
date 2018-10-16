@@ -210,14 +210,19 @@ export class Diagram {
     return depths;
   }
 
-  /* Normalizes the diagram with respect to the given incoming limits.
+  normalize() {
+    let r = this.normalizeRelative([]);
+    return { diagram: r.diagram, embedding: r.embedding };
+  }
+
+  /* Normalizes the diagram relative to the given incoming limits.
    * Returns object with the following properties:
-   *  - diagram, the normalized diagram;
+   *  - body, the body (Content array) of the normalized diagram;
    *  - embedding, a limit from the normalized diagram into the original diagram;
    *  - factorizations, limits into the normalized diagram that factorize the originally-provided
    *    limits through the embedding.
    */
-  normalize(limits) {
+  normalizeRelative(limits) {
     for (let i = 0; i < limits.length; i++) {
       let limit = limits[i];
       _assert(limit instanceof Limit);
@@ -229,12 +234,23 @@ export class Diagram {
 
     // Base case: 0-diagrams always normalize to themselves.
     if (this.n == 0) {
-      return { diagram: this, embedding: new Limit(0, []) };
+      let id = new Limit(0, []);
+      return { diagram: this, embedding: new Limit(0, []), factorizations: limits };
     }
 
-    // Recursive case
+    // Store the new data for the normalized diagram
     let new_data = [];
-    let new_components = [];
+
+    // Store the components for the embedding limit
+    let embedding_components = [];
+
+    // As we go along we will build up the components for the factorized limits
+    let new_limit_components = [];
+    for (let i=0; i<limits.length; i++) {
+      new_limit_components.push([]);
+    }
+
+    // Now handle the main diagram level-by-level
     for (let i = 0; i < this.data.length; i++) {
 
       // Obtain this singular slice
@@ -243,12 +259,12 @@ export class Diagram {
       // List all the incoming limits
       let level_limits = [];
       let level_sublimits = [];
-      let target_component_indices = [];
-      for (let i = 0; i < limits.length; i++) {
-        let limit = limits[i];
+      let limit_component_indices = [];
+      for (let j = 0; j < limits.length; j++) {
+        let limit = limits[j];
         let index = limit.getTargetComponentIndex(i);
-        target_component_indices.push(index);
-        let sublimits = index == null ? [] : limit[index].sublimits;
+        limit_component_indices.push(index);
+        let sublimits = (index == null) ? [] : limit[index].sublimits;
         level_limits = level_limits.concat(sublimits);
         level_sublimits.push(sublimits);
       }
@@ -256,80 +272,116 @@ export class Diagram {
       level_limits.push(this.data[i].backward_limit);
 
       // Normalize this singular slice recursively
-      let r = slice.normalize(level_limits);
-
-      // Store the embedding data to build the final embedding limit
-      if (r.embedding.length > 0) {
-        //new_components.push(new LimitComponent()
-      }
-      new_sublimits.push(r.embedding);
+      let recursive = slice.normalizeRelative(level_limits);
 
       // Store the new data for the normalized diagram at this level
-      let new_content = new Content(
-        this.data[i].forward_limit.factorization,
-        this.data[i].backward_limit.factorization);
+      let new_content = new Content(this.n - 1, ArrayUtil.penultimate(recursive.factorizations), ArrayUtil.last(recursive.factorizations));
       new_data.push(new_content);
 
+      // Create the LimitComponent to embed this slice of the normalized diagram
+      if (recursive.embedding.length > 0) {
+        let component = new LimitComponent(this.n - 1, {first: i, source_data: [this.data[i]], sublimits: [recursive.embedding], target_data: new_content });
+        embedding_components.push(component);
+      }
+
       // Update the factorizations of the limits which have been passed in
+      let sublimit_index = 0;
       for (let j = 0; j < limits.length; j++) {
-        let index = target_component_indices[j];
+        let index = limit_component_indices[j];
         if (index == null) continue; // this limit might not hit this singular level
         let limit = limits[j];
-        let sublimits = limit.factorization[index].sublimits;
+        let orig = limit[index];
 
-        for (let k = 0; k < sublimits.length; k++) {
-          sublimits[k] = limit[index].sublimits[k].factorization;
-          delete limit[index].sublimits[k].factorization; // don't need to store this any more
+        let fac_sublimits = [];
+        for (let k=0; k<orig.sublimits.length; k++) {
+          fac_sublimits.push(recursive.factorizations[sublimit_index + k]);
         }
+        sublimit_index += orig.sublimits.length;
 
-        // if it's a forward limit, update the data about its target
-        // ??????????????
-        if (limit instanceof Limit /* WRONG!! */ ) {
-          limit[index].data = [new_content.copy()];
+        if (fac_sublimits.length == 1 && fac_sublimits[0].length == 0) {
+          // trivial!
+        } else {
+          let comp = new LimitComponent(orig.n, {first: orig.first, sublimits: fac_sublimits, source_data: orig.source_data, target_data: new_content});
+          new_limit_components[j].push(comp);
         }
       }
     }
 
-    // Build new diagram and its embedding
-    let diagram = new Diagram(this.n, { data: new_data });
+    // Build the normalized diagram
+    let diagram = new Diagram(this.n, { source: this.source, data: new_data });
 
-    // TODO: Here is a bug: new_components is not defined.
-    let embedding = new Limit(this.n, new_components);
+    // Build the embedding of 'diagram' into 'this'
+    let embedding = new Limit(this.n, embedding_components);
 
-    // We might still have top-level bubbles, so adjust for this
+    // Build the factorizations
+    //let factorizations = [];
+    for (let i=0; i<limits.length; i++) {
+      factorizations[i] = new Limit(this.n, new_limit_components[i]);
+    }
+
+    // Remove superfluous top-level bubbles in the normalized diagram
     for (let i = 0; i < diagram.data.length; i++) {
+
+      // If there's something interesting happening here, we won't remove it
       let content = diagram.data[i];
-      if (content.forward_limit.length > 0 || content.backward_limit.length > 0) continue;
+      if (content.forward_limit.length > 0) continue;
+      if (content.backward_limit.length > 0) continue;
 
       // This level is a vacuum bubble. Let's check if it's in the image of an incoming limit.
       let in_image = false;
-      for (let j = 0; j < limits.length; j++) {
-        let index = limits[j].getTargetComponentIndex[i];
+      for (let j = 0; j < factorizations.length; j++) {
+        let index = factorizations[j].getTargetComponentIndex[i];
         if (index == null) continue;
         in_image = true;
         break;
       }
-      
       if (in_image) continue;
 
       // We've found a vacuum bubble not in the image of any incoming limit, so remove it.
-      diagram.data.splice(i, 1);
-      embedding.removeSourceLevel(i); // not yet implemented
+      diagram = diagram.removeLevel(i);
+
+      // Update the embedding limit so that it creates this bubble
+      let bubble_component = new LimitComponent(this.n, {first: i, sublimits: [], source_data: [], target_data: content});
+      let create_bubble_limit = new Limit(this.n, [bubble_component]);
+      embedding = embedding.compose(create_bubble_limit);
+
+      // Update the factorizations so that they omit this target level
       for (let j = 0; j < limits.length; j++) {
-        limits[j].factorization.removeTargetLevel(i); // not yet implemented
+        factorizations[j] = factorizations[j].removeTargetLevel(i);
       }
+
+      // 
       i--;
     }
 
-    return { diagram, embedding };
+    return { diagram, embedding, factorizations };
+  }
+
+  // Build a new diagram which omits a given level
+  removeLevel(i) {
+    _assert(isNatural(i));
+    let new_data = [...this.data.slice(0, i), ...this.data.slice(i+1)];
+    return new Diagram(this.n, {data: new_data, source: this.source});
+  }
+
+  getNontrivialNeighbourhoods() {
+    let neighbourhoods = [];
+    for (let i=0; i<this.data.length; i++) {
+      let content = this.data[i];
+      neighbourhoods[i] = Limit.getNontrivialNeighbourhoodsFamily(content.forward_limit, content.backward_limit);
+    }
+    return neighbourhoods;
   }
 
   // Typecheck this diagram
   typecheck() {
+    console.log('n=' + this.n + ', typechecking diagram');
+    if (this.n == 0) return true; // 0-diagrams always typecheck
     for (let i = 0; i < this.data.length; i++) {
-      if (!this.data[i].forward_limit.typecheck()) return false;
-      if (!this.data[i].backward_limit.typecheck()) return false;
+      if (!this.data[i].forward_limit.typecheck(true)) return false;
+      if (!this.data[i].backward_limit.typecheck(false)) return false;
     }
+    if (!this.source.typecheck()) return false;
     return true;
   }
 
@@ -513,7 +565,7 @@ export class Diagram {
       } else {
         let reverse_content = target_data.reverse();
         let reverse_expansion = reverse_content.getExpansionData(location[1].height, r2, r1, s);
-        let data_0_rev = reverse_expansion.data[0].reverse(r2);
+        let data_0_rev = reverse_expansion.data[0].reverse(/*r2*/);
         let new_regular_slice = reverse_expansion.data[0].rewrite_backward(r2);
         let data_1_rev = reverse_expansion.data[1].reverse(new_regular_slice);
         let source_data = [data_1_rev, data_0_rev];
@@ -530,6 +582,7 @@ export class Diagram {
 
   // Recursive procedure that constructs a limit contracting a diagram at a given position
   getContractionLimit(location, right) {
+    
     _assert(location instanceof Array);
     _assert(location.length >= 1); // Contraction requires at least 1 coordinate
     let height = location[0].height;
@@ -570,7 +623,7 @@ export class Diagram {
       if (location[0].regular) {
 
         // Contraction recursive case on regular slice: insert bubble.
-        let target_data = [new Content(this.n - 1, recursive, recursive)];
+        let target_data = new Content(this.n - 1, recursive, recursive);
         let component = new LimitComponent(this.n, { source_data: [], target_data, first, sublimits: [] });
         return new Limit(this.n, [component]);
 
@@ -585,9 +638,20 @@ export class Diagram {
         let source_data = this.data.slice(height, height + 1);
         let component = new LimitComponent(this.n, { source_data, target_data, first, sublimits: [recursive] });
         return new Limit(this.n, [component]);
+
       }
+
     }
+
     _assert(false);
+
+  }
+
+  // Build the restriction of the given diagram to a singular locus, an array of numbers,
+  // without changing the dimension of the diagram. 
+  restrictToSingularLocus(locus) {
+
+
   }
 
   // Compute a simultaneous unification of monotones
@@ -881,4 +945,8 @@ function copy_limit(old_limit) {
     entry.last = x.last;
     entry.data = copy_limit(o.data);
   }
+}
+
+function d() {
+  return store.getState().diagram.diagram;
 }

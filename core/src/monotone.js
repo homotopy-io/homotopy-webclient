@@ -324,7 +324,6 @@ export class Monotone extends Array {
     while (this[pos] < min) pos++;
     first = pos;
     while (pos < this.length && this[pos] < max) pos++;
-    //if (pos == monotone.length) pos --;
     last = pos;
     return { first, last };
   }
