@@ -534,7 +534,7 @@ export class Diagram {
     let forward_limit = this.getContractionLimit(location, right);
     let backward_limit = new Limit(this.n, []);
     let content = new Content(this.n, forward_limit, backward_limit);
-    content.typecheck();
+    if (!content.typecheck()) throw "This contraction doesn't typecheck";
     return content;
   }
 

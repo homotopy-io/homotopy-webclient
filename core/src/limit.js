@@ -105,6 +105,7 @@ export class Content {
   typecheck() {
     if (!this.forward_limit.typecheck(true)) return false;
     if (!this.backward_limit.typecheck(false)) return false;
+    return true;
   }
 
   // Get data that describes an expansion of this Content object (2018-ANC-1-55)
