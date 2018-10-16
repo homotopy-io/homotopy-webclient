@@ -102,8 +102,12 @@ export class Content {
     return new Content(this.n, this.backward_limit, this.forward_limit);
   }
 
+  typecheck() {
+    if (!this.forward_limit.typecheck(true)) return false;
+    if (!this.backward_limit.typecheck(false)) return false;
+  }
+
   // Get data that describes an expansion of this Content object (2018-ANC-1-55)
-  // TO SYMMETRIZE
   getExpansionData(index, r1, r2, s) {
     _validate(this, r1, r2, s);
 
@@ -946,7 +950,7 @@ export class Limit extends Array {
     // Explode the neighbourhoods
     let exploded = Limit.explodeSubset(neighbourhoods);
 
-    console.log('n=' + this.n + ', ' + (forward ? 'forward' : 'backward') + ' limit, analyzing ' + exploded.length + ' singular neighbourhoods');
+    //console.log('n=' + this.n + ', ' + (forward ? 'forward' : 'backward') + ' limit, analyzing ' + exploded.length + ' singular neighbourhoods');
 
     // Typecheck each neighbourhood
     for (let i=0; i<exploded.length; i++) {

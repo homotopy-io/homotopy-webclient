@@ -378,8 +378,7 @@ export class Diagram {
     console.log('n=' + this.n + ', typechecking diagram');
     if (this.n == 0) return true; // 0-diagrams always typecheck
     for (let i = 0; i < this.data.length; i++) {
-      if (!this.data[i].forward_limit.typecheck(true)) return false;
-      if (!this.data[i].backward_limit.typecheck(false)) return false;
+      if (!this.data[i].typecheck()) return false;
     }
     if (!this.source.typecheck()) return false;
     return true;
@@ -534,7 +533,9 @@ export class Diagram {
     let right = directions[1];
     let forward_limit = this.getContractionLimit(location, right);
     let backward_limit = new Limit(this.n, []);
-    return new Content(this.n, forward_limit, backward_limit);
+    let content = new Content(this.n, forward_limit, backward_limit);
+    content.typecheck();
+    return content;
   }
 
   // Produce the Content object that expands a diagram
