@@ -6,11 +6,12 @@ import Workspace from "~/components/Workspace";
 import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
+import LogoImg from '../logo.svg';
 
 export const App = () =>
   <Container>
     <SignatureBar>
-      <Logo>homotopy.io</Logo>
+      <Logo><img style={LogoStyle} src={LogoImg}/></Logo>
       <Signature />
     </SignatureBar>
     <Content>
@@ -51,8 +52,15 @@ const ToolBar = styled.div`
 
 const Logo = styled.div`
   font-size: 1.8em;
-  padding: 16px;
+  padding: 0px;
+  background-color: white;
+  text-align: center;
+  padding-top: 11px;
 `;
+
+const LogoStyle = {
+  width: '300px'
+};
 
 const Content = styled.div`
   background: #bdc3c7;

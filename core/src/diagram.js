@@ -567,8 +567,9 @@ export class Diagram {
         let reverse_content = target_data.reverse();
         let reverse_expansion = reverse_content.getExpansionData(location[1].height, r2, r1, s);
         let data_0_rev = reverse_expansion.data[0].reverse(/*r2*/);
-        let new_regular_slice = reverse_expansion.data[0].rewrite_backward(r2);
-        let data_1_rev = reverse_expansion.data[1].reverse(new_regular_slice);
+        //let new_regular_slice = reverse_expansion.data[0].rewrite_backward(r2);
+        let new_regular_slice = reverse_expansion.data[0].reverse().rewrite(r2);
+        let data_1_rev = reverse_expansion.data[1].reverse();
         let source_data = [data_1_rev, data_0_rev];
         let sublimits = reverse_expansion.sublimits.reverse();
         let component = new LimitComponent(this.n, { source_data, target_data, sublimits, first });
