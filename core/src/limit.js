@@ -909,6 +909,7 @@ export class Limit extends Array {
     if (limit_normalized.length == 0) return true;
 
     // If the source has zero height, we must be inserting a homotopy and its inverse
+    // (Surely for n-groupoids we would relax this condition.)
     if (this.n > 0 && source.data.length == 0) {
 
       let forward = target.data[0].forward_limit;
@@ -921,7 +922,8 @@ export class Limit extends Array {
       }
 
       // They have to type check as a homotopy.
-      // We can just straight to the base case as the target is atomic.
+      // We can go straight to the base case as the target is atomic.
+      // Passing 'null' means it has to be a homotopy.
       return forward.typecheckBaseCase(null);
     }
 
@@ -1072,6 +1074,439 @@ export class Limit extends Array {
 
     // Build the new limit
     return new Limit(this.n, components);;
+  }
+
+  /* Take the pullback with a second limit.
+     If the pullback exists, return projections { left, right }.
+     Otherwise, return null.
+  */
+  pullback(R) {
+    let L = this;
+    _assert(R instanceof Limit);
+    _assert(L.n == R.n);
+
+    // Trivial cases
+    if (L.length + R.length == 0) return { left: R, right: L};
+
+    let L_targets = L.getComponentTargets();
+    let R_targets = R.getComponentTargets();
+    let max_target = Math.max(L_targets[L_targets.length - 1], R_targets[R_targets.length - 1]);
+
+    PL_components = [];
+    PR_components = [];
+    let source_height = 0;
+
+    let left_components = [];
+    let right_components = [];
+
+    for (let i=0; i<=max_target; i++) {
+
+      // Restrict the left and right limits so they have a single target component
+      let L_sublimit = L.preimage({first: i, last: i+1});
+      let R_sublimit = R.preimage({first: i, last: i+1});
+
+      // Perform the pullback on these restricted limits
+      let pullback = L_sublimit.pullbackComponent(R_sublimit);
+      if (!pullback) return null;
+
+      // Boost their height
+      left_boosted = Limit.boostComponents(pullback.left, pullback.height);
+      right_boosted = Limit.boostComponents(pullback.right, pullback.height);
+
+      // Add to the list of components
+      left_components = [...left_components, ...left_boosted];
+      right_components = [...right_components, ...right_boosted];
+    }
+
+    let left = new Limit(this.n, left_components);
+    let right = new Limit(this.n, right_components);
+    return {left, right};
+  }
+
+  static boostComponents(components, height) {
+    let new_components = [];
+    for (let i=0; i<components.length; i++) {
+      let component = components[i];
+      new_components.push(component.copy({height: component.height + height}));
+    }
+    return new_components;
+  }
+
+  // Pullback two limits guaranteed to have a common height-1 target
+  // See 2018-10-homotopy.io-70
+  // Returns { left, right, height }, where height is the height of the pullback object
+  pullbackComponent(right_limit) {
+    let left_limit = this;
+
+    // If either L or R is the identity, the pullback is easy to calculate
+    if (left_limit.length + right_limit.length == 0) return { left: right_limit, right: left_limit };
+
+    _assert(left_limit.length == 1);
+    _assert(right_limit.length == 1);
+
+    let L = left_limit[0];
+    let R = right_limit[0];
+    let L_size = L.source_data.length;
+    let R_size = R.source_data.length;
+
+    // We don't do nontrivial pullbacks with empty preimage
+    if (L_size == 0 || R_size == 0) return null;
+
+    // Build matrices of pullbacks in a variety of ways.
+    // If any of these fail to exist, then we return null.
+    let sr_pullbacks = []; // singular-regular pullbacks
+    let rs_pullbacks = []; // regular-singular pullbacks
+    let ss_pullbacks = []; // singular-singular pullbacks
+    for (let i=0; i<L_size; i++) {
+      sr_pullbacks[i] = [];
+      rs_pullbacks[i] = [];
+      ss_pullbacks[i] = [];
+      for (let j=0; j<R_size; j++) {
+
+        // sr
+        if (j > 0) {
+          let left = L.sublimits[i];
+          let right = R.sublimits[j].compose(R.source_data[j].forward_limit);
+          if (!(sr_pullbacks[i][j] = left.pullback(right))) return null;
+        }
+
+        // rs
+        if (i > 0) {
+          let left = L.sublimits[i].compose(L.source_data[j].forward_limit);
+          let right = R.sublimits[i];
+          if (!(rs_pullbacks[i][j] = left.pullback(right))) return null;
+        }
+
+        // ss
+        let left = L.sublimits[i];
+        let right = R.sublimits[j];
+        if (!(ss_pullbacks[i][j] = left.pullback(right))) return null;
+      }
+    }
+
+    // Identify which singular pullbacks have nontrivial 'mass'.
+    // Do this by examining their incoming limits from adjacent regular pullbacks.
+    // Each singular pullback will in the generic case have 4 such, 2 above and 2 below;
+    // edge cases may only have 1 above and/or below.
+    let incoming = [];
+    for (let i=0; i<L_size; i++) {
+      incoming[i] = [];
+      for (let j=0; j<R_size; j++) {
+        incoming[i][j] = { trivial: true };
+        let a = incoming[i][j];
+        let ss = ss_pullbacks[i][j];
+
+        // Lower-right regular-singular inclusion
+        if (i > 0) {
+          let rs = rs_pullbacks[i][j];
+          let cone_left = L.source_data[i].forward_limit.compose(rs.left);
+          let cone_right = rs.right;
+          let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
+          if (!factorization) return null;
+          a.lower_right = factorization;
+          if (factorization.length > 0) a.trivial = false;
+        }
+
+        // Upper-left regular-singular inclusion
+        if (i < L_size - 1) {
+          let rs = rs_pullbacks[i + 1][j];
+          let cone_left = L.source_data[i].backward_limit.compose(rs.left);
+          let cone_right = rs.right;
+          let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
+          if (!factorization) return null;
+          a.upper_left = factorization;
+          if (factorization.length > 0) a.trivial = false;
+        }
+
+        // Lower-left singular-regular inclusion
+        if (j > 0) {
+          let sr = sr_pullbacks[i][j];
+          let cone_left = sr.left;
+          let cone_right = R.source_data[j].forward_limit.compose(sr.right);
+          let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
+          if (!factorization) return null;
+          a.lower_left = factorization;
+          if (factorization.length > 0) a.trivial = false;
+        }
+
+        // Upper-right singular-regular inclusion
+        if (j < R_size - 1) {
+          let sr = sr_pullbacks[i][j + 1];
+          let cone_left = sr.left;
+          let cone_right = R.source_data[j].backward_limit.compose(sr.right);
+          let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
+          if (!factorization) return null;
+          a.upper_right = factorization;
+          if (factorization.length > 0) a.trivial = false;
+        }
+      }
+
+      // Check for a unique full-mass node at each height
+      let nontrivial = [];
+      nontrivial[0] = true;
+      nontrivial[L_size - R_size - 1] = true;
+      for (let height=1; height<L_size + R_size - 1; height++) {
+        let nontrivial = null;
+        for (let i=0; i<=height; i++) {
+          let j = height - i;
+          if (!incoming[i][j].trivial) {
+            if (!nontrivial[height]) {
+              console.log("Can't linearize pullback, distinct nontrivial masses at height " + height);
+              return null;  
+            }
+            nontrivial[height] = i;
+          }
+        }
+      }
+
+      // Build the actual path
+      let step_i = [0];
+      let step_j = [0];
+      //let path = [[0,0]];
+      let directions = [];
+      let [dir_left, dir_neutral, dir_right] = [-1, 0, +1];
+      for (let height=1; height<L_size + R_size; height++) {
+        if (!nontrivial[height]) continue;
+
+        let [last_i, last_j] = path[path.length - 1];
+        let i = nontrivial[height];
+        let j = height - i;
+
+        if (i < last_i || j < last_j) {
+          console.log("Can't linearize pullback, mass too far away at height " + height);
+          return null;
+        }
+
+        /*
+        while (last_i < i) {
+          last_i ++;
+          path.push([last_i, last_j]);
+        }
+        
+        while (last_j < j) {
+          last_j ++;
+          path.push([last_i, last_j]);
+        }*/
+
+        //path.push([i,j]);
+        step_i.push(i);
+        step_j.push(j);
+
+        // Set direction of path at this step
+        let l = step_i.length;
+        if(step_i[l - 1] == step_i[l - 2]) {
+          directions.push(dir_right);
+        } else if (step_j[l - 1] == step_j[l - 2]) {
+          directions.push(dir_left);
+        } else {
+          directions.push(dir_neutral);
+        }
+      }
+      let pl_mon = new Monotone(L_size, pl_pre_mon);
+      let pr_mon = new Monotone(R_size, pr_pre_mon);
+
+      // Compute bottom and top limits for pullback diagram
+      let bottom_limit = Limit.pullbackFactorize
+        (ss_pullbacks[0][0], L.source_data[0].forward_limit, R.slurce_data[0].forward_limit);
+      if (!bottom_limit) {
+        console.log("Can't build pullback, bottom factorization does not exist");
+        return null;
+      }
+      let top_limit = Limit.pullbackFactorize
+        (ss_pullbacks[L_size - 1][R_size - 1], L.source_data[L_size - 1].backward_limit, R.source_data[R_size - 1].backward_limit);
+      if (!top_limit) {
+        console.log("Can't build pullback, top factorization does not exist");
+        return null;
+      }
+
+      // Build pullback diagram data
+      let P_size = pl_mon.length;
+      let P_data = [];
+      for (let step=0; step<P_size; step++) {
+
+        let i = step_i[step];
+        let j = step_j[step];
+
+        // Get the forward limit
+        let forward_limit;
+        if (step == 0) {
+          forward_limit = bottom_limit;
+        } else {
+          let d = directions[step - 1];
+          if (d == -1) { // rs
+            forward_limit = incoming[i][j].lower_right;
+          } else if (d == +1 || d == 0) {
+            forward_limit = incoming[i][j].lower_left;
+          }
+        }
+
+        // Get the backward limit
+        let backward_limit;
+        if (step == P_size - 1) {
+          backward_limit = top_limit;
+        } else {
+          let d = directions[step];
+          if (d == -1) {
+            backward_limit = incoming[i][j].upper_left;
+          } else {
+            backward_limit = incoming[i][j].upper_right;
+          }
+        }
+
+        P_data.push(new Content(this.n, forward_limit, backward_limit));
+      }
+
+      // Build the left projection
+      let left_components = [];
+      for (let a=0; a<L_size; a++) {
+        let preimage = pl_mon.preimage(i);
+        
+        let source_data = [];
+        let sublimits = [];
+        for (let b=preimage.first; b<preimage.last; b++) {
+          source_data.push(P_data[b]);
+          let i = step_i[b];
+          let j = step_j[b];
+          sublimits.push(ss_pullbacks[i][j].left);
+        }
+
+        // Ignore trivial components
+        if (sublimits.length == 1 && sublimits[0].length == 0) {
+          continue;
+        }
+
+        let target_data = L.source_data[a];
+        let first = preimage.first;
+        left_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
+      }
+      let left = new Limit(this.n, left_components);
+
+      // Build the right projection
+      let right_components = [];
+      for (let a=0; a<R_size; a++) {
+        let preimage = pr_mon.preimage(i);
+        let source_data = [];
+        let sublimits = [];
+        for (let b=preimage.first; b<preimage.last; b++) {
+          source_data.push(P_data[b]);
+          let i = step_i[b];
+          let j = step_j[b];
+          sublimits.push(ss_pullbacks[i][j].right);
+        }
+
+        // Ignore trivial components
+        if (sublimits.length == 1 && sublimits[0].length == 0) {
+          continue;
+        }
+
+        let target_data = R.source_data[a];
+        let first = preimage.first;
+        right_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
+      }
+      let right = new Limit(this.n, right_components);
+    }
+
+    // Return the projections
+    return {left, right, height: P_size};
+  }
+
+  // Get a partial list of data of the limit's source
+  getSourceData() {
+    let arr = [];
+    for (let i=0; i<this.length; i++) {
+      let component = this[i];
+      for (let j=0; j<component.source_data.length; j++) {
+        arr[component.first + j] = component.source_data[j];
+      }
+    }
+    return arr;
+  }
+
+  // The cone is formed from f and g
+  static pullbackFactorize(pullback, f, g) {
+
+    // Work level by level on the common source of f and g
+
+    // Get associated monotone data
+    f_targets = f.getComponentTargets();
+    g_targets = g.getComponentTargets();
+    X_height = Math.max(f_targets.length, g_targets.length);
+    pl_targets = pullback.left.getComponentTargets();
+    pr_targets = pullback.right.getComponentTargets();
+    P_height = Math.max(pl_targets.length, pr_targets.length);
+    A_height = Math.max(...[...pl_targets, ...f_targets]);
+    B_height = Math.max(...[...pr_targets, ...g_targets]);
+    f_mon = f.getMonotone(X_height, A_height);
+    g_mon = g.getMonotone(X_height, B_height);
+    pl_mon = pullback.left.getMonotone(P_height, A_height);
+    pr_mon = pullback.right.getMonotone(P_height, B_height);
+
+    // Factorize at the level of the monotones
+    let fac_mon = Monotone.pullbackFactorize({left: pl_mon, right: pr_mon}, f_mon, g_mon);
+    if (!fac_mon) return null;
+
+    // Collect some data about X
+    let f_source_data = f.getSourceData();
+    let g_source_data = g.getSourceData();
+    let X_data = [];
+    for (let i=0; i<X_height; i++) {
+      X_data[i] = f_source_data[i] || g_source_data[i];
+    }
+    
+    // Collect some data about P
+    let pl_source_data = pullback.left.getSourceData();
+    let pr_source_data = pullback.right.getSourceData();
+    let P_data = [];
+    for (let i=0; i<P_height; i++) {
+      P_data[i] = pl_source_data[i] || pr_source_data[i];
+    }
+    
+    // Build up the components of the factorizing limit.
+
+    /* THIS RELIES ON A CONJECTURE THAT ANY NECESSARY DIAGRAM DATA IS ALREADY
+       ENCODED IN THE PROVIDED LIMITS! IF THIS ISN'T TRUE WE'LL HAVE TO
+       RECONSIDER THE ALGORITHM STRUCTURE AND MAYBE PASS IN ADDITIONAL
+       DIAGRAM DATA. THIS CONJECTURE IS PROTECTED BY ASSERTS.
+       See 2018-10-homotopy.io-72 */
+
+    let components = [];
+    for (let i=0; i<P_height; i++) {
+      let pl_sub = pullback.left.subLimit(i);
+      let pr_sub = pullback.right.subLimit(i);
+      let pullback_sub = {left: pl_sub, right: pr_sub};
+      let preimage = fac_mon.preimage(i);
+      let sublimits = [];
+      for (let j=preimage.first; j<preimage.last; j++) {
+        let f_sub = f.preimage(j);
+        let g_sub = g.preimage(j);
+        let fac_sub = Limit.pullbackFactorize(pullback_sub, f_sub, g_sub); // Recursive step
+        if (!fac_sub) return null;
+        sublimits.push(fac_sub);
+      }
+
+      // Skip out if the component is trivial
+      if (sublimits.length == 1 && sublimits[0].length == 0) continue;
+
+      // Build the list of source data
+      let source_data = [];
+      for (let j=preimage.first; j<preimage.last; j++) {
+        let data = X_data[j];
+        _assert(data);
+        source_data.push(data);
+      }
+
+      // Get the target data
+      let target_data = P_data[i];
+
+      // A few sanity checks
+      _assert(target_data);
+      _assert(sublimits.length == source_data.length);
+
+      // Add the component
+      components.push(new Component(f.n, {first: preimage.first, sublimits, source_data, target_data}));
+    }
+
+    return new Limit(f.n, components);
   }
 
 }

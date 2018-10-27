@@ -534,4 +534,22 @@ export class Monotone extends Array {
     }
     return new Monotone(target_size - last + first, arr);
   }
+
+  static pullbackFactorize(pullback, f_mon, g_mon) {
+    _assert(f_mon.length == g_mon.length);
+    _assert(pullback.left.length == pullback.right.length);
+    let factorization = [];
+    let p = 0;
+    for (let i=0; i<f_mon.length; i++) {
+      while (pullback.left[p] != f[i] || pullback.right[p] != g[i]) {
+        p ++;
+        if (p >= pullback.left.length) return null;
+        if (pullback.left[p] > f[i]) return null;
+        if (pullback.right[p] > g[i]) return null;
+      }
+      factorization.push(p);
+    }
+    return new Monotone(pullback.left.length, factorization);
+  }
+
 }
