@@ -13,9 +13,7 @@ export const attach = (diagram, build, path) => {
   }
 
   if (path.depth > 1) {
-    if (path.boundary == "source") {
-      diagram = diagram.pad(path.depth);
-    }
+    diagram = diagram.pad(path.depth, path.boundary == 'source');
 
     let source = attach(diagram.source, build, { ...path, depth: path.depth - 1});
     return new Diagram(diagram.n, { source, data: diagram.data });
@@ -55,13 +53,11 @@ const buildAttachmentContent = generator => (diagram, point, boundary) => {
   let source = !inverse ? generator.source : generator.target;
   let target = !inverse ? generator.target : generator.source;
 
-  if (diagram.n == 0) { // Confused about how to convert this to LimitComponent
+  if (diagram.n == 0) {
     let forwardComponent = new LimitComponent(0, { source_type: diagram.type, target_type: generator });
     let backwardComponent = new LimitComponent(0, { source_type: target.type, target_type: generator });
-
     let forwardLimit = new Limit(0, [forwardComponent]);
     let backwardLimit = new Limit(0, [backwardComponent]);
-
     return new Content(0, forwardLimit, backwardLimit);
   }
 

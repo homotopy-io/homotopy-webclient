@@ -18,6 +18,7 @@ import * as ArrayUtil from "~/util/array";
         - backward_limit :: Limit(n)
 - Limit(n) extends Array comprises: (this is a limit between n-diagrams)
     - for all n:
+        - source_size :: N, the height of the source of the limit (only for n>0 and array.length>0)
         - Array(LimitComponent(n))
 - LimitComponent(n) comprises: (this is a component of a limit between n-diagrams)
     - for n > 0:
@@ -69,16 +70,16 @@ export class Content {
     );
   }
 
-  pad(depth) {
-    let forward_limit = this.forward_limit.pad(depth);
-    let backward_limit = this.backward_limit.pad(depth);
+  pad(depth, source_boundary) {
+    let forward_limit = this.forward_limit.pad(depth, source_boundary);
+    let backward_limit = this.backward_limit.pad(depth, source_boundary);
     return new Content(this.n, forward_limit, backward_limit);
   }
 
   // Pad the content so that the origin moves to the specified position
-  deepPad(position) {
-    let forward_limit = this.forward_limit.deepPad(position);
-    let backward_limit = this.backward_limit.deepPad(position);
+  deepPad(position, width_deltas) {
+    let forward_limit = this.forward_limit.deepPad(position, width_deltas);
+    let backward_limit = this.backward_limit.deepPad(position, width_deltas);
     return new Content(this.n, forward_limit, backward_limit);
   }
 
@@ -102,10 +103,65 @@ export class Content {
     return new Content(this.n, this.backward_limit, this.forward_limit);
   }
 
+  /*
   typecheck() {
     if (!this.forward_limit.typecheck(true)) return false;
     if (!this.backward_limit.typecheck(false)) return false;
     return true;
+  }
+  */
+
+  typecheck() {
+
+    // Find the nontrivial neighbourhoods
+    let neighbourhoods = Limit.getNontrivialNeighbourhoodsFamily([this.forward_limit, this.backward_limit]);
+
+    // Explode the neighbourhoods
+    let exploded = Limit.explodeSubset(neighbourhoods);
+
+    // Typecheck each neighbourhood
+    for (let i=0; i<exploded.length; i++) {
+      let forward_limit = this.forward_limit.restrictToPreimage(exploded[i]);
+      let backward_limit = this.backward_limit.restrictToPreimage(exploded[i]);
+      let restricted_content = new Content(this.n, forward_limit, backward_limit);
+      if (!restricted_content.typecheckBaseCase()) {
+        return false;
+      }
+    }
+
+    // The content typechecks
+    return true;
+  }
+
+  typecheckBaseCase() {
+
+    let f = this.forward_limit;
+    let b = this.backward_limit;
+
+    // We are promised that 'this' represents a content object with unique central nontrivial singular data
+    _assert(f.length <= 1 && b.length <= 1);
+    _assert(f.length > 0 || b.length > 0);
+
+    // Turn it into a diagram object
+    let source = f.reconstructSource();
+    let diagram = new Diagram(this.n + 1, {source, data: [this]});
+
+    // Normalize the diagram along with its boundary
+    let normalized = diagram.normalizeWithBoundaries();
+
+    // Check that the forward and backward limits typecheck
+    if (!normalized.data[0].forward_limit.typecheck(true)) return false;
+    if (!normalized.data[0].backward_limit.typecheck(false)) return false;
+
+    // The content typechecks
+    return true;
+
+  }
+
+  composeAtBoundary({ type, limit }) {
+    let forward_limit = this.forward_limit.composeAtBoundary({ type, limit });
+    let backward_limit = this.backward_limit.composeAtBoundary({ type, limit });
+    return new Content(this.n, forward_limit, backward_limit);
   }
 
   // Get data that describes an expansion of this Content object (2018-ANC-1-55)
@@ -115,8 +171,6 @@ export class Content {
     let f = this.forward_limit;
     let b = this.backward_limit;
 
-    let forward_monotone = f.getMonotone(r1.data.length, s.data.length);
-    let backward_monotone = b.getMonotone(r2.data.length, s.data.length);
     //let source_preimage = forward_monotone.preimage(location[1].height);
     let f_analysis = f.getComponentTargets();
     let f_index = f_analysis.indexOf(index);
@@ -154,51 +208,49 @@ export class Content {
     }
 
     // G - Prepare the second new forward limit by selecting only the chosen component, and adjusting first/last
+    let middle_regular_size = r2.data.length
+      - (b_old ? b_old.source_data.length - 1 : 0)
+      + (f_old ? f_old.source_data.length - 1 : 0);
     let f_new_2;
     if (f_old) {
-      f_new_2 = new Limit(this.n, [f_old.copy({
-        first: f_old.first + f_delta + b_delta
-      })], null);
+      f_new_2 = new Limit(this.n, [f_old.copy({first: f_old.first + f_delta + b_delta})], middle_regular_size);
     } else {
-      f_new_2 = new Limit(this.n, [], null);
+      f_new_2 = new Limit(this.n, [], middle_regular_size);
     }
 
     // F - Prepare the first new backward limit
     let b_new_1 = b;
     if (b_old) {
-      let f_old_delta = f_old ? f_old.getLast() - f_old.first - 1 : 0; // weird f/b mixing here!
+      let f_old_delta = f_old ? f_old.getLast() - f_old.first - 1 : 0;
       let b_old_delta = b_old ? b_old.getLast() - b_old.first - 1 : 0;
 
       let components = [...b_new_1];
       components.splice(b_index, 1);
       components = components.map((component, i) => {
         if (i >= b_index) {
-          return component.copy({
-            first: component.first + f_old_delta - b_old_delta
-          });
+          return component.copy({first: component.first + f_old_delta - b_old_delta});
         } else return component;
       });
 
-      b_new_1 = b_new_1.copy({ components }); 
+      b_new_1 = b_new_1.copy({ components, source_size: middle_regular_size }); 
     }
 
     // H - Prepare the second new backward limit
-
-    let b_new_2 = b_old ? new Limit(this.n, [b_old], null) : new Limit(this.n, [], null);
+    let b_new_2 = b_old ? new Limit(this.n, [b_old], r2.data.length) : new Limit(this.n, [], r2.data.length);
 
     // C - Prepare the first sublimit - tricky as we need the reversed version of f_old
     // OPTIMIZATION: we don't really need to reverse all of f, just f_old
     let sublimit_1;
+    let first_singular_size = s.data.length + (f_old ? f_old.source_data.length - 1 : 0);
     if (f_old) {
-      sublimit_1 = new Limit(this.n, [f[f_index].copy(
-          { first: f[f_index].first + f_delta }
-        )], null);
+      sublimit_1 = new Limit(this.n, [f[f_index].copy({ first: f[f_index].first + f_delta })], first_singular_size);
     } else {
-      new Limit(this.n, [], null);
+      sublimit_1 = new Limit(this.n, [], first_singular_size);
     }
     _validate(sublimit_1);
 
     // D - Prepare the second sublimit
+    let second_singular_size = r2.data.length - (b_old ? b_old.source_data.length - 1 : 0);
     let sublimit_2 = b;
     if (b_old) {
       let local_delta = b_old.getLast() - b_old.first - 1;
@@ -211,7 +263,7 @@ export class Content {
           return component;
         }
       });
-      sublimit_2 = sublimit_2.copy({ components });
+      sublimit_2 = sublimit_2.copy({ components, source_size: second_singular_size });
     }
     _validate(sublimit_2);
 
@@ -259,8 +311,8 @@ export class Content {
     return new_data;
   }
 
-  static deepPadData(data, position) {
-    return data.map(content => content.deepPad(position));
+  static deepPadData(data, position, width_deltas) {
+    return data.map(content => content.deepPad(position, width_deltas));
   }
 }
 
@@ -340,6 +392,7 @@ export class LimitComponent {
 
   // Gets the effective value of the old 'last' property
   getLast() {
+    _assert(this.source_data !== undefined);
     return this.first + this.source_data.length;
   }
 
@@ -378,43 +431,71 @@ export class LimitComponent {
     return false;
   }
 
-  pad(depth) {
+  pad(depth, source_boundary) {
     if (depth == 1) {
-      return new LimitComponent(this.n, { source_data: this.source_data, target_data: this.target_data, sublimits: this.sublimits, first: this.first + 1 });
+      if (!source_boundary) return this;
+      return this.copy({ first: this.first + 1});
     } else if (depth > 1) {
-      let target_data = this.target_data.map(content => content.pad(depth - 1));
-      let source_data = this.source_data.map(content => content.pad(depth - 1));
-      let sublimits = this.sublimits.map(sublimit => sublimit.pad(depth - 1));
+      let target_data = this.target_data.pad(depth - 1, source_boundary);
+      let source_data = this.source_data.map(content => content.pad(depth - 1, source_boundary));
+      let sublimits = this.sublimits.map(sublimit => sublimit.pad(depth - 1, source_boundary));
       return new LimitComponent(this.n, { source_data, target_data, sublimits, first: this.first });
     }
   }
 
   // Deep pad this component so that the origin moves to the given position
-  deepPad(position) {
+  deepPad(position, width_deltas) {
     _assert(this.n == position.length);
     if (this.n == 0) return this;
     let [height, ...rest] = position;
-    let source_data = this.source_data.map(content => content.deepPad(rest));
-    let target_data = this.target_data.map(content => content.deepPad(rest));
-    let sublimits = this.sublimits.map(limit => limit.deepPad(rest));
+    let [width_now, ...width_rest] = width_deltas;
+    let source_data = this.source_data.map(content => content.deepPad(rest, width_rest));
+    //let target_data = this.target_data.map(content => content.deepPad(rest));
+    let target_data = this.target_data.deepPad(rest, width_rest);
+    let sublimits = this.sublimits.map(limit => limit.deepPad(rest, width_rest));
     return new LimitComponent(this.n, { source_data, target_data, sublimits, first: this.first + height });
+  }
+
+  composeAtBoundary({type, limit}) {
+    _assert(limit.n <= this.n - 2);
+    let source_data = this.source_data.slice();
+    for (let i=0; i<source_data.length; i++) {
+      source_data[i] = source_data[i].composeAtBoundary({type, limit});
+    }
+    let target_data = this.target_data.composeAtBoundary({type, limit});
+    let first = this.first;
+    let sublimits = this.sublimits;
+    return new LimitComponent(this.n, {source_data, target_data, sublimits, first});
   }
 }
 
 export class Limit extends Array {
 
-  constructor(n, components) {
+  constructor(n, components, source_size) {
     super(...components);
     this.n = n;
+    if (n > 0 && components.length > 0) this.source_size = source_size;
     this.validate();
   }
 
   validate() {
     _assert(isNatural(this.n));
+    if (this.n == 0) {
+      _assert(this.source_size === undefined);
+      _assert(this.length <= 1);
+      if (this.length == 1) _assert(this[0].source_type.id != this[0].target_type.id);
+    } else {
+      if (this.length > 0) {
+        _assert(isNatural(this.source_size));
+      } else {
+        _assert(this.source_size === undefined);
+      }
+    }
     for (let i = 0; i < this.length; i++) {
       _assert(this[i] instanceof LimitComponent);
       _assert(this[i].n == this.n);
       if (i != 0) _assert(this[i].first >= this[i - 1].getLast());
+      if (this.n > 0) _assert(this[i].getLast() <= this.source_size);
       this[i].validate();
     }
     if (this.n == 0) _propertylist(this, ["n"]);
@@ -457,6 +538,17 @@ export class Limit extends Array {
     _validate(this);
     if (source_height instanceof Diagram) source_height = source_height.data.length;
     if (target_height instanceof Diagram) target_height = target_height.data.length;
+    if (this.length == 0) {
+      _assert(isNatural(source_height));
+      _assert(isNatural(target_height));
+    } else {
+      if (source_height !== undefined || target_height !== undefined) {
+        _assert(this.source_size === source_height);
+        _assert(this.getTargetSize() === target_height);
+      }
+      source_height = this.source_size;
+      target_height = this.getTargetSize();
+    }
     _assert(isNatural(source_height));
     _assert(isNatural(target_height));
     let monotone = new Monotone(target_height, []);
@@ -549,6 +641,10 @@ export class Limit extends Array {
   // Get a sublimit with respect to the indicated range in the target diagram.
   preimage(range) {
     _propertylist(range, ["first", "last"]);
+
+    // Restricted identities are still identities
+    if (this.length == 0) return this;
+    
     let component_targets = this.getComponentTargets();
     let components = [];
     let offset = null;
@@ -570,7 +666,10 @@ export class Limit extends Array {
       components.push(shifted);
     }
 
-    return new Limit(this.n, components);
+    let monotone = this.getMonotone();
+    let preimage = monotone.preimage(range);
+
+    return new Limit(this.n, components, preimage.last - preimage.first);
   }
 
   subLimit(n, forward) {
@@ -602,17 +701,12 @@ export class Limit extends Array {
     let L2_targets = L2.getComponentTargets();
 
     // Compose them as monotone functions
-    let L1_max_source = L1.getMaxSourceHeight();
-    let L1_max_target = L1.getMaxTargetHeight();
-    let L2_max_source = L2.getMaxSourceHeight();
-    let L2_max_target = L2.getMaxTargetHeight();
-    let D1_size = L1_max_source;
-    if (L2_max_source > L1_max_target) D1_size += L2_max_source - L1_max_target;
-    let D2_size = Math.max(L1_max_target, L2_max_source);
-    let D3_size = L2_max_target;
-    let M1 = L1.getMonotone(D1_size, D2_size);
-    let M2 = L2.getMonotone(D2_size, D3_size);
-    D3_size = Math.max(D3_size, M2[M2.length - 1] + 1);
+    //let D1_size = L1.source_size;
+    //let D2_size = L2.source_size;
+    _assert(L2.source_size == L1.getTargetSize());
+    let D3_size = L2.getTargetSize();
+    let M1 = L1.getMonotone();
+    let M2 = L2.getMonotone();
     let MC = M2.compose(M1);
 
     // Compile the known diagram data for D1, D2 and D3
@@ -688,7 +782,7 @@ export class Limit extends Array {
       new_components.push(component);
     }
 
-    let composed = new Limit(this.n, new_components);
+    let composed = new Limit(this.n, new_components, L1.source_size);
     return composed;
   }
 
@@ -698,20 +792,23 @@ export class Limit extends Array {
     for (let i = 0; i < component_targets.length; i++) {
       if (component_targets[i] == height) {
         let new_components = [...this.splice(0, i), ...this.splice(i+1)];
-        return new Limit(this.n, new_components);
+        let source_size = new_components.length > 0 ? this.source_size - 1 : null;
+        return new Limit(this.n, new_components, source_size);
       }
     }
+    if (this.length == 0) return this;
+    return this.copy({source_size: this.source_size - 1});
     _assert(false); // We didn't find the correct component to remove
   }
 
-  pad(depth) {
-    let components = [...this].map(component => component.pad(depth));
-    return new Limit(this.n, components);
+  pad(depth, source_boundary) {
+    let components = [...this].map(component => component.pad(depth, source_boundary));
+    return new Limit(this.n, components, this.source_size + (depth == 1 ? 1 : 0));
   }
 
-  deepPad(position) {
-    let components = [...this].map(component => component.deepPad(position));
-    return new Limit(this.n, components);
+  deepPad(position, width_deltas) {
+    let components = [...this].map(component => component.deepPad(position, width_deltas));
+    return new Limit(this.n, components, this.source_size + width_deltas[0]);
   }
 
   rewrite_forward(diagram) {
@@ -747,8 +844,8 @@ export class Limit extends Array {
     return new Diagram(diagram.n, { source: diagram.source, data: new_data });
   }
 
-  copy({ components = [...this], n = this.n } = this) {
-    return new Limit(n, components);
+  copy({ components = [...this], n = this.n, source_size = this.source_size } = this) {
+    return new Limit(n, components, source_size);
   }
 
   getNontrivialNeighbourhoods() {
@@ -890,6 +987,9 @@ export class Limit extends Array {
 
   typecheckBaseCase(forward) {
 
+    // Identities typecheck
+    if (this.length == 0) return true;
+
     // We are promised that 'this' represents a limit with atomic target
     _assert(this.length == 1);
 
@@ -902,11 +1002,6 @@ export class Limit extends Array {
     } else {
       target = new Diagram(this.n, {data: [this[0].target_data], source: source.source});
     }
-    let normalization = source.normalize();
-    let limit_normalized = this.compose(normalization.embedding);
-
-    // If the normalized limit is an identity, it type checks
-    if (limit_normalized.length == 0) return true;
 
     // If the source has zero height, we must be inserting a homotopy and its inverse
     // (Surely for n-groupoids we would relax this condition.)
@@ -938,7 +1033,7 @@ export class Limit extends Array {
       return false;
     }
     let match_diagram = forward ? type.source : type.target;
-    if (!normalization.diagram.equals(match_diagram)) {
+    if (!source.equals(match_diagram)) {
       console.log("Typecheck failed: singular point has improper neighbourhood");
       return false;
     }
@@ -1015,13 +1110,12 @@ export class Limit extends Array {
 
     _assert(subset instanceof Array);
 
-    // Check top-level range of the subset
-    let first_height = null;
-    let last_height = null;
+    // Check top-level range of the subset of the target
+    let range = {first: null, last: null};
     for (let i=0; i<subset.length; i++) {
       if (subset[i] === undefined) continue;
-      if (first_height === null) first_height = i;
-      last_height = i;
+      if (range.first === null) range.first = i;
+      range.last = i + 1;
     }
 
     // Choose which components to use
@@ -1065,15 +1159,21 @@ export class Limit extends Array {
       let restrict_forward = component.target_data.forward_limit.restrictToPreimage(subset[target_height]);
       let restrict_backward = component.target_data.backward_limit.restrictToPreimage(subset[target_height]);
       let target_data = new Content(this.n - 1, restrict_forward, restrict_backward);
-      let first = component.first - first_height;
+      let first = component.first - range.first;
 
       // Build the new LimitComponent
       let limit_component = new LimitComponent(component.n, { first, source_data, target_data, sublimits });
       components.push(limit_component);
     }
 
-    // Build the new limit
-    return new Limit(this.n, components);;
+    // If there are no components, we can return straight away
+    if (components.length == 0) return new Limit(this.n, []);
+
+    // If there are some components, we must work out the size of the source
+    let monotone = this.getMonotone();
+    let preimage = monotone.preimage(range);
+    return new Limit(this.n, components, preimage.last - preimage.first);
+
   }
 
   /* Take the pullback with a second limit.
@@ -1116,11 +1216,14 @@ export class Limit extends Array {
       // Add to the list of components
       left_components = [...left_components, ...left_boosted];
       right_components = [...right_components, ...right_boosted];
+
+      // Update the height of the source
+      source_height += pullback.height;
     }
 
-    let left = new Limit(this.n, left_components);
-    let right = new Limit(this.n, right_components);
-    return {left, right};
+    let left = new Limit(this.n, left_components, source_height);
+    let right = new Limit(this.n, right_components, source_height);
+    return { left, right };
   }
 
   static boostComponents(components, height) {
@@ -1262,7 +1365,6 @@ export class Limit extends Array {
       // Build the actual path
       let step_i = [0];
       let step_j = [0];
-      //let path = [[0,0]];
       let directions = [];
       let [dir_left, dir_neutral, dir_right] = [-1, 0, +1];
       for (let height=1; height<L_size + R_size; height++) {
@@ -1277,18 +1379,6 @@ export class Limit extends Array {
           return null;
         }
 
-        /*
-        while (last_i < i) {
-          last_i ++;
-          path.push([last_i, last_j]);
-        }
-        
-        while (last_j < j) {
-          last_j ++;
-          path.push([last_i, last_j]);
-        }*/
-
-        //path.push([i,j]);
         step_i.push(i);
         step_j.push(j);
 
@@ -1379,13 +1469,13 @@ export class Limit extends Array {
         let first = preimage.first;
         left_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
       }
-      let left = new Limit(this.n, left_components);
+      let left = new Limit(this.n, left_components, P_size);
 
       // Build the right projection
       let right_components = [];
       for (let a=0; a<R_size; a++) {
         let preimage = pr_mon.preimage(i);
-        let source_data = [];
+        let source_data = []; 
         let sublimits = [];
         for (let b=preimage.first; b<preimage.last; b++) {
           source_data.push(P_data[b]);
@@ -1403,7 +1493,7 @@ export class Limit extends Array {
         let first = preimage.first;
         right_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
       }
-      let right = new Limit(this.n, right_components);
+      let right = new Limit(this.n, right_components, P_size);
     }
 
     // Return the projections
@@ -1425,21 +1515,39 @@ export class Limit extends Array {
   // The cone is formed from f and g
   static pullbackFactorize(pullback, f, g) {
 
+    // Don't allow the cone maps to be identities
+    // (this simplifies some things, if it turns out to be too strong we can deal with it later)
+    if (f.length == 0 || g.length == 0) return null;
+
+    _assert(f.source_size === g.source_size);
+
     // Work level by level on the common source of f and g
 
     // Get associated monotone data
-    f_targets = f.getComponentTargets();
-    g_targets = g.getComponentTargets();
-    X_height = Math.max(f_targets.length, g_targets.length);
-    pl_targets = pullback.left.getComponentTargets();
-    pr_targets = pullback.right.getComponentTargets();
-    P_height = Math.max(pl_targets.length, pr_targets.length);
-    A_height = Math.max(...[...pl_targets, ...f_targets]);
-    B_height = Math.max(...[...pr_targets, ...g_targets]);
-    f_mon = f.getMonotone(X_height, A_height);
-    g_mon = g.getMonotone(X_height, B_height);
-    pl_mon = pullback.left.getMonotone(P_height, A_height);
-    pr_mon = pullback.right.getMonotone(P_height, B_height);
+    let f_targets = f.getComponentTargets();
+    let g_targets = g.getComponentTargets();
+    let pl_targets = pullback.left.getComponentTargets();
+    let pr_targets = pullback.right.getComponentTargets();
+
+    /*
+    let X_height = Math.max(f_targets.length, g_targets.length);
+    let P_height = Math.max(pl_targets.length, pr_targets.length);
+    let A_height = Math.max(...[...pl_targets, ...f_targets]);
+    let B_height = Math.max(...[...pr_targets, ...g_targets]);
+    let f_mon = f.getMonotone(X_height, A_height);
+    let g_mon = g.getMonotone(X_height, B_height);
+    let pl_mon = pullback.left.getMonotone(P_height, A_height);
+    let pr_mon = pullback.right.getMonotone(P_height, B_height);
+    */
+
+    let X_height = f.source_size;
+    let P_height = pullback.left.source_size || pullback.right.source_size;
+    let A_height = f.getTargetSize();
+    let B_height = g.getTargetSize();
+    let f_mon = f.getMonotone(X_height, A_height);
+    let g_mon = g.getMonotone(X_height, B_height);
+    let pl_mon = pullback.left.getMonotone(P_height, A_height);
+    let pr_mon = pullback.right.getMonotone(P_height, B_height);
 
     // Factorize at the level of the monotones
     let fac_mon = Monotone.pullbackFactorize({left: pl_mon, right: pr_mon}, f_mon, g_mon);
@@ -1506,8 +1614,91 @@ export class Limit extends Array {
       components.push(new Component(f.n, {first: preimage.first, sublimits, source_data, target_data}));
     }
 
-    return new Limit(f.n, components);
+    return new Limit(f.n, components, X_height);
   }
+
+  composeAtBoundary({type, limit}) {
+
+    // Nothing to do for identity limits
+    if (this.length == 0) return this;
+
+    // Make a shallow copy of the limit components ready for modification
+    let components = [...this];
+
+    // Base case is to pad with initial and final components where appropriate
+    if (this.n == limit.n + 1) {
+
+      // Pad leftmost component if appropriate
+      let first_component = components[0];
+      if (type == 's' && first_component.first == 0) {
+
+        // Correct the source data
+        let source_data = first_component.source_data.slice();
+        if (source_data.length > 0) {
+          //source_data[0].forward_limit = source_data[0].forward_limit.compose(limit);
+          let forward_limit = source_data[0].forward_limit.compose(limit);
+          let backward_limit = source_data[0].backward_limit;
+          source_data[0] = new Content(source_data[0].n, forward_limit, backward_limit);
+        }
+
+        // Correct the target data
+        let forward_limit = first_component.target_data.forward_limit.compose(limit);
+        let backward_limit = first_component.target_data.backward_limit;
+        let target_data = new Content(forward_limit.n, forward_limit, backward_limit);
+
+        // Store the result
+        let first = first_component.first;
+        let sublimits = first_component.sublimits;
+        components[0] = new LimitComponent(this.n, { source_data, target_data, sublimits, first })
+      }
+
+      // Pad rightmove component if appropriate
+      let last_component = components[components.length - 1];
+      if (type == 't' && last_component.first + last_component.source_data.length == this.source_size) {
+
+        // Correct the source data
+        let source_data = last_component.source_data.slice();
+        if (source_data.length > 0) {
+          //source_data[source_data.length - 1].forward_limit = source_data[source_data.length - 1].backward_limit.compose(limit);
+          let forward_limit = source_data[source_data.length - 1].forward_limit;
+          let backward_limit = source_data[source_data.length - 1].backward_limit.compose(limit);
+          source_data[source_data.length - 1] = new Content(source_data[0].n, forward_limit, backward_limit);
+        }
+
+        // Correct the target data
+        //target_data = last_component.target_data.copy();
+        let forward_limit = last_component.target_data.forward_limit;
+        let backward_limit = last_component.target_data.backward_limit.compose(limit);
+        let target_data = new Content(forward_limit.n, forward_limit, backward_limit);
+
+        // Store the result
+        let first = last_component.first;
+        let sublimits = last_component.sublimits;
+        components[components.length - 1] = new LimitComponent(this.n, { source_data, target_data, sublimits, first })
+      }
+
+      // Return the adjusted limit
+      return new Limit(this.n, components, this.source_size);
+    }
+
+    // Otherwise, the provided limit is too low-dimensional, so recurse
+    for (let i=0; i<components.length; i++) {
+      components[i] = components[i].composeAtBoundary({type, limit});
+    }
+
+    return new Limit(this.n, components, this.source_size);
+  }
+
+  getTargetSize() {
+    if (this.n == 0) return 1;
+    if (this.length == 0) return null; // we don't store source or target size for identity limits
+    let target_size = this.source_size;
+    for (let i=0; i<this.length; i++) {
+      target_size -= this[i].sublimits.length - 1;
+    }
+    return target_size;
+  }
+
 
 }
 

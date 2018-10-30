@@ -157,7 +157,7 @@ export class Diagram2D extends React.Component {
     let generator = this.getGenerator(point);
 
     if (generator.generator.n < this.diagram.n) {
-      return null;
+      //return null;
     }
 
     return (

@@ -1,17 +1,20 @@
 import * as Match from "~/matches";
+import { _assert } from "~/util/debug";
 
 /**
  * @param {Diagram} diagram
  * @param {number[]} point The point in geometric coordinates.
  */
 export const getPath = (diagram, point) => {
-  if (diagram.n == 0) {
+  if (point.length == 0 /*diagram.n == 0*/) {
     return {
       boundary: null,
       depth: null,
       point: point
     };
   }
+
+  _assert(point.length > 0);
 
   let [height, ...rest] = point;
 
