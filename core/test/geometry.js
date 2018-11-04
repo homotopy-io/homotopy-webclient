@@ -10,7 +10,7 @@ test("Unproject point in projected 2-diagram.", t => {
   let a = new Generator("a", g, f.diagram);
   let diagram = a.diagram;
 
-  let pairs = [
+  let pairs = [ 
     [[-1], [-1, 3]],
     [[0], [0, 3]],
     [[1], [1, 1]],

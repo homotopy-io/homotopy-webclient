@@ -1,7 +1,7 @@
 import { _assert } from "~/util/debug";
 import { Generator } from "~/generator";
 import { Diagram } from "~/diagram";
-import { LimitComponent, ForwardLimit, BackwardLimit, Content } from "~/limit";
+import { LimitComponent, Limit, Content } from "~/limit";
 import * as Boundary from "~/boundary";
 
 export const attach = (diagram, build, path) => {
@@ -27,7 +27,7 @@ export const attach = (diagram, build, path) => {
 
   // Attach the content to the diagram
   if (path.boundary == "source") {
-    let data = [content.reverse(diagram.source), ...diagram.data];
+    let data = [content.reverse(), ...diagram.data];
     let source = diagram.source.rewrite(content);
     return new Diagram(diagram.n, { source, data });
   } else {
@@ -55,19 +55,19 @@ const buildAttachmentContent = generator => (diagram, point, boundary) => {
   let source = !inverse ? generator.source : generator.target;
   let target = !inverse ? generator.target : generator.source;
 
-  if (diagram.n == 0) {
-    let forwardComponent = new LimitComponent(0, { type: generator });
-    let backwardComponent = new LimitComponent(0, { type: target.type });
+  if (diagram.n == 0) { // Confused about how to convert this to LimitComponent
+    let forwardComponent = new LimitComponent(0, { source_type: diagram.type, target_type: generator });
+    let backwardComponent = new LimitComponent(0, { source_type: target.type, target_type: generator });
 
-    let forwardLimit = new ForwardLimit(0, [forwardComponent], !inverse);
-    let backwardLimit = new BackwardLimit(0, [backwardComponent], inverse);
+    let forwardLimit = new Limit(0, [forwardComponent]);
+    let backwardLimit = new Limit(0, [backwardComponent]);
 
     return new Content(0, forwardLimit, backwardLimit);
   }
 
-  let forwardLimit = diagram.contractForwardLimit(generator, point, source, !inverse);
-  let singularSlice = forwardLimit.rewrite(diagram);
-  let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target, inverse);
+  let forwardLimit = diagram.contractForwardLimit(generator, point, source);
+  let singularSlice = forwardLimit.rewrite_forward(diagram);
+  let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target);
 
   return new Content(diagram.n, forwardLimit, backwardLimit);
 };
