@@ -1,4 +1,5 @@
 import dotProp from "dot-prop-immutable";
+import { createSelector } from "reselect";
 import createReducer from "~/util/create-reducer";
 import * as DiagramActions from "~/state/actions/diagram";
 import * as SignatureActions from "~/state/actions/signature";
@@ -73,30 +74,33 @@ export const setDiagram = (state, diagram) => {
   return state;
 };
 
-export const updateSlices = (state) => {
-  let { slice, diagram, projection, renderer } = state.diagram;
+export const updateSlices = createSelector(
+  state => state.diagram.slice,
+  state => state.diagram.diagram,
+  state => state.diagram.projection,
+  state => state.diagram.renderer,
+  (slice, diagram, projection, renderer) => {
+    if (diagram == null) {
+      return [];
+    }
 
-  if (diagram == null) {
-    return state;
+    let sliceCount = diagram.n - renderer - projection;
+
+    if (sliceCount > slice.length) {
+      slice = [...slice, Array(sliceCount - slice.length).fill(0)];
+    } else {
+      slice = slice.slice(0, sliceCount);
+    }
+
+    for (let i = 0; i < slice.length; i++) {
+      slice[i] = Math.max(slice[i], 0);
+      slice[i] = Math.min(slice[i], diagram.data.length * 2);
+      diagram = Core.Geometry.getSlice(diagram, slice[i]);
+    }
+
+    return slice
   }
-
-  let sliceCount = diagram.n - renderer - projection;
-
-  if (sliceCount > slice.length) {
-    slice = [...slice, Array(sliceCount - slice.length).fill(0)];
-  } else {
-    slice = slice.slice(0, sliceCount);
-  }
-
-  for (let i = 0; i < slice.length; i++) {
-    slice[i] = Math.max(slice[i], 0);
-    slice[i] = Math.min(slice[i], diagram.data.length * 2);
-    diagram = Core.Geometry.getSlice(diagram, slice[i]);
-  }
-
-  state = dotProp.set(state, "diagram.slice", slice);
-  return state;
-};
+);
 
 export default createReducer({
   [DiagramActions.SET_SOURCE]: (state) => {
@@ -139,7 +143,7 @@ export default createReducer({
 
   [DiagramActions.SET_RENDERER]: (state, { renderer }) => {
     state = dotProp.set(state, "diagram.renderer", renderer);
-    state = updateSlices(state);
+    state = dotProp.set(state, "diagram.slice", updateSlices(state));
     return state;
   },
 
@@ -160,7 +164,7 @@ export default createReducer({
       );
 
       state = dotProp.set(state, "diagram.diagram", diagram);
-      state = updateSlices(state);
+      state = dotProp.set(state, "diagram.slice", updateSlices(state));
       return state;
 
     } catch(error) {
@@ -187,7 +191,7 @@ export default createReducer({
       );
 
       state = dotProp.set(state, "diagram.diagram", diagram);
-      state = updateSlices(state);
+      state = dotProp.set(state, "diagram.slice", updateSlices(state));
       return state;
     } catch(error) {
       console.error(error);
@@ -202,19 +206,19 @@ export default createReducer({
 
   [DiagramActions.TAKE_IDENTITY]: (state) => {
     state = dotProp.set(state, "diagram.diagram", diagram => diagram.boost());
-    state = updateSlices(state);
+    state = dotProp.set(state, "diagram.slice", updateSlices(state));
     return state;
   },
 
   [DiagramActions.SET_PROJECTION]: (state, { projection }) => {
     state = dotProp.set(state, "diagram.projection", projection);
-    state = updateSlices(state);
+    state = dotProp.set(state, "diagram.slice", updateSlices(state));
     return state;
   },
 
   [DiagramActions.SET_SLICE]: (state, { index, height }) => {
     state = dotProp.set(state, `diagram.slice.${index}`, height);
-    state = updateSlices(state);
+    state = dotProp.set(state, "diagram.slice", updateSlices(state));
     return state;
   },
 

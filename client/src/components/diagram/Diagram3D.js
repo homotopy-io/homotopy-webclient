@@ -32,6 +32,8 @@ export class Diagram3D extends React.Component {
 
   constructor(props) {
     super(props);
+    this.objects = [];
+    this.materials = new Map();
     this.diagramRef = React.createRef();
   }
 
@@ -73,19 +75,28 @@ export class Diagram3D extends React.Component {
     this.startLoop();
   }
 
-  componentDidUpdate(props) {
+  componentDidUpdate(oldProps) {
     // Dimensions changed
     let { width, height } = this.props;
-    if (height != props.height || width != props.width) {
+    if (height != oldProps.height || width != oldProps.width) {
       this.camera.aspect = width / height;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(width, height);
     }
 
     // Contents changed
-    let { diagram, dimension } = this.props;
-    if (diagram != props.diagram || dimension != props.dimension) {
+    let { diagram, dimension, slices, generators } = this.props;
+    
+    if (
+      diagram !== oldProps.diagram ||
+      dimension !== oldProps.dimension ||
+      slices !== oldProps.slices
+    ) {
       this.buildScene();
+    } else if (generators !== oldProps.generators) {
+      for (let [id, material] of this.materials) {
+        material.color.set(new THREE.Color(generators[id].color));
+      }
     }
   }
 
@@ -119,25 +130,27 @@ export class Diagram3D extends React.Component {
     cancelAnimationFrame(this.animationFrame);
   }
 
-  buildScene() {
-    // TODO: Remove old scene contents for rerender
+  getMaterial(generator) {
+    const id = generator.generator.id;
 
-    for (let point of this.props.layout.points) {
-      // this.createPoint(point);
+    if (!this.materials.has(id)) {
+      let material = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(generator.color),
+        side: THREE.DoubleSide
+      });
+
+      this.materials.set(id, material);
     }
 
-    for (let { source, target } of this.props.layout.edges) {
-      //this.createWire(source, target);
-    }
-
-    // this.createSurfaces();
-
-    // this.createScaffold();
-
-    this.createQuads();
+    return this.materials.get(id);
   }
 
-  createQuads() {
+  buildScene() {
+    // Remove all previous objects from the scene
+    for (let object of this.objects) {
+      this.scene.remove(object);
+    }
+
     // Create edge graph
     let graph = new Graph(p => p.join(":"));
     for (let { source, target, codim, dir } of this.props.layout.edges) {
@@ -169,7 +182,7 @@ export class Diagram3D extends React.Component {
     for (let point of this.props.layout.points) {
       let generator = this.getGenerator(point);
 
-      if (generator.generator.n >= this.diagram.n - 2) {
+      if (generator.generator.n >= this.props.dimension - 2) {
         pointIndices.set(point.join(":"), vertices.length);
         vertices.push(this.getPosition(point));
         annotations.push(generator);
@@ -208,7 +221,7 @@ export class Diagram3D extends React.Component {
       let { a, b, c, d } = quad;
 
       let aGenerator = this.getGenerator(a);
-      if (aGenerator.generator.n < this.diagram.n - 2) {
+      if (aGenerator.generator.n < this.props.dimension - 2) {
         continue;
       }
 
@@ -252,34 +265,6 @@ export class Diagram3D extends React.Component {
     surface = subdivideSurface(surface, merge, merge);
     surface = subdivideSurface(surface, merge, merge);
     surface = subdivideSurface(surface, merge, merge);
-
-    // for (let edge of surface.edges.values()) {
-    //   const sourceVec = new THREE.Vector3(...edge.vertices[0].position);
-    //   const targetVec = new THREE.Vector3(...edge.vertices[1].position);
-    //   const dirVec = targetVec.clone();
-    //   dirVec.sub(sourceVec);
-    //   const length = dirVec.length();
-    //   dirVec.normalize();
-
-    //   let wire = edge.vertices[0].annotation.generator.n == 2 && edge.vertices[1].annotation.generator.n == 2;
-    //   let color = 0xFFFFFF;
-
-    //   if (!wire) continue;
-
-    //   const arrow = new THREE.ArrowHelper(dirVec, sourceVec, length, color, 0.05, 0.05);
-    //   this.scene.add(arrow);
-    // }
-
-    // for (let vertex of surface.vertices.values()) {
-    //   let color = [null, 0xFF0000, 0x00FF00, 0x0000FF][vertex.annotation.generator.n];
-    //   let sphere = new THREE.Mesh(
-    //     new THREE.SphereGeometry(0.1, 4, 4),
-    //     new THREE.MeshLambertMaterial({ color })
-    //   );
-
-    //   sphere.position.copy(new THREE.Vector3(...vertex.position));
-    //   this.scene.add(sphere);
-    // }
     
     let groups = groupSurface(surface, (a, b) => a.generator.n == b.generator.n);
 
@@ -301,18 +286,11 @@ export class Diagram3D extends React.Component {
         geometry.computeVertexNormals();
         geometry.computeFaceNormals();
 
-        let material = new THREE.MeshPhongMaterial({
-          color: new THREE.Color(generator.color),
-          side: THREE.DoubleSide
-        });
+        let material = this.getMaterial(generator);
 
         let mesh = new THREE.Mesh(geometry, material);
         this.scene.add(mesh);
-
-        // let wireGeo = new THREE.WireframeGeometry( geometry ); // or WireframeGeometry( geometry )
-        // let wireMat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
-        // let wireframe = new THREE.LineSegments( wireGeo, wireMat );
-        // this.scene.add( wireframe );
+        this.objects.push(mesh);
       } else if (codimension == 1) {
         let vertices = getWireVertices(surface, group, this.diagram.n);
         let curve = new THREE.CurvePath();
@@ -324,22 +302,21 @@ export class Diagram3D extends React.Component {
           ));
         }
 
-        let color = new THREE.Color(generator.color);
-
         let geometry = new THREE.TubeGeometry(curve, vertices.length, 0.05, 8, false, true);
-        let material = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+        let material = this.getMaterial(generator)
         let wire = new THREE.Mesh(geometry, material);
 
         this.scene.add(wire);
+        this.objects.push(wire);
       } else if (codimension == 0) {
-        let color = new THREE.Color(generator.color); 
         let sphere = new THREE.Mesh(
           new THREE.SphereGeometry(0.1, 32, 32),
-          new THREE.MeshLambertMaterial({ color })
+          this.getMaterial(generator)
         );
 
         sphere.position.set(...group.values().next().value.position);
         this.scene.add(sphere);
+        this.objects.push(sphere);
       }
     }
 

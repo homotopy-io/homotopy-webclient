@@ -95,8 +95,6 @@ export default createReducer({
       point: [...point.slice(0, boundaryPath.depth || 0), ...match.match.map(x => x * 2)]
     }));
 
-    console.log("Options", options);
-
     if (options.length == 1) {
       let [ option ] = options;
       diagram = Core.attachGenerator(diagram, generators[option.generator].generator, option.path);

@@ -56,11 +56,10 @@ const Logo = styled.div`
   background-color: white;
   text-align: center;
   padding-top: 11px;
-  width: 300px;
 `;
 
 const LogoImage = styled.img`
-  width: '300px'
+  width: 300px;
 `;
 
 const Content = styled.div`
