@@ -147,19 +147,22 @@ export default createReducer({
     return state;
   },
 
+  /*
   [DiagramActions.CONTRACT]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;
 
     if (diagram == null || point.length < 2) return state;
 
-    point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+    let point_expanded = [...slice, ...point];
+    //let point_unprojected = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
 
-    let path = Core.Boundary.getPath(diagram, point);
-    path.point[path.point.length - 2] -= direction[1] < 0 ? 2 : 0;
+    // ONLY THE PATH MATTERS FOR THE CONTRACTION
+    let path = Core.Boundary.getPath(diagram, point_expanded);
+    //path.point[path.point.length - 2] -= direction[1] < 0 ? 2 : 0;
 
     try {
       diagram = Core.attach(diagram,
-        (boundary, point) => { return boundary.contract(point.slice(0, -1), direction); },
+        (boundary, point) => { return boundary.homotopy(point.slice(0, -1), direction); },
         path
       );
 
@@ -172,21 +175,20 @@ export default createReducer({
       return state;
     }
   },
+  */
 
-  [DiagramActions.EXPAND]: (state, { point, direction }) => {
+  [DiagramActions.HOMOTOPY]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;
 
-    if (diagram == null || point.length < 2) {
-      return state;
-    }
+    if (diagram == null || point.length < 2) return state;
 
-    point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
-    let path = Core.Boundary.getPath(diagram, point);
+    //point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+    let path = Core.Boundary.getPath(diagram, [...slice, ...point]);
 
     try {
       diagram = Core.attach(
         diagram,
-        (boundary, point) => boundary.expand(point, direction),
+        (boundary, point) => boundary.homotopy(point, direction),
         path
       );
 
@@ -231,7 +233,6 @@ export default createReducer({
   [SignatureActions.SELECT_GENERATOR]: (state, { id }) => {
     let { diagram } = state.diagram;
     let generator = state.signature.generators[id];
-
     if (diagram == null) {
       diagram = generator.generator.diagram;
       state = setDiagram(state, diagram);

@@ -44,7 +44,7 @@ export class Diagram {
     return false;
   }
 
-  get target() {
+  getTarget() {
     if (this.n == 0) {
       return null;
     } else {
@@ -53,6 +53,11 @@ export class Diagram {
         regular: true
       });
     }
+  }
+
+  // I don't like getters, do we have to use them?
+  get target() {
+    return this.getTarget();
   }
 
   getSlice(...locations) {
@@ -217,10 +222,10 @@ export class Diagram {
 
   /* Normalizes the diagram relative to the given incoming limits.
    * Returns object with the following properties:
-   *  - body, the body (Content array) of the normalized diagram;
+   *  - diagram, the normalized diagram;
    *  - embedding, a limit from the normalized diagram into the original diagram;
    *  - factorizations, limits into the normalized diagram that factorize the originally-provided
-   *    limits through the embedding.
+   *      limits through the embedding.
    */
   normalizeRelative(limits) {
     for (let i = 0; i < limits.length; i++) {
@@ -236,6 +241,17 @@ export class Diagram {
     if (this.n == 0) {
       let id = new Limit(0, []);
       return { diagram: this, embedding: new Limit(0, []), factorizations: limits };
+    }
+
+    // If any incoming limits are the identity, the diagram doesn't change
+    for (let i=0; i<limits.length; i++) {
+      let limit = limits[i];
+      if (limit.length == 0) {
+        let diagram = this;
+        let embedding = new Limit(this.n, []);
+        let factorizations = limits;
+        return { diagram, embedding, factorizations };
+      }
     }
 
     // Store the new data for the normalized diagram
@@ -280,7 +296,7 @@ export class Diagram {
 
       // Create the LimitComponent to embed this slice of the normalized diagram
       if (recursive.embedding.length > 0) {
-        let component = new LimitComponent(this.n - 1, {first: i, source_data: [this.data[i]], sublimits: [recursive.embedding], target_data: new_content });
+        let component = new LimitComponent(this.n, {first: i, source_data: [this.data[i]], sublimits: [recursive.embedding], target_data: new_content });
         embedding_components.push(component);
       }
 
@@ -311,12 +327,23 @@ export class Diagram {
     let diagram = new Diagram(this.n, { source: this.source, data: new_data });
 
     // Build the embedding of 'diagram' into 'this'
-    let embedding = new Limit(this.n, embedding_components);
+    let embedding = new Limit(this.n, embedding_components, diagram.data.length);
 
     // Build the factorizations
     //let factorizations = [];
     for (let i=0; i<limits.length; i++) {
-      factorizations[i] = new Limit(this.n, new_limit_components[i]);
+      factorizations[i] = new Limit(this.n, new_limit_components[i], limits[i].source_size); // none of limits are the identity
+    }
+
+    if (this.n == 2 && limits.length == 2) {
+      let x = 1;
+    }
+
+    // Prepare a list of the factorization monotones
+    let factorization_monotones = [];
+    for (let i=0; i<factorizations.length; i++) {
+      let fac = factorizations[i];
+      factorization_monotones.push(fac.length == 0 ? null : fac.getMonotone());
     }
 
     // Remove superfluous top-level bubbles in the normalized diagram
@@ -330,8 +357,17 @@ export class Diagram {
       // This level is a vacuum bubble. Let's check if it's in the image of an incoming limit.
       let in_image = false;
       for (let j = 0; j < factorizations.length; j++) {
-        let index = factorizations[j].getTargetComponentIndex[i];
+        /*
+        let index = factorizations[j].getTargetComponentIndex(i);
         if (index == null) continue;
+        in_image = true;
+        break;
+        */
+        let fac = factorization_monotones[i];
+        if (fac) {
+          let preimage = fac.preimage({first: i, last: i+1});
+          if (preimage.first == preimage.last) continue;          
+        }
         in_image = true;
         break;
       }
@@ -342,16 +378,23 @@ export class Diagram {
 
       // Update the embedding limit so that it creates this bubble
       let bubble_component = new LimitComponent(this.n, {first: i, sublimits: [], source_data: [], target_data: content});
-      let create_bubble_limit = new Limit(this.n, [bubble_component]);
+      let create_bubble_limit = new Limit(this.n, [bubble_component], diagram.data.length);
       embedding = embedding.compose(create_bubble_limit);
 
       // Update the factorizations so that they omit this target level
       for (let j = 0; j < limits.length; j++) {
         factorizations[j] = factorizations[j].removeTargetLevel(i);
+        let fac = factorizations[j];
+        if (fac.length == 0) {
+          factorization_monotones[j] = null;
+        } else {
+          factorization_monotones[j] = fac.getMonotone();
+        }
       }
 
-      // 
+      // Reduce the index by one
       i--;
+
     }
 
     return { diagram, embedding, factorizations };
@@ -384,6 +427,94 @@ export class Diagram {
     return true;
   }
 
+  // Normalize the diagram in a way that also normalizes the boundaries
+  normalizeWithBoundaries() {
+
+      // Arrange the source limits by their regular source level
+      let level_limits = [];
+      for (let i=0; i<=this.data.length; i++) {
+        let l = [];
+        if (i > 0) l.push(this.data[i - 1].backward_limit);
+        if (i < this.data.length) l.push(this.data[i].forward_limit);
+        level_limits.push(l);
+      }
+  
+      // Recursively normalize them
+      let data_limits = [];
+      let source;
+      for (let i=0; i<=this.data.length; i++) {
+        let slice = this.getSlice({height: i, regular: true});
+        let n = Limit.normalizeRegular({source: slice, limits: level_limits[i]});
+        if (i == 0) source = n.source;
+        data_limits.push(n.limits.shift());
+        if (i > 0 && i < this.data.length) {
+          data_limits.push(n.limits.shift());
+        }
+      }
+  
+      // Build the new source diagram
+      let data = [];
+      _assert(data_limits.length % 2 == 0);
+      for (let i=0; i<data_limits.length / 2; i++) {
+        let forward_limit = data_limits[2 * i];
+        let backward_limit = data_limits[2 * i + 1];
+        let content = new Content(this.n - 1, forward_limit, backward_limit);
+        data.push(content);
+      }
+
+      // Build the diagram with normalized regular levels
+      let diagram = new Diagram(this.n, {source, data});
+
+      // Normalize its singular levels
+      let normalized = diagram.normalize();
+
+      // Return the resulting diagram
+      return normalized.diagram;
+
+  }
+
+  
+  composeAtRegularLevel({ height, limit }) {
+    _assert(isNatural(height));
+    _assert(limit instanceof Limit);
+
+    // Base case
+    if (this.n == limit.n + 1) {
+
+      // Adjust the source if necessary
+      let source = (height == 0 ? limit.rewrite_backward(this.source) : this.source);
+
+      let data = this.data.slice();
+
+      // Compose the forward limit
+      if (height <= this.data.length - 1) {
+        let forward_limit = data[height].forward_limit.compose(limit);
+        let backward_limit = data[height].backward_limit;
+        data[height] = new Content(this.n - 1, forward_limit, backward_limit);
+      }
+
+      // Compose the backward limit
+      if (height > 0) {
+        let forward_limit = data[height - 1].forward_limit;
+        let backward_limit = data[height - 1].backward_limit.compose(limit);
+        data[height - 1] = new Content(this.n - 1, forward_limit, backward_limit);        
+      }
+
+      return new Diagram(this.n, { source, data });
+    }
+
+    _assert(this.n > limit.n);
+
+    let source = this.source.composeAtRegularLevel({ height, limit });
+    let data = [];
+    for (let i=0; i<this.data.length; i++) {
+      data[i] = this.data[i].composeAtRegularLevel({ height, limit });
+    }
+
+    return new Diagram(this.n, { source, data });
+    
+  }
+
   // Check if the specified id is used at all in this diagram
   usesCell(generator) {
     if (this.n == 0) return this.type.id == generator.id;
@@ -412,16 +543,15 @@ export class Diagram {
   /**
    * Pad the diagram content to remain consistent with a higher source attachment.
    */
-  pad(depth) {
+  pad(depth, source_boundary /* boolean */) {
     if (depth == 1) return;
     let source = this.source;
-    let data = this.data.map(content => content.pad(depth - 1));
+    let data = this.data.map(content => content.pad(depth - 1, source_boundary));
     return new Diagram(this.n, { source, data });
   }
 
   // Create the limit which contracts the a subdiagram at a given position, to a given type
-  contractForwardLimit(type, position, subdiagram, framing) {
-    _assert(framing === undefined);
+  contractForwardLimit(type, position, subdiagram) {
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
@@ -429,6 +559,9 @@ export class Diagram {
     _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
+      let source_type = subdiagram.type;
+      let target_type = type;
+      if (source_type.id == target_type.id) return new Limit(0, []);
       return new Limit(0, [new LimitComponent(0, { source_type: subdiagram.type, target_type: type })]);
     }
 
@@ -439,8 +572,13 @@ export class Diagram {
       let subdiagram_singular_slice = subdiagram.getSlice({ height: i, regular: false });
       sublimits.push(singular_slice.contractForwardLimit( type, rest, subdiagram_singular_slice ));
     }
-    let source_first_limit = this.source.contractForwardLimit(type, rest, subdiagram.source );
-    //let singular = source_first_limit.rewrite(this.source);
+
+    // This has stood for a while but how can it be right??!?
+    //let source_first_limit = this.source.contractForwardLimit(type, rest, subdiagram.source );
+
+    // Alternative that makes more sense...
+    let source = this.getSlice({height, regular: true});
+    let source_first_limit = source.contractForwardLimit(type, rest, subdiagram.source );
 
     let target = this.getSlice({ height: height + subdiagram.data.length, regular: true });
 
@@ -450,12 +588,13 @@ export class Diagram {
     //let source_data = subdiagram.data.slice(height, height + subdiagram.data.length);
     let source_data = this.data.slice(height, height + subdiagram.data.length);
     let limit_component = new LimitComponent(this.n, { first: height, source_data, target_data, sublimits });
-    return new Limit(this.n, [limit_component], null);
+    return new Limit(this.n, [limit_component], this.data.length);
   }
 
   // Create the limit which inflates the point at the given position, to a given subdiagram
-  contractBackwardLimit(type, position, subdiagram, framing) {
-    _assert(framing === undefined);
+  // WE USE THIS WHEN ATTACHING A GENERATOR TO A DIAGRAM.
+  // NEED TO PASS IN MORE DATA TO deepPadData TO ALLOW LIMIT source_size PROPERTY TO BE CORRECTLY UPDATED
+  contractBackwardLimit(type, position, subdiagram) {
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
@@ -476,11 +615,23 @@ export class Diagram {
       sublimits.push(singular_slice.contractBackwardLimit(type, rest, subdiagram_singular_slice));
     }
 
-    let source_data = Content.deepPadData(subdiagram.data, rest);
-    let target_data = this.data[first]; //= this.data.slice(first, 1); // ??????
+    // Get width differences
+    let width_deltas = [];
+    let diag = this;
+    let subdiag = subdiagram;
+    for (let i=0; i<this.n - 1; i++) {
+      diag = diag.getSlice({height: position[i], regular: true});
+      let diagram_width = diag.data.length;
+      subdiag = subdiag.source;
+      let subdiagram_width = subdiag.data.length;
+      width_deltas.push(diagram_width - subdiagram_width);
+    }
+
+    let source_data = Content.deepPadData(subdiagram.data, rest, width_deltas);
+    let target_data = this.data[first];
 
     let limit_component = new LimitComponent(this.n, { first, source_data, target_data, sublimits });
-    return new Limit(this.n, [limit_component], null);
+    return new Limit(this.n, [limit_component], this.data.length + subdiagram.data.length - 1);
   }
 
   singularData() {
@@ -507,51 +658,116 @@ export class Diagram {
   }
 
   // Produce the Content object that contracts a diagram
-  contract(point, directions) {
+  // 2018-11-HIO-2
+  homotopy(point, compass) {
+
+    // Convert from integer coordinates to regular/singular coordinates
     let location = point.map(x => ({ height: Math.floor(x / 2), regular: x % 2 == 0 }));
 
-    let height = location[location.length - 1];
+    // Work out if we're dragging horizontally
+    let horizontal = new Set(['ene', 'ese', 'wsw', 'wnw']).has(compass);
 
-    _assert(!height.regular); // final entity must be at a singular height
-    let slice = this.getSlice(...location.slice(0, location.length - 1)); // last coordinate is irrelevant
+    // Get the subdiagram where the user is clicking
+    let click_diagram = this.getSlice(...(location.slice(0, location.length - (horizontal ? 1 : 2))));
+    _assert(click_diagram);
 
-    if (directions[0] < 0 && height.height == 0) {
-      throw "Can't perform homotopy off the bottom of the diagram.";
+    // If we're dragging horizontally, the last point has to be singular
+    if (horizontal) {
+
+      let last_point = location[location.length - 1];
+
+      // Check for situation where there's nothing to do
+      if (last_point.regular) {
+        console.log('Horizontal drag on a regular-regular patch, nothing to do');
+        return;
+      }
+
+      // Add the depth of the component that the user is implicitly selecting
+      let content = click_diagram.data[last_point.height];
+      _assert(content);
+      let targets = [...content.forward_limit.getComponentTargets(), ...content.backward_limit.getComponentTargets()];
+      targets = targets.sort((a, b) => a - b);
+      _assert(targets.length > 0);
+      location.push({height: targets[0], regular: false});
+
     }
 
-    _assert(height.height < slice.data.length);
-
-    if (directions[0] > 0 && height.height == slice.data.length - 1) {
-      throw "Can't perform homotopy off the top of the diagram.";
+    // Get the direction and 'tendency' of the drag
+    let direction;
+    let tendency;
+    if (horizontal) {
+      tendency = null;
+      if (compass == 'ene' || compass == 'ese') {
+        direction = +1;
+      } else {
+        direction = -1;
+      }
+    } else {
+      if (compass == 'nne') {
+        direction = +1;
+        tendency = +1;
+      } else if (compass == 'nnw') {
+        direction = +1;
+        tendency = -1;
+      } else if (compass == 'ssw') {
+        direction = -1;
+        tendency = -1;
+      } else if (compass == 'sse') {
+        direction = -1;
+        tendency = +1;
+      }
     }
 
-    if (directions[0] < 0) {
-      location[location.length - 1].height--; // if we're dragging down, adjust for this
-      if (directions[1] != null) directions[1] = -directions[1];
+    // Decide if it's a contraction or expansion
+    let last = location[location.length - 1];
+    let second_last = location[location.length - 2];
+    let content = click_diagram.data[second_last.height];
+    let targets = [...new Set([...content.forward_limit.getComponentTargets(), ...content.backward_limit.getComponentTargets()])];
+    _assert(targets.length > 0);
+    _assert(targets.indexOf(last.height) >= 0);
+    let expansion = targets.length > 1;
+
+    // Build the content object
+    if (expansion) {
+
+      let forward_limit = new Limit(this.n, [], this.data.length);
+      let backward_limit = this.getExpansionLimit({location, direction});
+      let content = new Content(this.n, forward_limit, backward_limit);
+      if (!content.typecheck(this)) throw "This expansion doesn't typecheck";
+      return content;
+  
+    } else { // contraction
+    
+      // Last coordinate irrelevant for contraction
+      location = location.slice(0, location.length - 1);
+
+      // We assume we're always contracting up, so adjust direction and last height appropriately
+      if (direction < 0) {
+        if (location[location.length - 1].height == 0) {
+          throw "Can't perform contraction off the bottom of the diagram";
+        }
+        location[location.length - 1].height --;
+      }
+      let forward_limit = this.getContractionLimit({location, tendency});
+      let singular = forward_limit.rewrite_forward(this);
+      let normalization = singular.normalize();
+      let backward_limit = normalization.embedding;
+      let content = new Content(this.n, forward_limit, backward_limit);
+      if (!content.typecheck(this)) throw "This contraction doesn't typecheck";
+      return content;  
+
     }
 
-    let right = directions[1];
-    let forward_limit = this.getContractionLimit(location, right);
-    let backward_limit = new Limit(this.n, []);
-    let content = new Content(this.n, forward_limit, backward_limit);
-    if (!content.typecheck()) throw "This contraction doesn't typecheck";
-    return content;
   }
 
-  // Produce the Content object that expands a diagram
-  expand(point, directions) {
-    let location = point.map(x => ({ height: Math.floor(x / 2), regular: x % 2 == 0 }));
-    //throw "not yet implemented";
-    let backward_limit = this.getExpansionLimit(location, directions[1] == 1);
-    let forward_limit = new Limit(this.n, []);
-    return new Content(this.n, forward_limit, backward_limit);
-  }
+  // Recursive procedure constructing a Limit object that expands a diagram at a given position
+  getExpansionLimit({location, direction}) {
 
-  // Recursive procedure constructing a BackwardsLimit object that expands a diagram at a given position
-  getExpansionLimit(location, up) {
     _assert(location instanceof Array);
     _assert(location.length >= 2); // Expansion requires at least 2 coordinates
+
     if (location.length == 2) {
+
       // Expansion base case
       _assert(!location[0].regular && !location[1].regular); // both coordinates must be singular
       let r1 = this.getSlice({ height: location[0].height, regular: true });
@@ -559,31 +775,66 @@ export class Diagram {
       let s = this.getSlice({ height: location[0].height, regular: false });
       let first = location[0].height;
       let target_data = this.data[first];
-      if (up) {
+
+      if (direction > 0) {
+
         let expansion = target_data.getExpansionData(location[1].height, r1, r2, s);
         let component = new LimitComponent(this.n, { source_data: expansion.data, target_data, sublimits: expansion.sublimits, first });
-        return new Limit(this.n, [component]);
+        return new Limit(this.n, [component], this.data.length + expansion.data.length - 1);
+
       } else {
+
         let reverse_content = target_data.reverse();
         let reverse_expansion = reverse_content.getExpansionData(location[1].height, r2, r1, s);
-        let data_0_rev = reverse_expansion.data[0].reverse(/*r2*/);
-        //let new_regular_slice = reverse_expansion.data[0].rewrite_backward(r2);
-        let new_regular_slice = reverse_expansion.data[0].reverse().rewrite(r2);
+        let data_0_rev = reverse_expansion.data[0].reverse();
         let data_1_rev = reverse_expansion.data[1].reverse();
         let source_data = [data_1_rev, data_0_rev];
         let sublimits = reverse_expansion.sublimits.reverse();
         let component = new LimitComponent(this.n, { source_data, target_data, sublimits, first });
-        return new Limit(this.n, [component]);
+        return new Limit(this.n, [component], this.data.length + source_data.length - 1);
+
       }
+
     } else if (location[0].regular) {
-      throw "cannot perform expansion on regular slice";
-    } else {
-      throw "not yet implemented recursive expansion on singular slices";
+
+      throw "Can't perform expansion on regular slice";
+
+      // maybe we should bubble? may be reasonable in some cases.
+
+    } else { // Recursive expansion on singular slice, 2018-11-HIO-4
+
+      //throw "not yet implemented recursive expansion on singular slices";
+
+      let slice = this.getSlice(location[0]);
+      let recursive = slice.getExpansionLimit({location: location.slice(1), direction});
+      let data = this.data[location[0].height];
+      let forward_pullback = data.forward_limit.pullback(recursive);
+      if (!forward_pullback) {
+        throw "Can't pullback expansion with forward limit at depth " + location.length - 1;
+      }
+      if (forward_pullback.left.length > 0) {
+        throw "expansion on singular slice, forward pullback changes the regular level";
+      }
+      let backward_pullback = recursive.pullback(data.backward_limit);
+      if (!backward_pullback) {
+        throw "Can't pullback expansion with backward limit at depth " + location.length - 1;
+      }
+      if (backward_pullback.right.length > 0) {
+        throw "expansion on singular slice, backward pullback changes the regular level";
+      }
+      let first = location[0].height;
+      let target_data = this.data[first];
+      let source_data = [new Content(this.n - 1, forward_pullback.right, backward_pullback.left)];
+      let sublimits = [recursive];
+      let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
+      return new Limit(this.n, [component], this.data.length);
+
     }
+
   }
 
   // Recursive procedure that constructs a limit contracting a diagram at a given position
-  getContractionLimit(location, right) {
+  getContractionLimit({location, tendency}) {
     
     _assert(location instanceof Array);
     _assert(location.length >= 1); // Contraction requires at least 1 coordinate
@@ -595,15 +846,17 @@ export class Diagram {
       // Contraction base case
       _assert(!location[0].regular); // The UI should never trigger contraction from a regular slice
       _assert(height >= 0);
-      _assert(height < this.data.length - 1);
+      if (height >= this.data.length - 1) {
+        throw "Can't perform contraction off the top of the diagram";
+      }
       let regular = this.getSlice({ height: height + 1, regular: true });
       let D1 = this.getSlice({ height, regular: false });
       let D2 = this.getSlice({ height: height + 1, regular: false });
       let L1 = this.data[height].backward_limit;
       let L2 = this.data[height + 1].forward_limit;
       let upper = [D1, D2];
-      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: right == 1 /* true means right, false means left, null means none */ }];
-      let contract_data = Diagram.multiUnify({ lower, upper, right: right == 1 });
+      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: tendency == 1 /* true means right, false means left, null means none */ }];
+      let contract_data = Diagram.multiUnify({ lower, upper, right: tendency == 1 });
 
       // Build the limit to the contracted diagram
       let first = location[0].height;
@@ -613,13 +866,13 @@ export class Diagram {
       let target_data = new Content(this.n - 1, data_forward, data_backward);
       let source_data = this.data.slice(first, first + 2);
       let forward_component = new LimitComponent(this.n, { first, source_data, target_data, sublimits });
-      return new Limit(this.n, [forward_component]);
+      return new Limit(this.n, [forward_component], this.data.length);
 
     } else if (location.length > 1) {
 
       // Recursive case
       let slice = this.getSlice(location[0]);
-      let recursive = slice.getContractionLimit(location.slice(1), right);
+      let recursive = slice.getContractionLimit({location: location.slice(1), tendency});
       let first = height;
 
       if (location[0].regular) {
@@ -627,7 +880,7 @@ export class Diagram {
         // Contraction recursive case on regular slice: insert bubble.
         let target_data = new Content(this.n - 1, recursive, recursive);
         let component = new LimitComponent(this.n, { source_data: [], target_data, first, sublimits: [] });
-        return new Limit(this.n, [component]);
+        return new Limit(this.n, [component], this.data.length);
 
       } else {
 
@@ -639,7 +892,7 @@ export class Diagram {
         let target_data = new Content(this.n - 1, new_forward, new_backward);
         let source_data = this.data.slice(height, height + 1);
         let component = new LimitComponent(this.n, { source_data, target_data, first, sublimits: [recursive] });
-        return new Limit(this.n, [component]);
+        return new Limit(this.n, [component], this.data.length);
 
       }
 
@@ -649,14 +902,7 @@ export class Diagram {
 
   }
 
-  // Build the restriction of the given diagram to a singular locus, an array of numbers,
-  // without changing the dimension of the diagram. 
-  restrictToSingularLocus(locus) {
-
-
-  }
-
-  // Compute a simultaneous unification of monotones
+  // Compute a simultaneous unification of limits
   static multiUnify({ lower, upper, depth }) {
 
     let n = upper[0].n;
@@ -737,7 +983,7 @@ export class Diagram {
     let target = new Diagram(n, { source: upper[0].source, data: target_content });
     let limits = [];
     for (let i = 0; i < upper.length; i++) {
-      limits.push(new Limit(n, limit_components[i]));
+      limits.push(new Limit(n, limit_components[i], upper[i].data.length));
     }
 
     // Return final data
@@ -890,6 +1136,43 @@ export class Diagram {
   boost() {
     return new Diagram(this.n + 1, { source: this, data: [] });
   }
+
+  // Compute preimage of this diagram under some outgoing limit with chosen target subset
+  restrictToSubset(subset) {
+
+    // Return everything
+    if (subset === null) return this;
+
+    // Return nothing
+    if (subset === undefined) return null;
+
+    _assert(subset instanceof Array);
+
+    // Check top-level range of the subset of the target
+    let range = {first: null, last: null};
+    for (let i=0; i<subset.length; i++) {
+      if (subset[i] === undefined) continue;
+      if (range.first === null) range.first = i;
+      range.last = i + 1;
+    }
+
+    let source;
+    let data = [];
+    for (let i=range.first; i<range.last; i++) {
+      let forward_limit = this.data[i].forward_limit.restrictToPreimage(subset[i]);
+      let backward_limit = this.data[i].backward_limit.restrictToPreimage(subset[i]);
+      let content = new Content(this.n - 1, forward_limit, backward_limit);
+      data.push(content);
+
+      // Set the source of the restricted diagram
+      if (i == range.first) {
+        let source_level_subset = this.data[i].forward_limit.pullbackSubset(subset[i]);
+        source = this.getSlice({ height: i, regular: true }).restrictToSubset(source_level_subset);
+      }
+    }
+
+    return new Diagram(this.n, { source, data });
+  }
 }
 
 function sub_content(content, subcontent, position) {
@@ -925,9 +1208,10 @@ function sub_limit_component(component, subcomponent, offset) {
   if (component.getLast() != subcomponent.getLast() + offset[0]) return false;
   if (component.source_data.length != subcomponent.source_data.length) return false;
   let offset_slice = offset.slice(1);
-  for (let i = 0; i < component.data.length; i++) {
-    if (!sub_data(component.data[i], subcomponent.data[i], offset_slice)) return false;
+  for (let i = 0; i < component.source_data.length; i++) {
+    if (!sub_data(component.source_data[i], subcomponent.source_data[i], offset_slice)) return false;
   }
+  if (!sub_data(component.target_data, subcomponent.target_data, offset_slice)) return false;  
   if (component.sublimits.length != subcomponent.sublimits.length) return false;
   for (let i = 0; i < component.sublimits.length; i++) {
     if (!sub_limit(component.sublimits[i], subcomponent.sublimits[i], offset_slice)) return false;

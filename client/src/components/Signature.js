@@ -16,7 +16,7 @@ export const Signature = ({
       <Group key={dimension}>
         <GroupHeader>
           <GroupLabel>
-            {dimension}-Generators
+            {dimension}-cells
           </GroupLabel>
           <GroupActions>
             {dimension == 0 &&

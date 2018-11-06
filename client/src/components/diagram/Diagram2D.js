@@ -13,6 +13,7 @@ import Graph from "~/util/graph";
 import withSize from "~/components/misc/Sized";
 import withLayout from "~/components/diagram/withLayout";
 import { getGenerators } from "~/state/store/signature";
+import { ENETDOWN } from "constants";
 
 export default compose(
   withLayout,
@@ -65,7 +66,7 @@ export class Diagram2D extends React.Component {
     let move$ = Rx.fromEvent(window, "pointermove");
     let up$ = Rx.fromEvent(window, "pointerup");
 
-    let expand = e.shiftKey;
+    //let expand = e.shiftKey;
     let startX = e.clientX;
     let startY = e.clientY;
 
@@ -76,26 +77,44 @@ export class Diagram2D extends React.Component {
         let y = e.clientY;
         return [x - startX, startY - y];
       }))
-      .pipe(RxOps.filter(dirs => dirs.some(dir => Math.abs(dir) > 100)))
-      .pipe(RxOps.take(1))
-      .pipe(RxOps.map(dirs => dirs.map(dir => {
-        if (dir > 80) {
-          return 1;
-        } else if (dir < -80) {
-          return -1;
-        } else {
-          return 0;
-        }
-      })))
+      .pipe(RxOps.filter(dirs => dirs.some(dir => Math.abs(dir) > 100))) // move at least 100 px in some direction
+      .pipe(RxOps.take(1)) // take the first cursor position that matches this
       .subscribe(dirs => {
-        if (!expand && this.props.onContract) {
-          this.props.onContract(point, dirs);
+        // Work out which quadrant we're in
+        let [x, y] = dirs;
+        let compass;
+        if (x > y) { // ene, ese, sse, ssw
+          if (x > -y) { // ene, ese
+            if (y > 0) {
+              compass = 'ene';
+            } else {
+              compass = 'ese';
+            }
+          } else { // sse, ssw
+            if (x > 0) {
+              compass = 'sse';
+            } else {
+              compass = 'ssw';
+            }
+          }
+        } else { // nne, nnw, wnw, wsw
+          if (x > -y) { // nnw, nne
+            if (x < 0) {
+              compass = 'nnw';
+            } else {
+              compass = 'nne';
+            }
+          } else { 
+            if (y < 0) { // wnw, wsw
+              compass = 'wsw';
+            } else {
+              compass = 'wnw';
+            }
+          }
         }
-
-        if (expand && this.props.onExpand) {
-          this.props.onExpand(point, dirs);
-        }
+        this.props.onHomotopy(point, compass);
       });
+
   }
 
   getPosition(point) {
@@ -157,7 +176,7 @@ export class Diagram2D extends React.Component {
     let generator = this.getGenerator(point);
 
     if (generator.generator.n < this.diagram.n) {
-      return null;
+      //return null;
     }
 
     return (

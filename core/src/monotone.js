@@ -17,7 +17,7 @@ export class Monotone extends Array {
       _assert(isNatural(this[i]));
       if (i > 0) _assert(this[i - 1] <= this[i]);
     }
-    if (this.length > 0) _assert(this.target_size > this.last());
+    if (this.length > 0) _assert(this.target_size > this[this.length - 1]);
   }
 
   static test() {
@@ -534,4 +534,25 @@ export class Monotone extends Array {
     }
     return new Monotone(target_size - last + first, arr);
   }
+
+  static pullbackFactorize(pullback, f, g) {
+    _assert(f.length == g.length);
+    _assert(pullback);
+    _assert(pullback.left);
+    _assert(pullback.right);
+    _assert(pullback.left.length == pullback.right.length);
+    let factorization = [];
+    let p = 0;
+    for (let i=0; i<f.length; i++) {
+      while (pullback.left[p] != f[i] || pullback.right[p] != g[i]) {
+        p ++;
+        if (p >= pullback.left.length) return null;
+        if (pullback.left[p] > f[i]) return null;
+        if (pullback.right[p] > g[i]) return null;
+      }
+      factorization.push(p);
+    }
+    return new Monotone(pullback.left.length, factorization);
+  }
+
 }
