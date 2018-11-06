@@ -1283,6 +1283,7 @@ export class Limit extends Array {
       right_components = [...right_components, ...right_boosted];
 
       // Update the height of the source
+      _assert(!isNaN(pullback.height));
       source_height += pullback.height;
     }
 
@@ -1310,8 +1311,16 @@ export class Limit extends Array {
 
     // If either L or R is the identity, the pullback is easy to calculate
     if (left_limit.length == 0 || right_limit.length == 0) {
-      return { left: right_limit, right: left_limit,
-        height: left_limit.length > 0 ? left_limit.source_size : right_limit.source_size };
+      let left = right_limit;
+      let right = left_limit;
+      let height;
+      if (left_limit.length == 0 && right_limit.length == 0) {
+        height = 1;
+      } else {
+        height = left_limit.length > 0 ? left_limit.source_size : right_limit.source_size;
+      }
+      _assert(isNatural(height));
+      return { left, right, height };
     }
 
     _assert(left_limit.length == 1);
@@ -1434,8 +1443,8 @@ export class Limit extends Array {
     // Check for a unique full-mass node at each height
     let nontrivial = [];
     nontrivial[0] = 0;
-    nontrivial[L_size + R_size - 1] = 0;
-    for (let h=1; h<L_size + R_size - 1; h++) {
+    nontrivial[L_size + R_size - 2] = L_size - 1;
+    for (let h=1; h<L_size + R_size - 2; h++) {
       nontrivial[h] = -1;
     }
     for (let i=0; i<L_size; i++) {
@@ -1459,7 +1468,7 @@ export class Limit extends Array {
     let step_j = [0];
     let directions = [];
     let [dir_left, dir_neutral, dir_right] = [-1, 0, +1];
-    for (let height=1; height<L_size + R_size; height++) {
+    for (let height=1; height<L_size + R_size - 1; height++) {
       if (nontrivial[height] < 0) continue;
 
       let last_i = step_i[step_i.length - 1];
@@ -1589,7 +1598,9 @@ export class Limit extends Array {
     let right = new Limit(this.n, right_components, P_size);
 
     // Return the projections
-    return {left, right, height: P_size};
+    let height = P_size;
+    _assert(isNatural(height));
+    return {left, right, height };
   }
 
   // Get a partial list of data of the limit's source

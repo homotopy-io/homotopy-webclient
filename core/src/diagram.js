@@ -824,10 +824,10 @@ export class Diagram {
       }
       let first = location[0].height;
       let target_data = this.data[first];
-      let source_data = [new Content(this.n, forward_pullback.right, backward_pullback.left)];
+      let source_data = [new Content(this.n - 1, forward_pullback.right, backward_pullback.left)];
       let sublimits = [recursive];
       let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
-      return new Limit(this.n, component, this.data.length);
+      return new Limit(this.n, [component], this.data.length);
 
     }
 
