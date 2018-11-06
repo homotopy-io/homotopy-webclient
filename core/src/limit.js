@@ -111,7 +111,8 @@ export class Content {
   }
   */
 
-  typecheck() {
+  typecheck(source) {
+    _assert(source instanceof Diagram);
 
     // Find the nontrivial neighbourhoods
     let neighbourhoods = Limit.getNontrivialNeighbourhoodsFamily([this.forward_limit, this.backward_limit]);
@@ -124,7 +125,9 @@ export class Content {
       let forward_limit = this.forward_limit.restrictToPreimage(exploded[i]);
       let backward_limit = this.backward_limit.restrictToPreimage(exploded[i]);
       let restricted_content = new Content(this.n, forward_limit, backward_limit);
-      if (!restricted_content.typecheckBaseCase()) {
+      let source_subset = this.forward_limit.pullbackSubset(exploded[i]);
+      let restricted_source = source.restrictToSubset(source_subset);
+      if (!restricted_content.typecheckBaseCase(restricted_source)) {
         return false;
       }
     }
@@ -133,7 +136,7 @@ export class Content {
     return true;
   }
 
-  typecheckBaseCase() {
+  typecheckBaseCase(source) {
 
     let f = this.forward_limit;
     let b = this.backward_limit;
@@ -143,24 +146,35 @@ export class Content {
     _assert(f.length > 0 || b.length > 0);
 
     // Turn it into a diagram object
-    let source = f.reconstructSource();
+    //let source = f.reconstructSource();
     let diagram = new Diagram(this.n + 1, {source, data: [this]});
 
     // Normalize the diagram along with its boundary
     let normalized = diagram.normalizeWithBoundaries();
 
+    // Identity diagrams normalize
+    if (normalized.data.length == 0) return true;
+
     // Check that the forward and backward limits typecheck
-    if (!normalized.data[0].forward_limit.typecheck(true)) return false;
-    if (!normalized.data[0].backward_limit.typecheck(false)) return false;
+    if (!normalized.data[0].forward_limit.typecheck({ forward: true, source: normalized.source })) return false;
+    if (!normalized.data[0].backward_limit.typecheck({ forward: false, source: normalized.getTarget() })) return false;
 
     // The content typechecks
     return true;
 
   }
 
+/*
   composeAtBoundary({ type, limit }) {
     let forward_limit = this.forward_limit.composeAtBoundary({ type, limit });
     let backward_limit = this.backward_limit.composeAtBoundary({ type, limit });
+    return new Content(this.n, forward_limit, backward_limit);
+  }
+*/
+
+  composeAtRegularLevel({ height, limit }) {
+    let forward_limit = this.forward_limit.composeAtRegularLevel({ height, limit });
+    let backward_limit = this.backward_limit.composeAtRegularLevel({ height, limit });
     return new Content(this.n, forward_limit, backward_limit);
   }
 
@@ -791,8 +805,17 @@ export class Limit extends Array {
     let component_targets = this.getComponentTargets();
     for (let i = 0; i < component_targets.length; i++) {
       if (component_targets[i] == height) {
-        let new_components = [...this.splice(0, i), ...this.splice(i+1)];
-        let source_size = new_components.length > 0 ? this.source_size - 1 : null;
+        let new_components = [];
+        let source_delta = 1;
+        for (let j=0; j<this.length; j++) {
+          if (j == i) {
+            _assert(this[i].sublimits.length == 0); // must be height-zero component
+            source_delta = 0; // we're skipping a component
+            continue; 
+          }
+          new_components.push(this[i]);
+        }
+        let source_size = new_components.length > 0 ? this.source_size - source_delta : null;
         return new Limit(this.n, new_components, source_size);
       }
     }
@@ -974,6 +997,7 @@ export class Limit extends Array {
   // For an atomic limit, reconstruct its source
   reconstructSource() {
     if (this.n == 0) return new Diagram(0, { type: this[0].source_type });
+    _assert(this[0]);
     let data = this[0].source_data;
     let source = this[0].target_data.forward_limit.reconstructSource();
     return new Diagram(this.n, {data, source});
@@ -985,7 +1009,8 @@ export class Limit extends Array {
     return this[0].target_data.forward_limit.getUniqueTargetType();
   }
 
-  typecheckBaseCase(forward) {
+  typecheckBaseCase({forward, source}) {
+    _assert(source instanceof Diagram);
 
     // Identities typecheck
     if (this.length == 0) return true;
@@ -995,6 +1020,7 @@ export class Limit extends Array {
 
     // In this case we can construct the entire source and target diagrams.
 
+    /*
     let source = this.reconstructSource();
     let target;
     if (this.n == 0) {
@@ -1002,6 +1028,8 @@ export class Limit extends Array {
     } else {
       target = new Diagram(this.n, {data: [this[0].target_data], source: source.source});
     }
+    */
+    let target = this.rewrite_forward(source);
 
     // If the source has zero height, we must be inserting a homotopy and its inverse
     // (Surely for n-groupoids we would relax this condition.)
@@ -1019,7 +1047,7 @@ export class Limit extends Array {
       // They have to type check as a homotopy.
       // We can go straight to the base case as the target is atomic.
       // Passing 'null' means it has to be a homotopy.
-      return forward.typecheckBaseCase(null);
+      return forward.typecheckBaseCase({forward:null, source:source.source});
     }
 
     // If we haven't been given a forward/backward distinction, then fail
@@ -1118,6 +1146,15 @@ export class Limit extends Array {
       range.last = i + 1;
     }
 
+    // If there are some components, we must work out the size of the source
+    let preimage;
+    if (this.length > 0) {
+      let monotone = this.getMonotone();
+      preimage = monotone.preimage(range);
+    } else {
+      preimage = range;
+    }
+
     // Choose which components to use
     let targets = this.getComponentTargets();
     let components = [];
@@ -1159,7 +1196,8 @@ export class Limit extends Array {
       let restrict_forward = component.target_data.forward_limit.restrictToPreimage(subset[target_height]);
       let restrict_backward = component.target_data.backward_limit.restrictToPreimage(subset[target_height]);
       let target_data = new Content(this.n - 1, restrict_forward, restrict_backward);
-      let first = component.first - range.first;
+      //let first = component.first - range.first;
+      let first = component.first - preimage.first;
 
       // Build the new LimitComponent
       let limit_component = new LimitComponent(component.n, { first, source_data, target_data, sublimits });
@@ -1169,9 +1207,6 @@ export class Limit extends Array {
     // If there are no components, we can return straight away
     if (components.length == 0) return new Limit(this.n, []);
 
-    // If there are some components, we must work out the size of the source
-    let monotone = this.getMonotone();
-    let preimage = monotone.preimage(range);
     return new Limit(this.n, components, preimage.last - preimage.first);
 
   }
@@ -1188,12 +1223,40 @@ export class Limit extends Array {
     // Trivial cases
     if (L.length + R.length == 0) return { left: R, right: L};
 
+    if (L.n == 0) {
+      let left, right;
+      let id = new Limit(0, []);
+      if (L[0].source_type.n < R[0].source_type.n) {
+        left = id;
+        right = new Limit(0, [new LimitComponent(0, {
+          source_type: L[0].source_type,
+          target_type: R[0].source_type
+        })]);
+      } else if (L[0].source_type.n > R[0].source_type.n) {
+        left = new Limit(0, [new LimitComponent(0, {
+          source_type: R[0].source_type,
+          target_type: L[0].source_type
+        })]);
+        right = id;
+      } else { // L and R source point dimensions match
+        if (L[0].source_type.id == R[0].source_type.id) {
+          left = id;
+          right = id;
+        } else {
+          throw "Pullback base case has inconsistent source types";        
+        }
+      }
+      _assert(left instanceof Limit);
+      _assert(right instanceof Limit);
+      return { left, right };
+    }
+
     let L_targets = L.getComponentTargets();
     let R_targets = R.getComponentTargets();
     let max_target = Math.max(L_targets[L_targets.length - 1], R_targets[R_targets.length - 1]);
 
-    PL_components = [];
-    PR_components = [];
+    let PL_components = [];
+    let PR_components = [];
     let source_height = 0;
 
     let left_components = [];
@@ -1207,11 +1270,13 @@ export class Limit extends Array {
 
       // Perform the pullback on these restricted limits
       let pullback = L_sublimit.pullbackComponent(R_sublimit);
-      if (!pullback) return null;
+      if (!pullback) {
+        return null;
+      }
 
       // Boost their height
-      left_boosted = Limit.boostComponents(pullback.left, pullback.height);
-      right_boosted = Limit.boostComponents(pullback.right, pullback.height);
+      let left_boosted = Limit.boostComponents(pullback.left, source_height);
+      let right_boosted = Limit.boostComponents(pullback.right, source_height);
 
       // Add to the list of components
       left_components = [...left_components, ...left_boosted];
@@ -1223,6 +1288,8 @@ export class Limit extends Array {
 
     let left = new Limit(this.n, left_components, source_height);
     let right = new Limit(this.n, right_components, source_height);
+    _assert(left instanceof Limit);
+    _assert(right instanceof Limit);
     return { left, right };
   }
 
@@ -1230,7 +1297,7 @@ export class Limit extends Array {
     let new_components = [];
     for (let i=0; i<components.length; i++) {
       let component = components[i];
-      new_components.push(component.copy({height: component.height + height}));
+      new_components.push(component.copy({first: component.first + height}));
     }
     return new_components;
   }
@@ -1242,7 +1309,10 @@ export class Limit extends Array {
     let left_limit = this;
 
     // If either L or R is the identity, the pullback is easy to calculate
-    if (left_limit.length + right_limit.length == 0) return { left: right_limit, right: left_limit };
+    if (left_limit.length == 0 || right_limit.length == 0) {
+      return { left: right_limit, right: left_limit,
+        height: left_limit.length > 0 ? left_limit.source_size : right_limit.source_size };
+    }
 
     _assert(left_limit.length == 1);
     _assert(right_limit.length == 1);
@@ -1253,7 +1323,9 @@ export class Limit extends Array {
     let R_size = R.source_data.length;
 
     // We don't do nontrivial pullbacks with empty preimage
-    if (L_size == 0 || R_size == 0) return null;
+    if (L_size == 0 || R_size == 0) {
+      return null;
+    }
 
     // Build matrices of pullbacks in a variety of ways.
     // If any of these fail to exist, then we return null.
@@ -1270,20 +1342,26 @@ export class Limit extends Array {
         if (j > 0) {
           let left = L.sublimits[i];
           let right = R.sublimits[j].compose(R.source_data[j].forward_limit);
-          if (!(sr_pullbacks[i][j] = left.pullback(right))) return null;
+          if (!(sr_pullbacks[i][j] = left.pullback(right))) {
+            return null;
+          }
         }
 
         // rs
         if (i > 0) {
-          let left = L.sublimits[i].compose(L.source_data[j].forward_limit);
-          let right = R.sublimits[i];
-          if (!(rs_pullbacks[i][j] = left.pullback(right))) return null;
+          let left = L.sublimits[i].compose(L.source_data[i].forward_limit);
+          let right = R.sublimits[j];
+          if (!(rs_pullbacks[i][j] = left.pullback(right))) {
+            return null;
+          }
         }
 
         // ss
         let left = L.sublimits[i];
         let right = R.sublimits[j];
-        if (!(ss_pullbacks[i][j] = left.pullback(right))) return null;
+        if (!(ss_pullbacks[i][j] = left.pullback(right))) {
+          return null;
+        }
       }
     }
 
@@ -1305,7 +1383,9 @@ export class Limit extends Array {
           let cone_left = L.source_data[i].forward_limit.compose(rs.left);
           let cone_right = rs.right;
           let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
-          if (!factorization) return null;
+          if (!factorization) {
+            return null;
+          }
           a.lower_right = factorization;
           if (factorization.length > 0) a.trivial = false;
         }
@@ -1316,7 +1396,9 @@ export class Limit extends Array {
           let cone_left = L.source_data[i].backward_limit.compose(rs.left);
           let cone_right = rs.right;
           let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
-          if (!factorization) return null;
+          if (!factorization) {
+            return null;
+          }
           a.upper_left = factorization;
           if (factorization.length > 0) a.trivial = false;
         }
@@ -1327,7 +1409,9 @@ export class Limit extends Array {
           let cone_left = sr.left;
           let cone_right = R.source_data[j].forward_limit.compose(sr.right);
           let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
-          if (!factorization) return null;
+          if (!factorization) {
+            return null;
+          }
           a.lower_left = factorization;
           if (factorization.length > 0) a.trivial = false;
         }
@@ -1338,163 +1422,171 @@ export class Limit extends Array {
           let cone_left = sr.left;
           let cone_right = R.source_data[j].backward_limit.compose(sr.right);
           let factorization = Limit.pullbackFactorize(ss, cone_left, cone_right);
-          if (!factorization) return null;
+          if (!factorization) {
+            return null;
+          }
           a.upper_right = factorization;
           if (factorization.length > 0) a.trivial = false;
         }
       }
-
-      // Check for a unique full-mass node at each height
-      let nontrivial = [];
-      nontrivial[0] = true;
-      nontrivial[L_size - R_size - 1] = true;
-      for (let height=1; height<L_size + R_size - 1; height++) {
-        let nontrivial = null;
-        for (let i=0; i<=height; i++) {
-          let j = height - i;
-          if (!incoming[i][j].trivial) {
-            if (!nontrivial[height]) {
-              console.log("Can't linearize pullback, distinct nontrivial masses at height " + height);
-              return null;  
-            }
-            nontrivial[height] = i;
-          }
-        }
-      }
-
-      // Build the actual path
-      let step_i = [0];
-      let step_j = [0];
-      let directions = [];
-      let [dir_left, dir_neutral, dir_right] = [-1, 0, +1];
-      for (let height=1; height<L_size + R_size; height++) {
-        if (!nontrivial[height]) continue;
-
-        let [last_i, last_j] = path[path.length - 1];
-        let i = nontrivial[height];
-        let j = height - i;
-
-        if (i < last_i || j < last_j) {
-          console.log("Can't linearize pullback, mass too far away at height " + height);
-          return null;
-        }
-
-        step_i.push(i);
-        step_j.push(j);
-
-        // Set direction of path at this step
-        let l = step_i.length;
-        if(step_i[l - 1] == step_i[l - 2]) {
-          directions.push(dir_right);
-        } else if (step_j[l - 1] == step_j[l - 2]) {
-          directions.push(dir_left);
-        } else {
-          directions.push(dir_neutral);
-        }
-      }
-      let pl_mon = new Monotone(L_size, pl_pre_mon);
-      let pr_mon = new Monotone(R_size, pr_pre_mon);
-
-      // Compute bottom and top limits for pullback diagram
-      let bottom_limit = Limit.pullbackFactorize
-        (ss_pullbacks[0][0], L.source_data[0].forward_limit, R.slurce_data[0].forward_limit);
-      if (!bottom_limit) {
-        console.log("Can't build pullback, bottom factorization does not exist");
-        return null;
-      }
-      let top_limit = Limit.pullbackFactorize
-        (ss_pullbacks[L_size - 1][R_size - 1], L.source_data[L_size - 1].backward_limit, R.source_data[R_size - 1].backward_limit);
-      if (!top_limit) {
-        console.log("Can't build pullback, top factorization does not exist");
-        return null;
-      }
-
-      // Build pullback diagram data
-      let P_size = pl_mon.length;
-      let P_data = [];
-      for (let step=0; step<P_size; step++) {
-
-        let i = step_i[step];
-        let j = step_j[step];
-
-        // Get the forward limit
-        let forward_limit;
-        if (step == 0) {
-          forward_limit = bottom_limit;
-        } else {
-          let d = directions[step - 1];
-          if (d == -1) { // rs
-            forward_limit = incoming[i][j].lower_right;
-          } else if (d == +1 || d == 0) {
-            forward_limit = incoming[i][j].lower_left;
-          }
-        }
-
-        // Get the backward limit
-        let backward_limit;
-        if (step == P_size - 1) {
-          backward_limit = top_limit;
-        } else {
-          let d = directions[step];
-          if (d == -1) {
-            backward_limit = incoming[i][j].upper_left;
-          } else {
-            backward_limit = incoming[i][j].upper_right;
-          }
-        }
-
-        P_data.push(new Content(this.n, forward_limit, backward_limit));
-      }
-
-      // Build the left projection
-      let left_components = [];
-      for (let a=0; a<L_size; a++) {
-        let preimage = pl_mon.preimage(i);
-        
-        let source_data = [];
-        let sublimits = [];
-        for (let b=preimage.first; b<preimage.last; b++) {
-          source_data.push(P_data[b]);
-          let i = step_i[b];
-          let j = step_j[b];
-          sublimits.push(ss_pullbacks[i][j].left);
-        }
-
-        // Ignore trivial components
-        if (sublimits.length == 1 && sublimits[0].length == 0) {
-          continue;
-        }
-
-        let target_data = L.source_data[a];
-        let first = preimage.first;
-        left_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
-      }
-      let left = new Limit(this.n, left_components, P_size);
-
-      // Build the right projection
-      let right_components = [];
-      for (let a=0; a<R_size; a++) {
-        let preimage = pr_mon.preimage(i);
-        let source_data = []; 
-        let sublimits = [];
-        for (let b=preimage.first; b<preimage.last; b++) {
-          source_data.push(P_data[b]);
-          let i = step_i[b];
-          let j = step_j[b];
-          sublimits.push(ss_pullbacks[i][j].right);
-        }
-
-        // Ignore trivial components
-        if (sublimits.length == 1 && sublimits[0].length == 0) {
-          continue;
-        }
-
-        let target_data = R.source_data[a];
-        let first = preimage.first;
-        right_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
-      }
-      let right = new Limit(this.n, right_components, P_size);
     }
+
+    // Check for a unique full-mass node at each height
+    let nontrivial = [];
+    nontrivial[0] = 0;
+    nontrivial[L_size + R_size - 1] = 0;
+    for (let h=1; h<L_size + R_size - 1; h++) {
+      nontrivial[h] = -1;
+    }
+    for (let i=0; i<L_size; i++) {
+      for (let j=0; j<R_size; j++) {
+        let height = i + j;
+        if (height == 0) continue;
+        if (height == L_size + R_size - 2) continue;
+        _assert(incoming[i][j]);
+        if (!incoming[i][j].trivial) {
+          if (nontrivial[height] >= 0) {
+            console.log("Can't linearize pullback, distinct nontrivial masses at height " + height);
+            return null;  
+          }
+          nontrivial[height] = i;
+        }
+      }
+    }
+
+    // Build the actual path
+    let step_i = [0];
+    let step_j = [0];
+    let directions = [];
+    let [dir_left, dir_neutral, dir_right] = [-1, 0, +1];
+    for (let height=1; height<L_size + R_size; height++) {
+      if (nontrivial[height] < 0) continue;
+
+      let last_i = step_i[step_i.length - 1];
+      let last_j = step_j[step_j.length - 1];
+      let i = nontrivial[height];
+      let j = height - i;
+
+      if (i < last_i || j < last_j) {
+        console.log("Can't linearize pullback, mass too far away at height " + height);
+        return null;
+      }
+
+      step_i.push(i);
+      step_j.push(j);
+
+      // Set direction of path at this step
+      let l = step_i.length;
+      if(step_i[l - 1] == step_i[l - 2]) {
+        directions.push(dir_right);
+      } else if (step_j[l - 1] == step_j[l - 2]) {
+        directions.push(dir_left);
+      } else {
+        directions.push(dir_neutral);
+      }
+    }
+    let pl_mon = new Monotone(L_size, /*pl_pre_mon*/ step_i);
+    let pr_mon = new Monotone(R_size, /*pr_pre_mon*/ step_j);
+
+    // Compute bottom and top limits for pullback diagram
+    let bottom_limit = Limit.pullbackFactorize
+      (ss_pullbacks[0][0], L.source_data[0].forward_limit, R.source_data[0].forward_limit);
+    if (!bottom_limit) {
+      console.log("Can't build pullback, bottom factorization does not exist");
+      return null;
+    }
+    let top_limit = Limit.pullbackFactorize
+      (ss_pullbacks[L_size - 1][R_size - 1], L.source_data[L_size - 1].backward_limit, R.source_data[R_size - 1].backward_limit);
+    if (!top_limit) {
+      console.log("Can't build pullback, top factorization does not exist");
+      return null;
+    }
+
+    // Build pullback diagram data
+    let P_size = pl_mon.length;
+    let P_data = [];
+    for (let step=0; step<P_size; step++) {
+
+      let i = step_i[step];
+      let j = step_j[step];
+
+      // Get the forward limit
+      let forward_limit;
+      if (step == 0) {
+        forward_limit = bottom_limit;
+      } else {
+        let d = directions[step - 1];
+        if (d == -1) { // rs
+          forward_limit = incoming[i][j].lower_right;
+        } else if (d == +1 || d == 0) {
+          forward_limit = incoming[i][j].lower_left;
+        }
+      }
+
+      // Get the backward limit
+      let backward_limit;
+      if (step == P_size - 1) {
+        backward_limit = top_limit;
+      } else {
+        let d = directions[step];
+        if (d == -1) {
+          backward_limit = incoming[i][j].upper_left;
+        } else {
+          backward_limit = incoming[i][j].upper_right;
+        }
+      }
+
+      P_data.push(new Content(this.n - 1, forward_limit, backward_limit));
+    }
+
+    // Build the left projection
+    let left_components = [];
+    for (let a=0; a<L_size; a++) {
+      let preimage = pl_mon.preimage(a);
+
+      let source_data = [];
+      let sublimits = [];
+      for (let b=preimage.first; b<preimage.last; b++) {
+        source_data.push(P_data[b]);
+        let i = step_i[b];
+        let j = step_j[b];
+        sublimits.push(ss_pullbacks[i][j].left);
+      }
+
+      // Ignore trivial components
+      if (sublimits.length == 1 && sublimits[0].length == 0) {
+        continue;
+      }
+
+      let target_data = L.source_data[a];
+      let first = preimage.first;
+      left_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
+    }
+    let left = new Limit(this.n, left_components, P_size);
+
+    // Build the right projection
+    let right_components = [];
+    for (let a=0; a<R_size; a++) {
+      let preimage = pr_mon.preimage(a);
+      let source_data = []; 
+      let sublimits = [];
+      for (let b=preimage.first; b<preimage.last; b++) {
+        source_data.push(P_data[b]);
+        let i = step_i[b];
+        let j = step_j[b];
+        sublimits.push(ss_pullbacks[i][j].right);
+      }
+
+      // Ignore trivial components
+      if (sublimits.length == 1 && sublimits[0].length == 0) {
+        continue;
+      }
+
+      let target_data = R.source_data[a];
+      let first = preimage.first;
+      right_components.push(new LimitComponent(this.n, { first, source_data, target_data, sublimits }));
+    }
+    let right = new Limit(this.n, right_components, P_size);
 
     // Return the projections
     return {left, right, height: P_size};
@@ -1515,11 +1607,68 @@ export class Limit extends Array {
   // The cone is formed from f and g
   static pullbackFactorize(pullback, f, g) {
 
+    _assert(pullback.left instanceof Limit);
+    _assert(pullback.right instanceof Limit);
+
     // Don't allow the cone maps to be identities
     // (this simplifies some things, if it turns out to be too strong we can deal with it later)
-    if (f.length == 0 || g.length == 0) return null;
+    if (f.length == 0) {
+      if (pullback.left.length != 0) return null;
+      if (!g.equals(pullback.right)) return null;
+      return new Limit(f.n, []);
+    }
+
+    if (g.length == 0) {
+      if (pullback.right.length != 0) return null;
+      if (!f.equals(pullback.left)) return null;
+      return new Limit(f.n, []);
+    }
+
+    // Base case
+    if (f.n == 0) {
+      if (pullback.left.length == 0 && pullback.right.length == 0) {
+        if (f.equals(g)) {
+          return new Limit(0, []);
+        } else {
+          throw "Pullback doesn't factorize in dimension 0";
+        }
+      }
+      let P_type;
+      if (pullback.left.length > 0) {
+        P_type = pullback.left[0].source_type;
+      } else {
+        P_type = pullback.right[0].source_type;
+      }
+      let X_type;
+      if (f.length > 0) {
+        X_type = f[0].source_type;
+      } else if (g.length > 0) {
+        X_type = g[0].source_type;
+      } else {
+        throw "Pullback base case, can't determine type of cone object";
+      }
+      if (X_type.n > P_type.n) {
+        throw "Pullback base case, cone dimension is too high";
+      }
+      if (X_type.n == P_type.n && X_type.id != P_type.id) {
+        throw "Pullback base case, cone has inconsistent type";
+      }
+      if (X_type.id == P_type.id) {
+        return new Limit(0, []);
+      }
+      return new Limit(0, [new LimitComponent(0, {source_type : X_type, target_type: P_type})]);
+    }
+
+    if (pullback.left.length == 0 && pullback.right.length == 0) {
+      if (!f.equals(g)) {
+        return null;
+      }
+      return f;
+    }
 
     _assert(f.source_size === g.source_size);
+
+
 
     // Work level by level on the common source of f and g
 
@@ -1546,12 +1695,18 @@ export class Limit extends Array {
     let B_height = g.getTargetSize();
     let f_mon = f.getMonotone(X_height, A_height);
     let g_mon = g.getMonotone(X_height, B_height);
-    let pl_mon = pullback.left.getMonotone(P_height, A_height);
-    let pr_mon = pullback.right.getMonotone(P_height, B_height);
+    let pl_mon = pullback.left.length == 0 ? Monotone.getIdentity(P_height) : pullback.left.getMonotone(P_height, A_height);
+    let pr_mon = pullback.right.length == 0 ? Monotone.getIdentity(P_height) : pullback.right.getMonotone(P_height, B_height);
+
+
+    // NEED TO HANDLE THE CASE WHERE PULLBACK ARM IS THE IDENTITY //
+
 
     // Factorize at the level of the monotones
     let fac_mon = Monotone.pullbackFactorize({left: pl_mon, right: pr_mon}, f_mon, g_mon);
-    if (!fac_mon) return null;
+    if (!fac_mon) {
+      return null;
+    }
 
     // Collect some data about X
     let f_source_data = f.getSourceData();
@@ -1585,10 +1740,13 @@ export class Limit extends Array {
       let preimage = fac_mon.preimage(i);
       let sublimits = [];
       for (let j=preimage.first; j<preimage.last; j++) {
-        let f_sub = f.preimage(j);
-        let g_sub = g.preimage(j);
+        let range = { first: j}
+        let f_sub = f.subLimit(j);
+        let g_sub = g.subLimit (j);
         let fac_sub = Limit.pullbackFactorize(pullback_sub, f_sub, g_sub); // Recursive step
-        if (!fac_sub) return null;
+        if (!fac_sub) {
+          return null;
+        }
         sublimits.push(fac_sub);
       }
 
@@ -1611,13 +1769,13 @@ export class Limit extends Array {
       _assert(sublimits.length == source_data.length);
 
       // Add the component
-      components.push(new Component(f.n, {first: preimage.first, sublimits, source_data, target_data}));
+      components.push(new LimitComponent(f.n, {first: preimage.first, sublimits, source_data, target_data}));
     }
 
     return new Limit(f.n, components, X_height);
   }
 
-  composeAtBoundary({type, limit}) {
+  composeAtRegularLevel({height, limit}) {
 
     // Nothing to do for identity limits
     if (this.length == 0) return this;
@@ -1627,6 +1785,11 @@ export class Limit extends Array {
 
     // Base case is to pad with initial and final components where appropriate
     if (this.n == limit.n + 1) {
+
+      // Correct the source_data
+      if (height > 0) {
+
+      }
 
       // Pad leftmost component if appropriate
       let first_component = components[0];
@@ -1699,6 +1862,111 @@ export class Limit extends Array {
     return target_size;
   }
 
+  // Normalize the regular levels of the provided limits, both in the source and target.
+  // They all have the common source provided.
+  // Return value is the normalized limits with source and target regular levels normalized.
+  static normalizeRegular({source, limits}) {
+    _assert(source instanceof Diagram);
+    _assert(limits instanceof Array);
+
+    // In the base case, do nothing
+    if (source.n <= 1) return {source, limits};
+
+    for (let i=0; i<limits.length; i++) {
+      let limit = limits[i];
+      _assert(limit.n == source.n);
+      _assert(limit.n >= 2);
+      _assert(limit instanceof Limit);
+      if (limit.length == 0) continue;
+      _assert(limit.source_size == source.data.length);
+    }
+
+    // Arrange the source limits by their regular source level
+    let level_limits = [];
+    for (let i=0; i<=source.data.length; i++) {
+      let l = [];
+      if (i > 0) l.push(source.data[i - 1].backward_limit);
+      if (i < source.data.length) l.push(source.data[i].forward_limit);
+      level_limits.push(l);
+    }
+    
+
+    // Add any further limits required by the limits argument
+    for (let i=0; i<limits.length; i++) {
+      let limit = limits[i];
+      for (let j=0; j<limit.length; j++) {
+        let component = limit[j];
+        let last = component.getLast();
+        _assert(level_limits[component.first] instanceof Array);
+        _assert(level_limits[last] instanceof Array);
+        level_limits[component.first].push(component.target_data.forward_limit);
+        level_limits[component.getLast()].push(component.target_data.backward_limit);
+      }
+    }
+
+    // Recursively normalize them
+    let source_limits = [];
+    let target_limits = [];
+    let source_source;
+    for (let i=0; i<=source.data.length; i++) {
+      let slice = source.getSlice({height: i, regular: true});
+      let n = Limit.normalizeRegular({source: slice, limits: level_limits[i]});
+      if (i == 0) source_source = n.source;
+      source_limits.push(n.limits.shift());
+      if (i > 0 && i < source.data.length) {
+        source_limits.push(n.limits.shift());
+      }
+      target_limits.push(n.limits);
+    }
+
+    // Build the new source diagram
+    let data = [];
+    _assert(source_limits.length % 2 == 0);
+    for (let i=0; i<source_limits.length / 2; i++) {
+      let forward_limit = source_limits[2 * i];
+      let backward_limit = source_limits[2 * i + 1];
+      let content = new Content(source.n - 1, forward_limit, backward_limit);
+      data.push(content);
+    }
+    
+    // Update the limits
+    let new_limits = [];
+    for (let i=0; i<limits.length; i++) {
+      let limit = limits[i];
+      let new_components = [];
+      for (let j=0; j<limit.length; j++) {
+        let component = limit[j];
+        let source_data = data.slice(component.first, component.first + component.sublimits.length);
+        let forward_limit = target_limits[component.first].shift();
+        let backward_limit = target_limits[component.getLast()].shift();
+        let target_data = new Content(source.n - 1, forward_limit, backward_limit);
+        let first = component.first;
+        let sublimits = component.sublimits;
+        let new_component = new LimitComponent(source.n, {source_data, target_data, first, sublimits});
+        new_components.push(new_component);
+      }
+      let new_limit = new Limit(source.n, new_components, limit.source_size);
+      new_limits.push(new_limit);
+    }
+
+    // Create the new source
+    let new_source = new Diagram(source.n, {source: source_source, data});
+
+    // Get its embedding into its singular normalization
+    let source_normalized = new_source.normalize();
+
+    // Compose with the new limits to get the limits we'll be returning
+    let new_new_limits = [];
+    for (let i=0; i<new_limits.length; i++) {
+      let new_limit = new_limits[i];
+      let new_new_limit = new_limit.compose(source_normalized.embedding);
+      new_new_limits.push(new_new_limit);
+    }
+    
+    // Return the normalized source along with the composed limits
+    return { source: source_normalized.diagram, limits: new_new_limits };
+
+  }
 
 }
 

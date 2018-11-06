@@ -143,13 +143,14 @@ export default createReducer({
     return state;
   },
 
+  /*
   [DiagramActions.CONTRACT]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;
 
     if (diagram == null || point.length < 2) return state;
 
     let point_expanded = [...slice, ...point];
-    let point_unprojected = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+    //let point_unprojected = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
 
     // ONLY THE PATH MATTERS FOR THE CONTRACTION
     let path = Core.Boundary.getPath(diagram, point_expanded);
@@ -157,7 +158,7 @@ export default createReducer({
 
     try {
       diagram = Core.attach(diagram,
-        (boundary, point) => { return boundary.contract(point.slice(0, -1), direction); },
+        (boundary, point) => { return boundary.homotopy(point.slice(0, -1), direction); },
         path
       );
 
@@ -170,19 +171,20 @@ export default createReducer({
       return state;
     }
   },
+  */
 
-  [DiagramActions.EXPAND]: (state, { point, direction }) => {
+  [DiagramActions.HOMOTOPY]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;
 
     if (diagram == null || point.length < 2) return state;
 
-    point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
-    let path = Core.Boundary.getPath(diagram, point);
+    //point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+    let path = Core.Boundary.getPath(diagram, [...slice, ...point]);
 
     try {
       diagram = Core.attach(
         diagram,
-        (boundary, point) => boundary.expand(point, direction),
+        (boundary, point) => boundary.homotopy(point, direction),
         path
       );
 
