@@ -6,3 +6,5 @@ core/node_modules
 core/dist
 core/.cache
 .vscode
+client/npm-debug.log
+core/npm-debug.log

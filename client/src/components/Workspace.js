@@ -8,6 +8,8 @@ import { getDiagram, getDisplayDimension, getSlice, getRenderer } from "~/state/
 import { getHighlight } from "~/state/store/attach";
 import { selectCell, contract, expand } from "~/state/actions/diagram";
 
+let prev = null;
+
 export const Workspace = ({
   diagram,
   dimension,
@@ -16,7 +18,8 @@ export const Workspace = ({
   renderer,
   onSelectCell,
   onContract,
-  onExpand
+  onExpand,
+  test
 }) => {
   let Diagram = renderer == 2 ? Diagram2D : Diagram3D;
 
@@ -44,7 +47,8 @@ export default connect(
     dimension: getDisplayDimension(state),
     highlight: getHighlight(state),
     slice: getSlice(state),
-    renderer: getRenderer(state)
+    renderer: getRenderer(state),
+    test: state.diagram
   }),
   dispatch => ({
     onSelectCell: (point) => dispatch(selectCell(point)),

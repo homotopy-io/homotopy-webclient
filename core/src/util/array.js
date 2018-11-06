@@ -10,4 +10,8 @@ export const reverse = (array) => {
   }
 
   return result;
-}
+};
+
+export const penultimate = (array) => {
+  return array[array.length - 2];
+};

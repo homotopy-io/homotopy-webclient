@@ -144,7 +144,11 @@ export class Diagram2D extends React.Component {
 
     let codim = this.diagram.n - generator.generator.n;
     let control = from.slice();
-    control[codim] = (control[codim] + to[codim]) / 2;
+    if (codim == 0) {
+      control[codim] = to[codim];
+    } else if (codim == 1) {
+      control[codim] = (4 * control[codim] + 1 * to[codim]) / 5;
+    }
     return control;
   }
 
@@ -160,7 +164,7 @@ export class Diagram2D extends React.Component {
       <circle
         cx={position[0]}
         cy={position[1]}
-        r={10}
+        r={12.5}
         strokeWidth={0}
         fill={generator.color}
         onClick={e => this.onSelect(e, point)}
@@ -204,11 +208,14 @@ export class Diagram2D extends React.Component {
     );
   }
 
+  getGeneratorPosition(p) {
+    return { generator: this.getGenerator(p), position: this.getPosition(p) };
+  }
+
   renderSurface(s, m, t) {
     let sGenerator = this.getGenerator(s);
     let mGenerator = this.getGenerator(m);
     let tGenerator = this.getGenerator(t);
-
     let sPosition = this.getPosition(s);
     let mPosition = this.getPosition(m);
     let tPosition = this.getPosition(t);
@@ -241,9 +248,13 @@ export class Diagram2D extends React.Component {
       `  ${sPosition.join(" ")}`,
     ].join(" ");
 
+    /* Remove stroke here to see triangles when debugging */
     return (
       <path
         d={path}
+        stroke={sGenerator.color}
+        strokeWidth={1}
+        vectorEffect={"non-scaling-stroke"}
         fill={highlight ? "#f1c40f" : sGenerator.color}
         key={`surface#${s.join(":")}#${m.join(" ")}#${t.join(":")}`}
         onClick={e => this.onSelect(e, s, m, t)}>
@@ -281,10 +292,6 @@ const findSurfaces = (diagram, layout) => {
   let surfaces = [];
   for (let [a, b] of graph.edges()) {
     let aType = Core.Geometry.typeAt(diagram, a);
-
-    if (aType.n < diagram.n - 2) {
-      continue;
-    }
 
     for (let [c] of graph.edgesFrom(b)) {
       surfaces.push([a, b, c]);

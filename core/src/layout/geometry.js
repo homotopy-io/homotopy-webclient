@@ -1,10 +1,12 @@
-import { _assert } from "~/util/debug";
+import { _assert, isNatural } from "~/util/debug";
 
 export const typeAt = (diagram, point) => {
   if (point.length == 0) {
     let maxType = null;
 
     for (let t of typesOf(diagram)) {
+      _assert(t);
+      _assert(isNatural(t.n));
       if (!maxType || t.n > maxType.n) {
         maxType = t;
       }
@@ -15,8 +17,11 @@ export const typeAt = (diagram, point) => {
   } else {
     let [height, ...rest] = point;
 
+    _assert(!isNaN(height));
     height = Math.max(0, height);
+    _assert(!isNaN(height));
     height = Math.min(height, 2 * diagram.data.length);
+    _assert(!isNaN(height));
 
     let slice = diagram.getSlice({
       height: Math.floor(height / 2),
@@ -29,13 +34,16 @@ export const typeAt = (diagram, point) => {
 
 export const typesOf = function*(diagram) {
   if (diagram.n == 0) {
+    _assert(diagram.type);
     yield diagram.type;
     return;
   } else {
     yield* typesOf(diagram.source);
 
     for (let content of diagram.data) {
-      yield content.forward_limit[0].type;
+      let type = content.forward_limit[0].target_type;
+      _assert(type);
+      yield type;
     }
   }
 };
@@ -49,6 +57,7 @@ export const pointsOf = function*(diagram, dimension) {
     for (let [height, slice] of slicesOf(diagram)) {
       for (let point of pointsOf(slice, dimension - 1)) {
         point.unshift(height);
+        _assert(point);
         yield point;
       }
     }
@@ -190,10 +199,10 @@ const limitAction = (limit, point) => {
   }
 
   // After the last component
-  if (height > limit[limit.length - 1].last * 2) {
+  if (height > limit[limit.length - 1].getLast() * 2) {
     let offset = 0;
     for (let component of limit) {
-      offset += component.last * 2 - component.first * 2 - 2;
+      offset += component.getLast() * 2 - component.first * 2 - 2;
     }
     return [[height - offset, ...rest]];
   }
@@ -203,7 +212,7 @@ const limitAction = (limit, point) => {
 
   for (let component of limit) {
     let first = component.first * 2;
-    let last = component.last * 2;
+    let last = component.getLast() * 2;
 
     if (height < first) {
       targets.set(height - offset, rest);

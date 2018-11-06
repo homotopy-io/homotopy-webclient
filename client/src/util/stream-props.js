@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Subject } from "rxjs";
+import * as RxOps from "rxjs/operators";
 
 export default pipe => Component => {
   return class StreamProps extends React.Component {
@@ -8,6 +9,7 @@ export default pipe => Component => {
       super(props);
       this.state = { value: undefined };
       this.props$ = new Subject();
+      this.oldProps = null;
     }
 
     componentDidMount() {
@@ -17,12 +19,14 @@ export default pipe => Component => {
 
       let { children, ...props } = this.props;
       this.props$.next(props);
+      this.oldProps = this.props;
     }
 
     componentDidUpdate(oldProps) {
       if (this.props !== oldProps) {
         let { children, ...props } = this.props;
         this.props$.next(props);
+        this.oldProps = this.props;
       }
     }
 
@@ -32,7 +36,7 @@ export default pipe => Component => {
 
     render() {
       if (this.state.value !== undefined) {
-        return <Component {...this.props} {...this.state.value} />;
+        return <Component {...this.state.value} />;
       } else {
         return null;
       }

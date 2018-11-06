@@ -1,8 +1,8 @@
 import * as React from "react";
 import { connect } from "react-redux";
 
-import { clearDiagram, setProjection, setSlice } from "~/state/actions/diagram";
-import { getDiagram, getSlice, getProjection, getSliceBounds } from "~/state/store/diagram";
+import { clearDiagram, setProjection, setSlice, setRenderer } from "~/state/actions/diagram";
+import { getDiagram, getSlice, getProjection, getSliceBounds, getRenderer } from "~/state/store/diagram";
 
 import Tool, { Control } from "~/components/Tool";
 
@@ -11,9 +11,11 @@ export const DiagramTool = ({
   slice,
   sliceBounds,
   projection,
+  renderer,
   onClearDiagram,
   onSetSlice,
-  onSetProjection
+  onSetProjection,
+  onSetRenderer
 }) => {
   if (diagram == null) {
     return null;
@@ -24,6 +26,7 @@ export const DiagramTool = ({
       { label: "Clear diagram", icon: "close", onClick: onClearDiagram }
     ]}>
       <Control label="Dimension">{diagram.n}</Control>
+      <RendererControl value={renderer} onChange={onSetRenderer} />
       <ProjectionControl value={projection} dimension={diagram.n} onChange={onSetProjection} />
       <SliceControl slice={slice} bounds={sliceBounds} onChange={onSetSlice} />
     </Tool>
@@ -35,12 +38,14 @@ export default connect(
     diagram: getDiagram(state),
     slice: getSlice(state),
     projection: getProjection(state),
-    sliceBounds: getSliceBounds(state)
+    sliceBounds: getSliceBounds(state),
+    renderer: getRenderer(state)
   }),
   dispatch => ({
     onClearDiagram: () => dispatch(clearDiagram()),
     onSetProjection: (projection) => dispatch(setProjection(projection)),
-    onSetSlice: (index, height) => dispatch(setSlice(index, height))
+    onSetSlice: (index, height) => dispatch(setSlice(index, height)),
+    onSetRenderer: (renderer) => dispatch(setRenderer(renderer))
   })
 )(DiagramTool);
 
@@ -96,3 +101,17 @@ export const SliceControl = ({
     </Control>
   );
 };
+
+export const RendererControl = ({
+  value,
+  onChange
+}) => {
+  return (
+    <Control label="Renderer">
+      <select onChange={e => onChange(Number(e.target.value))} value={value}>
+        <option value={2}>2D</option>
+        <option value={3}>3D</option>
+      </select>
+    </Control>
+  );
+}

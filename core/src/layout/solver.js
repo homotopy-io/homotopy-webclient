@@ -46,11 +46,7 @@ class Solver {
         relations.set(`${codim}:-1`, { points: [], codim });
       }
 
-      this.points.set(pointId(point), {
-        variables,
-        relations,
-        point
-      });
+      this.points.set(pointId(point), { variables, relations, point });
     }
 
     // Analyze the inputs and outputs that should be averaged over.
@@ -210,6 +206,4 @@ class Solver {
       }
     }
   }
-
 }
-
