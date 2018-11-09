@@ -1137,7 +1137,7 @@ export class Diagram {
     return new Diagram(this.n + 1, { source: this, data: [] });
   }
 
-  // Compute preimage of this diagram under some outgoing limit with chosen target subset
+  // Compute preimage of this diagram under the given subset
   restrictToSubset(subset) {
 
     // Return everything
@@ -1154,6 +1154,14 @@ export class Diagram {
       if (subset[i] === undefined) continue;
       if (range.first === null) range.first = i;
       range.last = i + 1;
+    }
+
+    // Handle the case of a regular subset
+    if (subset.regular) {
+      _assert(range.last == range.first + 1);
+      let regular = this.getSlice({height: range.first, regular: true});
+      let restricted = regular.restrictToSubset(subset[range.first]);
+      return new Diagram(this.n, { source: restricted, data: [] });
     }
 
     let source;

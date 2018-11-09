@@ -969,9 +969,38 @@ export class Limit extends Array {
 
     // Identify first and last heights referenced by the subset
     let last_subset_height = null;
+    let first_subset_height = null;
     for (let i=0; i<subset.length; i++) {
       if (subset[i] === undefined) continue;
+      if (first_subset_height == null) first_subset_height = i;
       last_subset_height = i;
+    }
+
+    // If it's a regular subset only the height will change
+    let m = this.getMonotone();
+    if (subset.regular) {
+      let p = m.preimage({first: last_subset_height, last: last_subset_height});
+      _assert(p.first == p.last);
+      let r = [];
+      r[p.first] = subset[last_subset_height];
+      r.regular = true;
+      return r;
+    }
+
+    // Handle the case that the preimage is regular
+    let p = m.preimage({first: first_subset_height, last: last_subset_height + 1});
+    if (p.first == p.last) {
+      let targets = this.getComponentTargets();
+      let index = targets.indexOf(first_subset_height);
+      _assert(index >= 0);
+      let component = this[index];
+      _assert(component.sublimits.length == 0);
+      let forward_limit = component.target_data.forward_limit;
+      let regular_subset = forward_limit.pullbackSubset(subset[first_subset_height]);
+      let arr = [];
+      arr[p.first] = regular_subset;
+      arr.regular = true;
+      return arr;
     }
 
     let preimage = [];
@@ -1137,6 +1166,9 @@ export class Limit extends Array {
     if (subset === undefined) return null; //{ source: null, target: null, limit: null };
 
     _assert(subset instanceof Array);
+
+    // Can't handle this yet
+    _assert(!subset.regular);
 
     // Check top-level range of the subset of the target
     let range = {first: null, last: null};
@@ -1923,8 +1955,10 @@ export class Limit extends Array {
       let slice = source.getSlice({height: i, regular: true});
       let n = Limit.normalizeRegular({source: slice, limits: level_limits[i]});
       if (i == 0) source_source = n.source;
-      source_limits.push(n.limits.shift());
-      if (i > 0 && i < source.data.length) {
+      if (i > 0) {
+        source_limits.push(n.limits.shift());
+      }
+      if (i < source.data.length) {
         source_limits.push(n.limits.shift());
       }
       target_limits.push(n.limits);

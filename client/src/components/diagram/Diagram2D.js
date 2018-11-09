@@ -36,7 +36,7 @@ export class Diagram2D extends React.Component {
 
   componentDidMount() {
     this.panzoom = panzoom(this.diagramRef.current, {
-      panEnabled: this.props.interactive,
+      panEnabled: /*this.props.interactive*/ false,
       zoomEnabled: this.props.interactive,
       dblClickZoomEnabled: this.props.interactive,
       zoomScaleSensitivity: 0.4,
@@ -85,31 +85,15 @@ export class Diagram2D extends React.Component {
         let compass;
         if (x > y) { // ene, ese, sse, ssw
           if (x > -y) { // ene, ese
-            if (y > 0) {
-              compass = 'ene';
-            } else {
-              compass = 'ese';
-            }
+            compass = y > 0 ? 'ene' : 'ese';
           } else { // sse, ssw
-            if (x > 0) {
-              compass = 'sse';
-            } else {
-              compass = 'ssw';
-            }
+            compass = x > 0 ? 'sse' : 'ssw';
           }
         } else { // nne, nnw, wnw, wsw
           if (x > -y) { // nnw, nne
-            if (x < 0) {
-              compass = 'nnw';
-            } else {
-              compass = 'nne';
-            }
+            compass = x > 0 ? 'nne' : 'nnw';
           } else { 
-            if (y < 0) { // wnw, wsw
-              compass = 'wsw';
-            } else {
-              compass = 'wnw';
-            }
+            compass = y > 0 ? 'wnw' : 'wsw';
           }
         }
         this.props.onHomotopy(point, compass);
