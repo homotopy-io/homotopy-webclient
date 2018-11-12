@@ -1,3 +1,4 @@
+import {_assert} from '../util/debug'
 import * as Kiwi from "kiwi.js";
 import UnionFind from "union-find";
 
@@ -123,7 +124,10 @@ class Solver {
   }
 
   getVariableId(point, codim) {
-    return this.points.get(pointId(point)).variables[codim - 1];
+    let pointid = this.points.get(pointId(point));
+    if (!pointid) return null;
+    _assert(pointid);
+    return pointid.variables[codim - 1];
   }
 
   getVariable(point, codim) {

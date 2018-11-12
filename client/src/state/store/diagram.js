@@ -1,3 +1,4 @@
+import { _assert } from "../../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
 import { createSelector } from "reselect";
 import createReducer from "~/util/create-reducer";
@@ -37,6 +38,7 @@ export const getSliceBounds = (state) => {
     return [];
   } else {
     let options = [];
+    _assert(slice instanceof Array);
     for (let height of slice) {
       options.push(diagram.data.length * 2);
       diagram = Core.Geometry.getSlice(diagram, height);
@@ -188,15 +190,18 @@ export default createReducer({
     let path = Core.Boundary.getPath(diagram, [...slice, ...point]);
 
     try {
-      diagram = Core.attach(
+      let { new_diagram, new_slice } = Core.attach(
         diagram,
         (boundary, point) => boundary.homotopy(point, direction),
         path,
-        state
+        slice
       );
 
-      state = dotProp.set(state, "diagram.diagram", diagram);
-      state = dotProp.set(state, "diagram.slice", updateSlices(state));
+      state = dotProp.set(state, "diagram.diagram", new_diagram);
+      state = dotProp.set(state, "diagram.slice", new_slice);
+
+      //state = dotProp.set(state, "diagram.slice", updateSlices(state));
+
       return state;
     } catch(error) {
       console.error(error);

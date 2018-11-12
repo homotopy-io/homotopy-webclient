@@ -4,19 +4,35 @@ import { Diagram } from "~/diagram";
 import { LimitComponent, Limit, Content } from "~/limit";
 import * as Boundary from "~/boundary";
 
-export const attach = (diagram, build, path) => {
+export const attach = (diagram, build, path, slice) => {
   _assert(diagram instanceof Diagram);
+  _assert(slice instanceof Array);
 
   if (path.boundary == null) {
     let content = build(diagram, path.point, null);
-    return diagram.rewrite(content);
+    let new_slice = content.updateSlice(slice);
+    return { new_diagram: diagram.rewrite(content), new_slice: new_slice }
   }
 
   if (path.depth > 1) {
     diagram = diagram.pad(path.depth, path.boundary == 'source');
 
-    let source = attach(diagram.source, build, { ...path, depth: path.depth - 1});
-    return new Diagram(diagram.n, { source, data: diagram.data });
+    let eff_slice = slice.slice(1);
+    _assert(eff_slice.length == 0 || eff_slice & 2 == 0);
+    let target_side = eff_slice.length > 0 && eff_slice[0] > 0;
+    if (target_side) {
+      eff_slice[0] = 2 * diagram.source.data.length + 1;
+      //eff_slice[0] = diagram.source.data.length * 2 + 1; // move eff_sLice to source level
+    }
+
+    let {new_diagram, new_slice} = attach(diagram.source, build, { ...path, depth: path.depth - 1}, eff_slice);
+    let overall_slice = [...slice.slice(0, 2), ...new_slice.slice(1)];
+    if (target_side && overall_slice.length > 1) {
+      overall_slice[1] = eff_slice[0];
+      overall_slice[1] += 2;
+    }
+
+    return { new_diagram: new Diagram(diagram.n, { source: new_diagram, data: diagram.data }), new_slice: overall_slice };
   }
 
   // Build the content
@@ -27,17 +43,35 @@ export const attach = (diagram, build, path) => {
   if (path.boundary == "source") {
     let data = [content.reverse(), ...diagram.data];
     let source = diagram.source.rewrite(content);
-    return new Diagram(diagram.n, { source, data });
+    let new_slice;
+    if (slice.length == 0) {
+      new_slice = [];
+    } else {
+      let [first, ...rest] = slice;
+      _assert(first == 0);
+      let new_rest = content.updateSlice(rest);
+      new_slice = [first, ...new_rest];
+    }
+    return { new_diagram: new Diagram(diagram.n, { source, data }), new_slice };
   } else {
     let source = diagram.source;
     let data = [...diagram.data, content];
-    return new Diagram(diagram.n, { source, data });
+    let new_slice;
+    if (slice.length == 0) {
+      new_slice = [];
+    } else {
+      let [first, ...rest] = slice;
+      let new_first = first + 2;
+      let new_rest = content.updateSlice(rest);
+      new_slice = [new_first, ...new_rest];
+    }
+    return { new_diagram: new Diagram(diagram.n, { source, data }), new_slice };
   }
 };
 
-export const attachGenerator = (diagram, generator, path) => {
+export const attachGenerator = (diagram, generator, path, slice) => {
   _assert(generator instanceof Generator);
-  return attach(diagram, buildAttachmentContent(generator), path);
+  return attach(diagram, buildAttachmentContent(generator), path, slice);
 };
 
 /**

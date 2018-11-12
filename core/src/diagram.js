@@ -531,7 +531,7 @@ export class Diagram {
 
     if (this.n == 0) return { min: [], max: [] };
     if (location.length == 0) debugger;
-    var box = this.getSliceBoundingBox(location);
+    var box = this.sgetSliceBoundingBox(location);
     if (box == null) return null;
     var extra = (location.length > this.n ? location.slice(1) : location);
     box.min = box.min.concat(extra);
@@ -670,6 +670,10 @@ export class Diagram {
     // Get the subdiagram where the user is clicking
     let click_diagram = this.getSlice(...(location.slice(0, location.length - (horizontal ? 1 : 2))));
     _assert(click_diagram);
+
+    if (click_diagram.n < 2) {
+      throw "Need more dimensions to perform a homotopy";
+    }
 
     // If we're dragging horizontally, the last point has to be singular
     if (horizontal) {

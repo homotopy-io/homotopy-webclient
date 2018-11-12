@@ -555,4 +555,18 @@ export class Monotone extends Array {
     return new Monotone(pullback.left.length, factorization);
   }
 
+  // If this monotone represents the forward function of singular levels,
+  // build the adjoint, which represents the backward function of regular levels
+  getAdjoint() {
+    let regular = [];
+    let level = 0;
+    for (let i=0; i<=this.target_size; i++) {
+      while (level < this.length && this[level] < i) {
+        level ++;
+      }
+      regular.push(level);
+    }
+    return new Monotone(this.length + 1, regular);
+  }
+
 }

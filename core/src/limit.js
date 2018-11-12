@@ -328,6 +328,13 @@ export class Content {
   static deepPadData(data, position, width_deltas) {
     return data.map(content => content.deepPad(position, width_deltas));
   }
+
+  // Update the viewer position under a rewrite of this content
+  updateSlice(slice) {
+    let slice_singular = this.forward_limit.updateSliceForward(slice);
+    let slice_regular = this.backward_limit.updateSliceBackward(slice_singular);
+    return slice_regular;
+  }
 }
 
 export class LimitComponent {
@@ -686,7 +693,7 @@ export class Limit extends Array {
     return new Limit(this.n, components, preimage.last - preimage.first);
   }
 
-  subLimit(n, forward) {
+  subLimit(n) {
     for (let i = 0; i < this.length; i++) {
       let component = this[i];
       if (n < component.first) return new Limit(this.n - 1, []);
@@ -2010,6 +2017,108 @@ export class Limit extends Array {
     // Return the normalized source along with the composed limits
     return { source: source_normalized.diagram, limits: new_new_limits };
 
+  }
+
+  updateSliceForward(slice) {
+    _assert(slice instanceof Array);
+    if (this.length == 0) return slice;
+    if (slice.length == 0) return slice;
+    let [first, ...rest] = slice;
+    let singular_monotone = this.getMonotone();
+
+    // Singular level
+    if (first % 2 == 1) {
+      let singular_height = (first - 1) / 2;
+      let sublimit = this.subLimit(singular_height);
+      let updated = sublimit.updateSliceForward(rest);
+      return [2 * singular_monotone[singular_height] + 1, ...updated];
+    }
+
+    // Regular level
+    let regular_height = first / 2;
+    let regular_monotone = singular_monotone.getAdjoint();
+    let s_below = regular_height - 1;
+    let s_above = regular_height;
+
+    // Identity locally
+    if ((s_below < 0 || regular_monotone[singular_monotone[s_below] + 1] == s_below + 1)
+      &&
+      (s_above == this.source_size || regular_monotone[singular_monotone[s_above]] == s_above)) {
+      return [2 * singular_monotone[s_above], ...rest];
+    }
+
+    _assert(s_below >= 0);
+    _assert(s_above < this.source_size);
+    let targets = this.getComponentTargets();
+
+    // Contractive locally on singular slices, expansive on regular
+    if (singular_monotone[s_above] == singular_monotone[s_below]) {
+      let s_target = singular_monotone[s_above];
+      let index = targets.indexOf(s_target);
+      _assert(index >= 0);
+      let component = this[index];
+      _assert(component.source_data.length > 0);
+      let first_limit = component.source_data[0].backward_limit;
+      let second_limit = this.subLimit(s_below);
+      let composed_limit = second_limit.compose(first_limit);
+      let updated = composed_limit.updateSliceForward(rest);
+      return [2 * s_target + 1, ...updated];
+    }
+
+    // Expansive locally on singular slices, contractive on regular
+    let s_target = singular_monotone[s_below] + 1;
+    let index = targets.indexOf(s_target);
+    _assert(index >= 0);
+    let component = this[index];
+    let updated = component.target_data.forward_limit.updateSliceForward(rest);
+    return [2 * s_target + 1, ...updated];
+  }
+
+  updateSliceBackward(slice) {
+    _assert(slice instanceof Array);
+    if (this.length == 0) return slice;
+    if (slice.length == 0) return slice;
+    let singular_monotone = this.getMonotone();
+    let regular_monotone = singular_monotone.getAdjoint();
+    let [first, ...rest] = slice;
+
+    // Regular level
+    if (first % 2 == 0) {
+      let new_first = 2 * regular_monotone[first / 2];
+      return [new_first, ...rest];
+    }
+
+    // Singular level
+    let singular_height = (first - 1) / 2;
+    let regular_height_below = singular_height;
+    let regular_height_above = singular_height + 1;
+
+    // Identity like
+    if (regular_monotone[regular_height_above] == regular_monotone[regular_height_below] + 1) {
+      let new_singular = regular_monotone[regular_height_below];
+      let sublimit = this.subLimit(singular_height);
+      return [1 + new_singular * 2, ...sublimit.updateSliceBackward(rest)];
+    }
+
+    let targets = this.getComponentTargets();
+    let index = targets.getIndex(singular_height);
+    _assert(index >= 0);
+    let component = this[index];
+
+    // Expansive on singular heights, contractive on regular heights
+    if (regular_monotone[regular_height_below] == regular_monotone[regular_height_above]) {
+      return [2 * regular_monotone[regular_height_below], ...component.forward_limit.updateSliceBackward(rest)];
+    }
+
+    // Contractive on singular heights, expansive on regular heights
+    let source_first_singular = regular_monotone[regular_height_below];
+    let component_subindex = source_first_singular - component.first;
+    _assert(component.subindex >= 0);
+    _assert(component.subindex < component.source_data.length);
+    let first_limit = component.source_data[component_subindex].forward_limit;
+    let second_limit = this.subLimit(source_first_singular);
+    let composed_limit = second_limit.compose(first_limit);
+    return [2 * (source_first_singular + 1), ...composed_limit.updateSliceBackward(rest)];
   }
 
 }
