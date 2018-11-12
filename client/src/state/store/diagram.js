@@ -74,6 +74,8 @@ export const setDiagram = (state, diagram) => {
   return state;
 };
 
+
+
 export const updateSlices = createSelector(
   state => state.diagram.slice,
   state => state.diagram.diagram,
@@ -189,7 +191,8 @@ export default createReducer({
       diagram = Core.attach(
         diagram,
         (boundary, point) => boundary.homotopy(point, direction),
-        path
+        path,
+        state
       );
 
       state = dotProp.set(state, "diagram.diagram", diagram);
