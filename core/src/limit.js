@@ -1933,7 +1933,6 @@ export class Limit extends Array {
       level_limits.push(l);
     }
     
-
     // Add any further limits required by the limits argument
     for (let i=0; i<limits.length; i++) {
       let limit = limits[i];
