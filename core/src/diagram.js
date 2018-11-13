@@ -939,7 +939,10 @@ export class Diagram {
       let source_data = [new Content(this.n - 1, forward_pullback.right, backward_pullback.left)];
       let sublimits = [recursive];
       let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
-      return new Limit(this.n, [component], this.data.length);
+      let limit = new Limit(this.n, [component], this.data.length);
+      let preimage_diagram = limit.rewrite_backward(this);
+      let normalization = preimage_diagram.normalize();
+      return limit.compose(normalization.embedding);
 
     }
 
