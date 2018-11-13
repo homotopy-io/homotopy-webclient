@@ -1,4 +1,4 @@
-import { _assert } from "~/util/debug";
+import { _assert, isNatural } from "~/util/debug";
 import { Diagram } from "~/diagram";
 import { Content } from "~/limit";
 

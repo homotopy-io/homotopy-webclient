@@ -8,3 +8,5 @@ core/.cache
 .vscode
 client/npm-debug.log
 core/npm-debug.log
+client/yarn-error.log
+core/yarn-error.log

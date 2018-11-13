@@ -1,8 +1,11 @@
 import { _assert, isNatural } from "~/util/debug";
 
+/*
 export const typeAt = (diagram, point) => {
   if (point.length == 0) {
     let maxType = null;
+
+    return diagram.getLastPoint();
 
     for (let t of typesOf(diagram)) {
       _assert(t);
@@ -31,7 +34,12 @@ export const typeAt = (diagram, point) => {
     return typeAt(slice, rest);
   }
 };
+*/
 
+export const typeAt = (diagram, point) => {
+  return diagram.getActionType(point);
+  
+}
 export const typesOf = function*(diagram) {
   if (diagram.n == 0) {
     _assert(diagram.type);

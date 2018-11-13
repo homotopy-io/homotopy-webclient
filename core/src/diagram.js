@@ -174,19 +174,127 @@ export class Diagram {
 
   // Find the ID of the last cell that appears in the diagram
   getLastPoint() {
-    if (this.n == 0) return this;
+    if (this.n == 0) return this.type;
     if (this.data.length == 0) return this.source.getLastPoint();
 
-    let k = this.data.length - 1;
-
-    while (k > 0 && this.data[k].forward_limit.length + this.data[k].backward_limit.length == 0) {
-      k--;
+    let point;
+    for (let i=this.data.length-1; i>=0; i--) {
+      let content = this.data[i];
+      if (content.forward_limit.length == 0 && content.backward_limit.length == 0) {
+        continue;
+      }
+      let slice_point = this.getSlice({height: i, regular: false}).getLastPoint();
+      if (point === undefined || slice_point.n > point.n) {
+        point = slice_point;
+      }
     }
 
+    return point;
+
+    /*
     return this
       .getSlice({ height: k, regular: false })
       .getLastPoint();
+    */
   }
+
+  // Get the 0-diagram of 'leftmost action' at the given height (ANC-2018-2-2)
+  getActionType(position) {
+    if (this.n == 0) return this.type;
+    if (typeof position === 'number') position = [position];
+    if (this.data.length == 0) return this.source.getActionType(0); // is this necessary?
+    if (position.length == 0) {
+      if (this.data.length == 0) position = [0];
+      else position = [1];
+    }
+    _assert(position.length > 0);
+    let [slice, ...rest] = position;
+    slice = Math.max(slice, 0);
+    slice = Math.min(slice, 2 * this.data.length);
+    
+    // Recursive case
+    if (rest.length > 0) {
+      return this.getSlice(slice).getActionType(rest);
+    }
+
+    // Base case
+    if (this.n == 1) {
+      return this.getSlice(slice).type;
+
+      /*
+        if (height == null) {
+            let t = 0;
+            let max_dim = -1;
+            for (let i = 0; i < this.data.length; i++) {
+                let type = this.data[i].forward_limit[0].type;
+                if (type.n > max_dim) {
+                    max_dim = type.n;
+                    t = i;
+                }
+            }
+            return this.getSlice({ height: t, regular: false }).type;
+        } else {
+            return this.getSlice({ height, regular: false }).type;
+        }
+        */
+    }
+
+    // Regular subdiagram
+    if (slice % 2 == 0) {
+      return this.getSlice(slice).getActionType([]);
+    }
+
+    // Singular subdiagram, take the first nontrivial component
+    let level = (slice - 1) / 2;
+    let forward_targets = this.data[level].forward_limit.getComponentTargets();
+    let backward_targets = this.data[level].backward_limit.getComponentTargets();
+    if (forward_targets.length + backward_targets.length == 0) {
+        return this.source.getActionType(0);
+    }
+    let t;
+    if (forward_targets.length == 0 || backward_targets.length == 0) {
+        t = forward_targets.length == 0 ? backward_targets[0] : forward_targets[0];
+    } else {
+        t = Math.min(forward_targets[0], backward_targets[0]);
+    }
+    return this.getSlice(slice).getActionType(2 * t + 1);
+  }
+
+  /* OLD GETACTIONTYPE
+  // Get the 0-diagram of 'leftmost action' at the given height (ANC-2018-2-2)
+  getActionType(height) {
+    if (this.n == 0) return this.type;
+    if (this.data.length == 0) return this.source.getActionType(0);
+    if (this.n == 1) {
+        if (height == null) {
+            let t = 0;
+            let max_dim = -1;
+            for (let i = 0; i < this.data.length; i++) {
+                let type = this.data[i].forward_limit[0].type;
+                if (type.n > max_dim) {
+                    max_dim = type.n;
+                    t = i;
+                }
+            }
+            return this.getSlice({ height: t, regular: false }).type;
+        } else {
+            return this.getSlice({ height, regular: false }).type;
+        }
+    }
+    let forward_targets = this.data[height].forward_limit.getComponentTargets();
+    let backward_targets = this.data[height].backward_limit.getComponentTargets();
+    if (forward_targets.length + backward_targets.length == 0) {
+        return this.source.getActionType(0);
+    }
+    let t;
+    if (forward_targets.length == 0 || backward_targets.length == 0) {
+        t = forward_targets.length == 0 ? backward_targets[0] : forward_targets[0];
+    } else {
+        t = Math.min(forward_targets[0], backward_targets[0]);
+    }
+    return this.getSlice({ height: height, regular: false }).getActionType(t);
+  }
+  */
 
   // Get apparent wire depths for displaying homotopies
   getWireDepths(up, across) {
