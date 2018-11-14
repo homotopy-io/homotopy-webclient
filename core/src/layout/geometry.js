@@ -40,6 +40,8 @@ export const typeAt = (diagram, point) => {
   return diagram.getActionType(point);
   
 }
+
+/*
 export const typesOf = function*(diagram) {
   if (diagram.n == 0) {
     _assert(diagram.type);
@@ -55,6 +57,7 @@ export const typesOf = function*(diagram) {
     }
   }
 };
+*/
 
 export const pointsOf = function*(diagram, dimension) {
   _assert(diagram.n >= dimension);
@@ -146,43 +149,60 @@ export const getSlice = (diagram, ...heights) => {
 };
 
 export const edgesOf = function*(diagram, dimension) {
-  if (dimension == 0) {
-    return;
-  } else {
-    // Slice edges
-    for (let [height, slice] of slicesOf(diagram)) {
-      for (let { source, target, codim, dir } of edgesOf(slice, dimension - 1)) {
-        source.unshift(height);
-        target.unshift(height);
-        codim += 1;
-        yield { source, target, codim, dir };
-      }
+  if (dimension == 0) return;
+
+  // Slice edges
+  for (let [height, slice] of slicesOf(diagram)) {
+    for (let { source, target, codim, dir } of edgesOf(slice, dimension - 1)) {
+      source.unshift(height);
+      target.unshift(height);
+      codim += 1;
+      yield { source, target, codim, dir, type: 'slice edge', wire: false };
     }
+  }
 
-    // Limit edges
-    for (let regular = 0; regular <= diagram.data.length; regular++) {
-      let points = [...pointsOf(diagram.getSlice({ height: regular, regular: true }), dimension - 1)];
+  // Limit edges
+  for (let regular = 0; regular <= diagram.data.length; regular++) {
+    let slice = diagram.getSlice({ height: regular, regular: true });
+    let points = [...pointsOf(slice, dimension - 1)];
 
-      let backwardLimit = regular > 0 ? diagram.data[regular - 1].backward_limit : null;
-      let forwardLimit = regular < diagram.data.length ? diagram.data[regular].forward_limit : null;
+    let backwardLimit = regular > 0 ? diagram.data[regular - 1].backward_limit : null;
+    let forwardLimit = regular < diagram.data.length ? diagram.data[regular].forward_limit : null;
 
-      for (let point of points) {
-        for (let target of limitAction(backwardLimit, point)) {
-          yield {
-            source: [regular * 2, ...point],
-            target: [regular * 2 - 1, ...target],
-            codim: 0,
-            dir: -1
-          };
+    for (let point of points) {
+      //_assert(slice.data);
+      let point_regular = slice.n > 0 && (point[0] < 0 || point[0] > slice.data.length * 2 || point[0] % 2 == 0);
+      for (let target of limitAction(backwardLimit, point)) {
+        let obj = {
+          source: [regular * 2, ...point],
+          target: [regular * 2 - 1, ...target],
+          codim: 0,
+          dir: -1,
+          type: 'limit action backward edge',
+          wire: !point_regular
+        };
+        _assert(obj.source.length == obj.target.length);
+        for (let i=0; i<obj.source.length; i++) {
+          _assert(obj.source[i] >= -1);
+          _assert(obj.target[i] >= -1);
         }
-        for (let target of limitAction(forwardLimit, point)) {
-          yield {
-            source: [regular * 2, ...point],
-            target: [regular * 2 + 1, ...target],
-            codim: 0,
-            dir: 1
-          };
+        yield obj;
+      }
+      for (let target of limitAction(forwardLimit, point)) {
+        let obj = {
+          source: [regular * 2, ...point],
+          target: [regular * 2 + 1, ...target],
+          codim: 0,
+          dir: 1,
+          type: 'limit action forward edge',
+          wire: !point_regular
+        };
+        _assert(obj.source.length == obj.target.length);
+        for (let i=0; i<obj.source.length; i++) {
+          _assert(obj.source[i] >= -1);
+          _assert(obj.target[i] >= -1);
         }
+        yield obj;
       }
     }
   }
@@ -202,7 +222,7 @@ const limitAction = (limit, point) => {
   let [height, ...rest] = point;
 
   // Before the first component
-  if (height < limit[0].first * 2) {
+  if (height <= limit[0].first * 2) {
     return [point];
   }
 
@@ -212,6 +232,7 @@ const limitAction = (limit, point) => {
     for (let component of limit) {
       offset += component.getLast() * 2 - component.first * 2 - 2;
     }
+    _assert(height - offset >= -1);
     return [[height - offset, ...rest]];
   }
 

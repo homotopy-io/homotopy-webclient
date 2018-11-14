@@ -439,7 +439,11 @@ export class LimitComponent {
   }
 
   usesCell(generator) {
-    if (this.n == 0) return this.type.id == generator.id;
+    if (this.n == 0) {
+      let type = this.type;
+      _assert(type);
+      return type.id == generator.id;
+    }
 
     for (let content of this.data) {
       if (content.usesCell(generator)) return true;
@@ -1042,6 +1046,7 @@ export class Limit extends Array {
   // For an atomic limit, find its unique target type
   getUniqueTargetType() {
     if (this.n == 0) return this[0].target_type;
+    _assert(this[0]);
     return this[0].target_data.forward_limit.getUniqueTargetType();
   }
 

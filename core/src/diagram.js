@@ -300,7 +300,6 @@ export class Diagram {
   getWireDepths(up, across) {
     let r1 = this.getSlice({ height: up, regular: true });
     let s = this.getSlice({ height: up, regular: false });
-    //let limit_target = s.getSlice({ height: across, regular: false });
     let source_depths = Diagram.getLimitWireDepths(this.data[up].forward_limit, r1, s, across);
     let r2 = this.getSlice({ height: up + 1, regular: true });
     let target_depths = Diagram.getLimitWireDepths(this.data[up].backward_limit, r2, s, across);
