@@ -17,6 +17,7 @@ import withSize from "~/components/misc/Sized";
 import withLayout from "~/components/diagram/withLayout";
 import { getGenerators } from "~/state/store/signature";
 import { ENETDOWN } from "constants";
+import { mask } from "ip";
 
 export default compose(
   withLayout,
@@ -153,7 +154,7 @@ export class Diagram2D extends React.Component {
     //if (n >= 3) debugger;
 
     // If the generator is appearing in its native dimension, use the assigned colour
-    if (n == generator.generator.n) return generator.color;
+    if (n <= generator.generator.n) return generator.color;
 
     // Otherwise, adjust the lightness cyclically
     var husl = HSLuv.hexToHsluv(generator.color);
@@ -182,7 +183,7 @@ export class Diagram2D extends React.Component {
     let position = point.position;
     let generator = point.generator;
 
-    if (this.props.dimension == 2 && !point.nontrivial) {
+    if (this.props.dimension == 2 && !point.nontrivial && !point.boundary) {
       return null;
     }
 
@@ -326,12 +327,12 @@ export class Diagram2D extends React.Component {
       let backward_nontrivial = data.backward_limit.analyzeSingularNeighbourhoods();
       nontrivial = forward_nontrivial[slice[1].height] || backward_nontrivial[slice[1].height];
       if (nontrivial) {
-        algebraic = (generator.generator.n == this.diagram.n);
+        algebraic = (generator.generator.n >= this.diagram.n);
         homotopy = !algebraic;
       }
     }
 
-    return { point, generator, position, ref, nontrivial, algebraic, homotopy, slice };
+    return { point, generator, position, ref, nontrivial, algebraic, homotopy, slice, boundary };
   }
 
   // Store the control points for each edge
@@ -388,7 +389,7 @@ export class Diagram2D extends React.Component {
     } else {
       // Straight line
       if (edge.type == 'triangle edge') {
-        edge.svg_path = ' L ' + edge.source_point.position.join(" ");
+        edge.svg_path = ' L  ' + edge.source_point.position.join(" ");
       } else {
         edge.svg_path = ' L ' + edge.target_point.position.join(" ");
       }
@@ -396,7 +397,7 @@ export class Diagram2D extends React.Component {
   }
 
   // Prepare a group of edges with the same nontrivial target
-  prepareEdgesAtTarget(edges) {
+  prepareEdgesAtTarget(edges, masks) {
     if (this.props.dimension != 2) return;
     if (this.diagram.n < 3) return;
     if (edges.length == 0) return;
@@ -425,8 +426,12 @@ export class Diagram2D extends React.Component {
 
     // Group them by common depth
     let groups_temp = [];
+    let left = Number.MAX_VALUE;
+    let right = -Number.MAX_VALUE;
     for (let i = 0; i < segments.length; i++) {
       let segment = segments[i];
+      left = Math.min(left, segment.edge.source_point.position[0]);
+      right = Math.max(right, segment.edge.source_point.position[0]);
       if (!groups_temp[segment.depth]) {
         groups_temp[segment.depth] = [segment]
       } else {
@@ -443,6 +448,8 @@ export class Diagram2D extends React.Component {
       groups.push(groups_temp[i]);
     }
 
+    // Draw the groups nearest-first
+    let mask_edges = [];
     for (let i = 0; i < groups.length; i++) {
       let group = groups[i];
 
@@ -483,15 +490,17 @@ export class Diagram2D extends React.Component {
       }
       //g.appendChild(mask[0]);
 
-      let c2l = 25;
-      let factor = 0.55;
+      let c2l = 35;
+      let factor = 0.35;
       let c2x_target = vertex.position[0] + c2l * Math.sin(theta);
       let c2x_source = vertex.position[0] - c2l * Math.sin(theta);
       let c2y_target = vertex.position[1] - c2l * factor * Math.cos(theta);
       let c2y_source = vertex.position[1] + c2l * factor * Math.cos(theta);
       let c1l = 20;
-      //let mask_mult = 2.5;
-      //let mask_url = mask_id ? "url(#" + mask_id + ")" : null;
+      let mask_mult = 125;
+      let mask_url = (masks.length > 0 && i > 0) ? "url(#mask" + (masks.length - 1) + ")" : null;
+
+      mask_edges = mask_edges.slice();
 
       for (let j = 0; j < group.length; j++) {
         let segment = group[j];
@@ -501,15 +510,13 @@ export class Diagram2D extends React.Component {
         let start_y = vertex.position[1];//edge.source_point.position[1] + (segment.source ? -1 : +1) * 50;
         edge.st_control = [edge.source_point.position[0], start_y + (segment.source ? c1l : -c1l)];
         edge.ts_control = [segment.source ? c2x_source : c2x_target, segment.source ? c2y_source : c2y_target];
-        /*
-        var segment_str = SVG_move_to({ x: edge.x, y: start_y })
-          + SVG_bezier_to({ c1x: edge.x, c1y: start_y + (segment.source ? c1l : -c1l),
-            //c2x: edge.x, c2y: vertex.y,
-            c2x: segment.source ? c2x_source : c2x_target, c2y: segment.source ? c2y_source : c2y_target,
-            x: vertex.x, y: vertex.y });
-        */
+        edge.mask = mask_url;
+        mask_edges.push(edge);
       }
 
+      if (i == groups.length - 1) break;
+      let height = vertex.position[1];
+      masks.push({ mask_edges, left, right, height });
     }
 
     // Assign control points to the intermediate regular edges
@@ -582,6 +589,7 @@ export class Diagram2D extends React.Component {
         strokeWidth={10}
         fill="none"
         key={`wire#${s.point.join(":")}#${t.point.join(":")}`}
+        mask={edge.mask || ''}
         onClick={e => this.onSelect(e, s.point, t.point)}>
         {this.props.interactive && <title>{sGenerator.name}</title>}
       </path>
@@ -641,7 +649,7 @@ export class Diagram2D extends React.Component {
     return (
       <path
         d={path}
-        stroke={'#fff'}
+        stroke={/*'#fff'*/ colour}
         strokeWidth={1}
         vectorEffect={"non-scaling-stroke"}
         fill={highlight ? "#f1c40f" : colour}
@@ -693,7 +701,10 @@ export class Diagram2D extends React.Component {
       acc.push([currValue]);
       return acc;
     }, []);
-    edges_by_target.map(this.prepareEdgesAtTarget, this);
+    let masks = [];
+    for (let i=0; i<edges_by_target.length; i++) {
+      this.prepareEdgesAtTarget(edges_by_target[i], masks);
+    }
 
     // Set svg path strings if missing
     edges.map(this.prepareEdgeSVGPath, this);
@@ -701,12 +712,67 @@ export class Diagram2D extends React.Component {
     return (
       <DiagramSVG width={this.props.width} height={this.props.height} innerRef={this.diagramRef}>
         <g>
+          <defs>
+            {masks.map(this.renderMask, this)}
+          </defs>
           {surfaces.map(([x, y, z]) => this.renderSurface(x, y, z))}
           {edges.map(edge => this.renderWire(edge))}
           {points.map(point => this.renderPoint(point))}
         </g>
       </DiagramSVG>
     );
+  }
+
+  renderMask(mask, index) {
+
+    let outline_d =
+      [`M ${mask.left - 125} ${mask.height - 60}`,
+       `L ${mask.left - 125} ${mask.height + 60}`,
+       `L ${mask.right + 125} ${mask.height + 60}`,
+       `L ${mask.right + 125} ${mask.height - 60}`,
+       `L ${mask.left - 125} ${mask.height - 60}`].join(' ');
+    let paths = [(
+      <path
+        key={'mask' + index + '-transparent'}
+        d={outline_d}
+        stroke={"none"}
+        fill={"white"}
+        strokeOpacity={1}
+        fillOpacity={1}
+        //element_type={"mask_transparent"}
+        >
+      </path>
+    )];
+
+    for (let i=0; i<mask.mask_edges.length; i++) {
+      paths.push(this.renderMaskEdge(mask.mask_edges[i], index, i));
+    }
+
+    return (
+      <mask
+        id={"mask" + index}
+        key={'mask' + index}
+        //maskUnits={"userSpaceOnUse"}
+        >
+        {paths}
+      </mask>
+    );
+  }
+
+  renderMaskEdge(edge, index, subindex) {
+    let source_point = edge.type == 'triangle edge' ? edge.target_point : edge.source_point;
+    let edge_path = 'M ' + source_point.position.join(' ') + ' ' + edge.svg_path;
+    return (
+      <path
+        key={'mask' + index + '-path' + subindex}
+        d={edge_path}
+        stroke={"black"}
+        fill={"none"}
+        strokeOpacity={1}
+        fillOpacity={1}
+        strokeWidth = {25}
+      />
+    )
   }
 
   findSurfaces(diagram, edges_raw, edges) {
