@@ -61,11 +61,12 @@ export default createReducer({
     let option = options[index];
     let generator = generators[option.generator];
 
-    diagram = Core.attachGenerator(diagram, generator.generator, option.path, state.diagram.slice);
+    let { new_diagram, new_slice } = Core.attachGenerator(diagram, generator.generator, option.path, state.diagram.slice);
 
-    state = dotProp.set(state, "diagram.diagram", diagram);
+    state = dotProp.set(state, "diagram.diagram", new_diagram);
     state = dotProp.set(state, "attach.options", null);
     state = dotProp.set(state, "attach.highlight", null);
+    state = dotProp.set(state, "diagram.slice", new_slice);
 
     return state;
   },

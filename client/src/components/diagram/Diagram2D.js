@@ -353,8 +353,15 @@ export class Diagram2D extends React.Component {
     let tPosition = edge.target_point.position;
     if (edge.target_point.nontrivial) {
       if (edge.target_point.algebraic) {
-        edge.st_control = this.getControlPoint(sGenerator, sPosition, tPosition);
-        edge.ts_control = this.getControlPoint(tGenerator, tPosition, sPosition);
+
+        edge.st_control = sPosition.slice();
+        edge.st_control[1] = (4 * edge.st_control[1] + tPosition[1]) / 5;
+        edge.ts_control = tPosition.slice();
+        edge.ts_control[0] = sPosition[0];
+
+
+        //edge.st_control = this.getControlPoint(sGenerator, sPosition, tPosition);
+        //edge.ts_control = this.getControlPoint(tGenerator, tPosition, sPosition);
         /*
         if (edge.type == 'triangle edge') {
           edge.svg_path = ` C ${edge.ts_control.join(" ")} ${st_control.join(" ")} ${sPosition.join(" ")}`;
@@ -508,6 +515,8 @@ export class Diagram2D extends React.Component {
         // Calculate control points for this segment
         let edge = segment.edge;
         let start_y = vertex.position[1];//edge.source_point.position[1] + (segment.source ? -1 : +1) * 50;
+        //_assert(!edge.st_control);
+        //_assert(!edge.ts_control);
         edge.st_control = [edge.source_point.position[0], start_y + (segment.source ? c1l : -c1l)];
         edge.ts_control = [segment.source ? c2x_source : c2x_target, segment.source ? c2y_source : c2y_target];
         edge.mask = mask_url;
@@ -533,6 +542,8 @@ export class Diagram2D extends React.Component {
         st_controls.push(source_edges[2 * i + 1].st_control);
         ts_controls.push(source_edges[2 * i + 1].ts_control);
       }
+      _assert(!edge.st_control);
+      _assert(!edge.ts_control);
       if (st_controls.length == 1) {
         edge.st_control = st_controls[0];
         edge.ts_control = ts_controls[0];
@@ -554,6 +565,8 @@ export class Diagram2D extends React.Component {
         st_controls.push(target_edges[2 * i + 1].st_control);
         ts_controls.push(target_edges[2 * i + 1].ts_control);
       }
+      _assert(!edge.st_control);
+      _assert(!edge.ts_control);
       if (st_controls.length == 1) {
         edge.st_control = st_controls[0];
         edge.ts_control = ts_controls[0];
@@ -649,7 +662,7 @@ export class Diagram2D extends React.Component {
     return (
       <path
         d={path}
-        stroke={/*'#fff'*/ colour}
+        stroke={'#fff' /*colour*/}
         strokeWidth={1}
         vectorEffect={"non-scaling-stroke"}
         fill={highlight ? "#f1c40f" : colour}
@@ -689,7 +702,7 @@ export class Diagram2D extends React.Component {
     }
 
     // Group edges by target nontrivial vertex, and set control points
-    let edges_nontrivial_target = edges.filter(edge => edge.target_point.nontrivial);
+    let edges_nontrivial_target = edges.filter(edge => edge.target_point.homotopy);
     let edges_by_target = edges_nontrivial_target.reduce((acc, currValue, currIndex, array) => {
       let ref = currValue.target_point.ref;
       for (let i=0; i<acc.length; i++) {

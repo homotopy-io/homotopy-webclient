@@ -441,8 +441,9 @@ export class LimitComponent {
   usesCell(generator) {
     if (this.n == 0) {
       let type = this.type;
-      _assert(type);
-      return type.id == generator.id;
+      if (this.source_type.id == generator.id) return true;
+      if (this.target_type.id == generator.id) return true;
+      return false;
     }
 
     for (let content of this.data) {

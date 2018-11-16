@@ -107,8 +107,9 @@ export const unprojectPoint = (diagram, point) => {
   if (point.length >= diagram.n) {
     return point;
   } else {
-    diagram = diagram.getSlice(...point);
-    return [...point, ...lastPoint(diagram)];
+    let slice = diagram.new_diagram.getSlice(...point);
+    //diagram = diagram.getSlice(...point);
+    return [...point, ...lastPoint(slice)];
   }
 };
 
