@@ -8,6 +8,7 @@ import * as Core from "homotopy-core";
 import * as Rx from "rxjs";
 import * as RxOps from "rxjs/operators";
 import * as HSLuv from "hsluv";
+import BezierCubic from "~/util/bezier";
 
 import compose from "~/util/compose";
 import { _assert, isNatural } from "../../../../core/src/util/debug"; // this is a mess
@@ -150,6 +151,7 @@ export class Diagram2D extends React.Component {
   getColour(generator, n) {
 
     _assert(isNatural(n));
+    _assert(generator);
 
     //if (n >= 3) debugger;
 
@@ -187,12 +189,14 @@ export class Diagram2D extends React.Component {
       return null;
     }
 
+    _assert(generator);
+
     if (generator.generator.n < this.diagram.n) {
       //return null;
     }
 
     let colour = this.getColour(generator, this.diagram.n);
-    let key = `point#${point.point.join(":")}`;
+    let key = `point#${point.position.join(":")}`;
     let fill_opacity = 1;
     let r = 12.5;
     if (point.homotopy) {
@@ -352,7 +356,7 @@ export class Diagram2D extends React.Component {
     let sPosition = edge.source_point.position;
     let tPosition = edge.target_point.position;
     if (edge.target_point.nontrivial) {
-      if (edge.target_point.algebraic) {
+      if (edge.target_point.algebraic && sPosition[1] != tPosition[1]) {
 
         edge.st_control = sPosition.slice();
         edge.st_control[1] = (4 * edge.st_control[1] + tPosition[1]) / 5;
@@ -591,7 +595,8 @@ export class Diagram2D extends React.Component {
     let start = edge.type == 'triangle edge' ? tPosition : sPosition;
     let path = 'M ' + start.join(" ") + edge.svg_path;
     let colour = this.getColour(sGenerator, this.diagram.n - 1);
-    let key = 'wire#' + s.point.join(":") + '#' + t.point.join(":") + (edge.type == 'triangle edge' ? '#T' : ' ');
+    //let key = 'wire#' + s.point.join(":") + '#' + t.point.join(":") + (edge.type == 'triangle edge' ? '#T' : ' ');
+    let key = 'wire#' + s.position.join(":") + '#' + t.position.join(":") + (edge.type == 'triangle edge' ? '#T' : ' ');
 
     //if (this.diagram.n == 3) debugger;
 
@@ -601,7 +606,7 @@ export class Diagram2D extends React.Component {
         stroke={colour}
         strokeWidth={10}
         fill="none"
-        key={`wire#${s.point.join(":")}#${t.point.join(":")}`}
+        key={key}
         mask={edge.mask || ''}
         onClick={e => this.onSelect(e, s.point, t.point)}>
         {this.props.interactive && <title>{sGenerator.name}</title>}
@@ -657,6 +662,10 @@ export class Diagram2D extends React.Component {
 
     let sGenerator = s.generator;
     let colour = this.getColour(sGenerator, this.diagram.n - 2);
+    //let key = 'surface#' + s.point.join(":") + '#' + m.point.join(":") + '#' + t.point.join(":")';
+    let key = 'surface#' + s.position.join(":")
+      + '#' + m.position.join(":")
+      + '#' + t.position.join(":");
 
     /* Remove stroke here to see triangles when debugging */
     return (
@@ -666,7 +675,7 @@ export class Diagram2D extends React.Component {
         strokeWidth={1}
         vectorEffect={"non-scaling-stroke"}
         fill={highlight ? "#f1c40f" : colour}
-        key={`surface#${s.point.join(":")}#${m.point.join(" ")}#${t.point.join(":")}`}
+        key={key}
         onClick={e => this.onSelect(e, s.point, m.point, t.point)}>
         {this.props.interactive && <title>{sGenerator.name}</title>}
       </path>
@@ -719,8 +728,11 @@ export class Diagram2D extends React.Component {
       this.prepareEdgesAtTarget(edges_by_target[i], masks);
     }
 
+    // Subdivide everything
+    let subdivision = this.subdivideEdges({ surfaces, edges, points });
+
     // Set svg path strings if missing
-    edges.map(this.prepareEdgeSVGPath, this);
+    subdivision.edges.map(this.prepareEdgeSVGPath, this);
 
     return (
       <DiagramSVG width={this.props.width} height={this.props.height} innerRef={this.diagramRef}>
@@ -728,9 +740,9 @@ export class Diagram2D extends React.Component {
           <defs>
             {masks.map(this.renderMask, this)}
           </defs>
-          {surfaces.map(([x, y, z]) => this.renderSurface(x, y, z))}
-          {edges.map(edge => this.renderWire(edge))}
-          {points.map(point => this.renderPoint(point))}
+          {subdivision.surfaces.map(([x, y, z]) => this.renderSurface(x, y, z))}
+          {subdivision.edges.map(edge => this.renderWire(edge))}
+          {subdivision.points.map(point => this.renderPoint(point))}
         </g>
       </DiagramSVG>
     );
@@ -828,39 +840,100 @@ export class Diagram2D extends React.Component {
     return surfaces;
   }
 
-}
+  subdivideEdges({ surfaces, edges, points }) {
 
+    let new_edges = [];
+    let new_surfaces = [];
+    let new_points = points.slice();
 
-/*
-const findSurfaces = (diagram, edges) => {
-  if (diagram.n < 2) return [];
+    // Subdivide the edges
+    for (let i=0; i<edges.length; i++) {
 
-  let graph = new Graph();
+      let edge = edges[i];
+      let edge_type = edge.edge_type;
+      let wire = edge.wire;
+      let parent_edge = edge;
+      let new_point, edge_1, edge_2;
 
-  for (let edge of edges) {
-    graph.addEdge(edge.source, edge.target, { edge });
-  }
+      if (edge.st_control == null) { // Linear
+        let position = this.getMeanPoint(edge.source_point.position, edge.target_point.position);
+        new_point = { position, parent_edge: edge, generator: edge.source_point.generator };
+        edge_1 = { source_point: edge.source_point, target_point: new_point, parent_edge, subdivide_source: true, edge_type, wire };
+        edge_2 = { source_point: new_point, target_point: edge.target_point, parent_edge, subdivide_source: false, edge_type, wire };
+      } else { // Bezier
+        let bezier = new BezierCubic({ p1: edge.source_point.position, c1: edge.st_control, c2: edge.ts_control, p2: edge.target_point.position });
+        let split = bezier.splitAtMidHeight();
+        new_point = { position: split[0].p2, parent_edge: edge, generator: edge.source_point.generator };
+        edge_1 = { source_point: edge.source_point, target_point: new_point, parent_edge, st_control: split[0].c1, ts_control: split[0].c1, edge_type, wire };
+        edge_2 = { source_point: new_point, target_point: edge.target_point, parent_edge, st_control: split[1].c1, ts_control: split[1].c2, edge_type, wire };
+      }
 
-  let surfaces = [];
-  let new_edges = [];
-  for (let [a, b, v] of graph.edges()) {
-    //let aType = Core.Geometry.typeAt(diagram, a);
-
-    for (let [c, w] of graph.edgesFrom(b)) {
-      let x = graph.getEdge(a, c);
-      _assert(x === undefined);
-      let new_edge = { source: a, target: b, codim: null, dir: null, type: 'triangle edge', wire: false };
-      surfaces.push([a, b, c, v.edge, w.edge, new_edge]); // points then edges
-      new_edges.push(new_edge);
+      _assert(new_point.position instanceof Array);
+      for (let i=0; i<new_point.position.length; i++) {
+        _assert(!isNaN(new_point.position[i]));
+      }
+      new_points.push(new_point);
+      new_edges.push(edge_1);
+      new_edges.push(edge_2);
+      edge.child_1 = edge_1;
+      edge.child_2 = edge_2;
+      edge.child_point = new_point;
     }
+
+    // Subdivide the surfaces
+    for (let i=0; i<surfaces.length; i++) {
+
+
+      let surface = surfaces[i];
+      let sm = surface[0];
+      let mt = surface[1];
+      let st = surface[2];
+      //let [sm, mt, st] = surfaces[i];
+      _assert(sm);
+      _assert(mt);
+      _assert(st);
+
+      // Create new edges internal to the surface
+      let edge_s = { source_point: sm.child_point, target_point: st.child_point };
+      let edge_m = { source_point: sm.child_point, target_point: mt.child_point, type: 'triangle edge' };
+      let edge_t = { source_point: st.child_point, target_point: mt.child_point };
+      let [s, m, t] = [sm.source_point, mt.source_point, st.target_point]; 
+      new_edges.push(edge_s, edge_m, edge_t);
+
+
+      // Create new surfaces
+      let surface_1 = [ sm.child_1, edge_s, st.child_1 ];
+      this.validateSurface(surface_1);
+      let surface_2 = [ sm.child_2, mt.child_1, edge_m ];
+      this.validateSurface(surface_2);
+      let surface_3 = [ edge_t, mt.child_2, st.child_2 ];
+      this.validateSurface(surface_3);
+      let surface_4 = [ edge_s, edge_t, edge_m ];
+      this.validateSurface(surface_4);
+      new_surfaces.push(surface_1, surface_2, surface_3, surface_4);
+
+    }
+
+    return { points: new_points, edges: new_edges, surfaces: new_surfaces };
   }
 
-  // Add the new edges
-  edges = [...edges, ...new_edges];
+  validateSurface([sm, mt, st]) {
+    _assert(sm.source_point === st.source_point);
+    _assert(sm.target_point === mt.source_point);
+    _assert(mt.target_point === st.target_point);
+  }
 
-  return surfaces;
-};
-*/
+  getMeanPoint(p, q) {
+    let m = [];
+    _assert(p.length == q.length);
+    for (let i=0; i<p.length; i++) {
+      m[i] = (p[i] + q[i]) / 2;
+      _assert(!isNaN(m[i]));
+    }
+    return m;
+  }
+  
+}
 
 export const Loading = () =>
   <LoadingWrapper>
