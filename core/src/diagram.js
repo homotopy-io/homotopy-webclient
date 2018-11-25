@@ -24,6 +24,10 @@ export class Diagram {
     Object.freeze(this);
   }
 
+  toJSON() {
+    return "TODO: serialise diagrams";
+  }
+
   validate() {
     return true;
   }

@@ -37,6 +37,14 @@ export class Generator {
     Object.freeze(this);
   }
 
+  toJSON() {
+    return {
+      id: this.id,
+      source: this.source,
+      target: this.target
+    };
+  }
+
   validate() {
     _assert(this.n == 0 || this.source);
   }

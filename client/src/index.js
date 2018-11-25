@@ -2,6 +2,10 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as Redux from "redux";
 import * as ReactRedux from "react-redux";
+import * as ReduxPersist from "redux-persist";
+import storage from "redux-persist/lib/storage";
+import { PersistGate } from "redux-persist/integration/react";
+import * as Core from "homotopy-core";
 import "typeface-roboto";
 import "@icon/stroke-7/stroke-7.css";
 
@@ -19,8 +23,36 @@ import {
   setRenderer
 } from "~/state/actions/diagram";
 
-const store = Redux.createStore(reducer, initialState);
+const coreTransform = ReduxPersist.createTransform(
+  (inboundState, key) => JSON.stringify(inboundState),
+  (outboundState, key) => {
+    return JSON.parse(outboundState, (name, val) => {
+      if ( name == 'generator' ) {
+        if (val.source == null && val.target == null) {
+          return new Core.Generator(val.id, null, null);
+        } else {
+          // TODO: reserialise diagrams
+          return new Core.Generator(val.id, Object.assign(new Diagram, val.source), Object.assign(new Diagram, val.target));
+        }
+      } else {
+        return val;
+      }
+    });
+  },
+  { /* no options required */ }
+);
+
+const persistConfig = {
+  transforms: [coreTransform],
+  key: 'root',
+  storage,
+};
+
+const store = Redux.createStore(
+  ReduxPersist.persistReducer(persistConfig, reducer)
+  , initialState);
 window.store = store;
+const persistor = ReduxPersist.persistStore(store);
 
 Rx.fromEvent(document, "keydown") 
   .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
@@ -39,7 +71,9 @@ Rx.fromEvent(document, "keydown")
 const render = () => {
   ReactDOM.render(
     <ReactRedux.Provider store={store}>
-      <App />
+      <PersistGate loading={null} persistor={persistor}>
+        <App />
+      </PersistGate>
     </ReactRedux.Provider>,
     document.getElementById("app")
   );
