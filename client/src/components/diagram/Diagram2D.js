@@ -222,7 +222,7 @@ export class Diagram2D extends React.Component {
 
     // Don't show boundary points
     if (point.boundary) {
-      //return null; // keep showing these for now
+      return null; // keep showing these for now
     }
 
     // No points on regular slices of 1d diagrams

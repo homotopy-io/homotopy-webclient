@@ -1738,6 +1738,16 @@ export class Limit extends Array {
       return f;
     }
 
+    if (pullback.left.length == 0) {
+      if (!pullback.right.compose(f).equals(g)) return null;
+      return f;
+    }
+
+    if (pullback.right.length == 0) {
+      if (!pullback.left.compose(g).equals(f)) return null;
+      return g;
+    }
+
     _assert(f.source_size === g.source_size);
 
 
