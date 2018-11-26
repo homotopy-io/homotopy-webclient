@@ -52,6 +52,20 @@ class Solver {
 
     // Analyze the inputs and outputs that should be averaged over.
     for (let { source, target, codim, dir } of this.edges) {
+
+      if (codim == this.dimension - 1 && this.dimension > 1) {
+        if (source[codim] % 2 == 0) {
+          this.addRelation(source, target, codim, dir);
+        }
+
+        // Singular target
+        if (target[codim] % 2 != 0) {
+          this.addRelation(target, source, codim, dir);
+        }
+
+        continue;
+      }
+
       if (codim >= this.dimension - 1) {
         continue;
       }
@@ -120,6 +134,7 @@ class Solver {
   addRelation(source, target, codim, dir) {
     let relations = this.points.get(pointId(source)).relations;
     let key = `${codim}:${dir}`;
+    _assert(relations.get(key));
     relations.get(key).points.push(target);
   }
 
@@ -164,7 +179,7 @@ class Solver {
       }
 
       if (codim == 1 && source[0] % 2 == 1) {
-        continue;
+        //continue;
       }
 
       yield new Kiwi.Constraint(

@@ -195,7 +195,7 @@ export const edgesOf = function*(diagram, dimension) {
           target: [regular * 2 + 1, ...target],
           codim: 0,
           dir: 1,
-          type: 'limit action forward edge',
+          type: 'limit action forward edge ',
           wire: !point_regular
         };
         _assert(obj.source.length == obj.target.length);
@@ -220,22 +220,42 @@ const limitAction = (limit, point) => {
     return [point];
   }
 
+  let monotone = limit.getMonotone();
+  let adjoint = monotone.getAdjoint();
+
   let [height, ...rest] = point;
 
   // Before the first component
+  let cumulative = [];
   if (height <= limit[0].first * 2) {
-    return [point];
+    cumulative.push(point);
+    //return [point];
+  }
+
+  if (height == -1) return cumulative;
+  if (height % 2 == 1 && cumulative.length > 0) return cumulative;
+
+  if (height % 2 == 0) {
+    let p = [];
+    for (let i=0; i<adjoint.length; i++) {
+      if (adjoint[i] == height / 2) {
+        p.push([i * 2, ...rest]);
+      }
+    }
+    if (p.length > 0) return p;
   }
 
   // After the last component
-  if (height > limit[limit.length - 1].getLast() * 2) {
+  if (height >= limit[limit.length - 1].getLast() * 2) {
     let offset = 0;
     for (let component of limit) {
       offset += component.getLast() * 2 - component.first * 2 - 2;
     }
     _assert(height - offset >= -1);
-    return [[height - offset, ...rest]];
+    cumulative.push([height - offset, ...rest]);
+    //return [[height - offset, ...rest]];
   }
+  if (cumulative.length > 0) return cumulative;
 
   let offset = 0;
   let targets = new Map();

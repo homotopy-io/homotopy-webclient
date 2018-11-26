@@ -48,7 +48,7 @@ export const attach = (diagram, build, path, slice) => {
       new_slice = [];
     } else {
       let [first, ...rest] = slice;
-      _assert(first == 0);
+      _assert(first == -1);
       let new_rest = content.updateSlice(rest);
       new_slice = [first, ...new_rest];
     }

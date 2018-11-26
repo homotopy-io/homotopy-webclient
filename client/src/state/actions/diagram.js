@@ -44,10 +44,11 @@ export const takeIdentity = () => ({
   type: TAKE_IDENTITY
 });
 
-export const selectCell = (point) => ({
+export const selectCell = (points) => {
+  return {
   type: SELECT_CELL,
-  payload: { point }
-});
+  payload: { points }
+}};
 
 export const homotopy = (point, direction) => ({
   type: HOMOTOPY,

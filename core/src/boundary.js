@@ -18,12 +18,11 @@ export const getPath = (diagram, point) => {
 
   let [height, ...rest] = point;
 
-  // Ensure that the height is inside the bounds of the diagram.
-  height = Math.max(0, height);
-  height = Math.min(diagram.data.length * 2, height);
+  let adj_height = Math.max(0, height);
+  adj_height = Math.min(diagram.data.length * 2, adj_height);
 
   // Obtain the path in the slice diagram.
-  let path = getPath(diagram.getSlice(height), rest);
+  let path = getPath(diagram.getSlice(adj_height), rest);
 
   // Increase the boundary depth
   if (path.boundary) {
@@ -32,14 +31,14 @@ export const getPath = (diagram, point) => {
   }
 
   // On the interior in the slice, on the target boundary here.
-  if (height >= diagram.data.length * 2) {
+  if (height > diagram.data.length * 2) {
     path.depth = 1;
     path.boundary = "target";
     return path;
   }
 
   // On the interior in the slice, on the source boundary here.
-  if (height <= 0) {
+  if (height < 0) {
     path.depth = 1;
     path.boundary = "source";
     return path;

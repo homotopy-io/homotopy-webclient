@@ -3,6 +3,7 @@ import createReducer from "~/util/create-reducer";
 import * as DiagramActions from "~/state/actions/diagram";
 import * as AttachActions from "~/state/actions/attach";
 import * as Core from "homotopy-core";
+import { _assert } from "../../../../core/src/util/debug";
 
 export const getOptions = (state) => {
   // TODO: Memoized selector
@@ -71,29 +72,43 @@ export default createReducer({
     return state;
   },
 
-  [DiagramActions.SELECT_CELL]: (state, { point }) => {
+  [DiagramActions.SELECT_CELL]: (state, { points }) => {
     let { diagram, slice } = state.diagram;
     let { generators } = state.signature;
 
-    if (diagram == null) {
-      return;
-    }
+    if (diagram == null) return;
+    _assert(points instanceof Array);
+    _assert(points.length > 0);
 
     // Respect the current slices
-    point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+    for (let i=0; i<points.length; i++) {
+      //point[i] = Core.Geometry.unprojectPoint(diagram, [...slice, ...points[i]]);
+      points[i] = [...slice, ...points[i]];
+    }
 
-    let boundaryPath = Core.Boundary.getPath(diagram, point);
-    let boundary = Core.Boundary.followPath(diagram, boundaryPath);
+    let boundary = [];
+    let boundaryPath = [];
+    let boundaryPoints = [];
+    for (let i=0; i<points.length; i++) {
+      boundaryPath[i] = Core.Boundary.getPath(diagram, points[i]);
+      boundary[i] = Core.Boundary.followPath(diagram, boundaryPath[i]);
+      boundaryPoints[i] = boundaryPath[i].point;
+    }
 
     let options = Core.Matches.getAttachmentOptions(
-      boundary,
+      boundary[0],
       [...Object.values(generators)].map(generator => generator.generator),
-      boundaryPath.boundary == "source",
-      boundaryPath.point
-    ).map(match => ({
+      boundaryPath[0].boundary == "source",
+      boundaryPoints
+      //boundaryPath.point
+    );
+
+    options = options.map(match => ({
       generator: match.generator.id,
-      path: { ...boundaryPath, point: match.match.map(x => x * 2) },
-      point: [...point.slice(0, boundaryPath.depth || 0), ...match.match.map(x => x * 2)]
+      path: { ...boundaryPath[0], point: match.match.map(x => x * 2) }
+      /*,
+      point: [...points[0].slice(0, boundaryPath[0].depth || 0), ...match.match.map(x => x * 2)]
+      */
     }));
 
     if (options.length == 1) {

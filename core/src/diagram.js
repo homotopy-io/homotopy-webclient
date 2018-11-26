@@ -202,11 +202,11 @@ export class Diagram {
   getActionType(position) {
     if (this.n == 0) return this.type;
     if (typeof position === 'number') position = [position];
-    if (this.data.length == 0) return this.source.getActionType(0); // is this necessary?
     if (position.length == 0) {
       if (this.data.length == 0) position = [0];
       else position = [1];
     }
+    if (this.data.length == 0) return this.source.getActionType(position.slice(1)); // is this necessary?
     _assert(position.length > 0);
     let [slice, ...rest] = position;
     slice = Math.max(slice, 0);
@@ -807,11 +807,12 @@ export class Diagram {
     let direction;
     let tendency;
     if (horizontal) {
-      tendency = null;
-      if (compass == 'ene' || compass == 'ese') {
+      if (compass == 'ese' || compass == 'ene') {
         direction = +1;
-      } else {
+        tendency = -1;
+      } else if (compass == 'wnw' || compass == 'wsw') {
         direction = -1;
+        tendency = +1;
       }
     } else {
       if (compass == 'nne') {
@@ -822,10 +823,10 @@ export class Diagram {
         tendency = -1;
       } else if (compass == 'ssw') {
         direction = -1;
-        tendency = -1;
+        tendency = +1;
       } else if (compass == 'sse') {
         direction = -1;
-        tendency = +1;
+        tendency = -1;
       }
     }
 
@@ -918,30 +919,56 @@ export class Diagram {
 
       let slice = this.getSlice(location[0]);
       let recursive = slice.getExpansionLimit({location: location.slice(1), direction});
-      let data = this.data[location[0].height];
-      let forward_pullback = data.forward_limit.pullback(recursive);
-      if (!forward_pullback) {
-        throw "Can't pullback expansion with forward limit at depth " + location.length - 1;
+
+      // Try to do a pullback
+      try {
+
+        let data = this.data[location[0].height];
+        let forward_pullback = data.forward_limit.pullback(recursive);
+        if (!forward_pullback) {
+          throw "Can't pullback expansion with forward limit at depth " + location.length - 1;
+        }
+        if (forward_pullback.left.length > 0) {
+          throw "expansion on singular slice, forward pullback changes the regular level";
+        }
+        let backward_pullback = recursive.pullback(data.backward_limit);
+        if (!backward_pullback) {
+          throw "Can't pullback expansion with backward limit at depth " + location.length - 1;
+        }
+        if (backward_pullback.right.length > 0) {
+          throw "expansion on singular slice, backward pullback changes the regular level";
+        }
+        let first = location[0].height;
+        let target_data = this.data[first];
+        let source_data = [new Content(this.n - 1, forward_pullback.right, backward_pullback.left)];
+        let sublimits = [recursive];
+        let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
+        let limit = new Limit(this.n, [component], this.data.length);
+        let preimage_diagram = limit.rewrite_backward(this);
+        let normalization = preimage_diagram.normalize();
+        console.log("Performed pullback");
+        return limit.compose(normalization.embedding);
+
       }
-      if (forward_pullback.left.length > 0) {
-        throw "expansion on singular slice, forward pullback changes the regular level";
+
+      // If the pullback has failed, just insert a bubble
+      catch(e) {
+
+        console.log('Pullback failed, inserting bubble');
+
+        // Insert bubble
+        let first = location[0].height;
+        let target_data = this.data[first];
+        let c1 = new Content(this.n - 1, target_data.forward_limit, recursive);
+        let c2 = new Content(this.n - 1, recursive, target_data.backward_limit);
+        let source_data = [c1, c2];
+        let sublimits = [new Limit(this.n - 1, []), new Limit(this.n - 1, [])];
+        let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
+        let limit = new Limit(this.n, [component], this.data.length + 1);
+        return limit;
+
+
       }
-      let backward_pullback = recursive.pullback(data.backward_limit);
-      if (!backward_pullback) {
-        throw "Can't pullback expansion with backward limit at depth " + location.length - 1;
-      }
-      if (backward_pullback.right.length > 0) {
-        throw "expansion on singular slice, backward pullback changes the regular level";
-      }
-      let first = location[0].height;
-      let target_data = this.data[first];
-      let source_data = [new Content(this.n - 1, forward_pullback.right, backward_pullback.left)];
-      let sublimits = [recursive];
-      let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
-      let limit = new Limit(this.n, [component], this.data.length);
-      let preimage_diagram = limit.rewrite_backward(this);
-      let normalization = preimage_diagram.normalize();
-      return limit.compose(normalization.embedding);
 
     }
 
@@ -969,8 +996,8 @@ export class Diagram {
       let L1 = this.data[height].backward_limit;
       let L2 = this.data[height + 1].forward_limit;
       let upper = [D1, D2];
-      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: tendency == 1 /* true means right, false means left, null means none */ }];
-      let contract_data = Diagram.multiUnify({ lower, upper, right: tendency == 1 });
+      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: tendency /* true means right, false means left, null means none */ }];
+      let contract_data = Diagram.multiUnify({ lower, upper });
 
       // Build the limit to the contracted diagram
       let first = location[0].height;
@@ -1026,11 +1053,13 @@ export class Diagram {
     }
 
     for (let i = 0; i < lower.length; i++) {
-      _propertylist(lower[i], ["left_index", "left_limit", "right_index", "right_limit", "diagram"], ["bias"]);
-      _assert(lower[i].diagram instanceof Diagram && lower[i].left_limit instanceof Limit && lower[i].right_limit instanceof Limit);
-      _assert(isNatural(lower[i].left_index) && isNatural(lower[i].right_index));
-      _assert(lower[i].left_index < upper.length && lower[i].right_index < upper.length);
-      _assert(lower[i].diagram.n == n && lower[i].left_limit.n == n && lower[i].right_limit.n == n);
+      let l = lower[i];
+      _propertylist(l, ["left_index", "left_limit", "right_index", "right_limit", "diagram"], ["bias"]);
+      _assert(l.diagram instanceof Diagram && l.left_limit instanceof Limit && l.right_limit instanceof Limit);
+      _assert(isNatural(l.left_index) && isNatural(l.right_index));
+      _assert(l.left_index < upper.length && l.right_index < upper.length);
+      _assert(l.diagram.n == n && l.left_limit.n == n && l.right_limit.n == n);
+      _assert(Number.isInteger(l.bias) && (l.bias >= -1) && (l.bias <= 1));
     }
 
     _assert(depth == null || isNatural(depth));
@@ -1152,7 +1181,8 @@ export class Diagram {
       let left_preimage = left_monotone.preimage(upper_ranges[l.left_index]);
       lower_ranges.push(left_preimage);
       let diagram = l.diagram.restrict(left_preimage);
-      lower_preimage.push({ left_index, right_index, left_limit, right_limit, diagram });
+      let bias = l.bias;
+      lower_preimage.push({ left_index, right_index, left_limit, right_limit, diagram, bias });
     }
 
     // Explode the upper singular and regular diagrams
@@ -1171,7 +1201,7 @@ export class Diagram {
         let right_limit = u.data[j].forward_limit;
         let left_index = upper_exploded.length - 2;
         let right_index = upper_exploded.length - 1;
-        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index });
+        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index, bias: 0 });
       }
       upper_slice_position.push(slice_positions);
     }
@@ -1188,7 +1218,8 @@ export class Diagram {
         let upper_left_offset = upper_ranges[l.left_index].first;
         let left_index = upper_slice_position[l.left_index][m_lower[i].left.monotone[j + lower_offset] - upper_left_offset];
         let right_index = upper_slice_position[l.right_index][m_lower[i].right.monotone[j + lower_offset] - upper_right_offset];
-        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index });
+        let bias = l.bias;
+        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index, bias });
       }
     }
     let exploded = { upper: upper_exploded, lower: lower_exploded };

@@ -271,7 +271,7 @@ export class Content {
       let components = [...sublimit_2];
       components.splice(b_index, 1);
       components = components.map((component, index) => {
-        if (index > b_index) {
+        if (index > b_index - 1) {
           return component.copy({ first: component.first - local_delta });
         } else {
           return component;
@@ -446,9 +446,10 @@ export class LimitComponent {
       return false;
     }
 
-    for (let content of this.data) {
+    for (let content of this.source_data) {
       if (content.usesCell(generator)) return true;
     }
+    if (this.target_data.usesCell(generator)) return true;
 
     for (let sublimit of this.sublimits) {
       if (sublimit.usesCell(generator)) return true;
@@ -1180,7 +1181,11 @@ export class Limit extends Array {
 
     _assert(subset instanceof Array);
 
-    // Can't handle this yet
+    // Handle the preimage of a thin subset
+    if (subset.regular) {
+      return new Limit(this.n, []);
+    }
+
     _assert(!subset.regular);
 
     // Check top-level range of the subset of the target
@@ -1266,7 +1271,8 @@ export class Limit extends Array {
     _assert(L.n == R.n);
 
     // Trivial cases
-    if (L.length + R.length == 0) return { left: R, right: L};
+    //if (L.length + R.length == 0) return { left: R, right: L};
+    if (L.length == 0 || R.length == 0) return { left: R, right: L};
 
     if (L.n == 0) {
       let left, right;
@@ -1332,6 +1338,12 @@ export class Limit extends Array {
       source_height += pullback.height;
     }
 
+    // Adjust source height
+    let L_mon = L.getMonotone();
+    let target_height = L_mon.target_size;
+    let delta = target_height - max_target - 1;
+    source_height += delta;
+
     let left = new Limit(this.n, left_components, source_height);
     let right = new Limit(this.n, right_components, source_height);
     _assert(left instanceof Limit);
@@ -1377,7 +1389,10 @@ export class Limit extends Array {
     let R_size = R.source_data.length;
 
     // We don't do nontrivial pullbacks with empty preimage
-    if (L_size == 0 || R_size == 0) {
+    if (L_size == 0 && R_size == 0) {
+      let id = new Limit(left_limit.n, []);
+      return { left: id, right: id, height: 0 };
+    } else if (L_size == 0 || R_size == 0) {
       return null;
     }
 
@@ -1665,6 +1680,7 @@ export class Limit extends Array {
 
     _assert(pullback.left instanceof Limit);
     _assert(pullback.right instanceof Limit);
+    _assert(f.source_size === g.source_size);
 
     // Don't allow the cone maps to be identities
     // (this simplifies some things, if it turns out to be too strong we can deal with it later)
@@ -2050,7 +2066,16 @@ export class Limit extends Array {
     if ((s_below < 0 || regular_monotone[singular_monotone[s_below] + 1] == s_below + 1)
       &&
       (s_above == this.source_size || regular_monotone[singular_monotone[s_above]] == s_above)) {
-      return [2 * singular_monotone[s_above], ...rest];
+      if (!(s_below < 0 && s_above == this.source_size)) {
+        return [2 * singular_monotone[s_above], ...rest];
+      }
+    }
+
+    // Zero source size case
+    if (s_below < 0 && s_above == this.source_size) {
+      let component = this[0];
+      let updated = component.target_data.forward_limit.updateSliceForward(rest);
+      return [1, ...updated];
     }
 
     _assert(s_below >= 0);
@@ -2107,20 +2132,22 @@ export class Limit extends Array {
     }
 
     let targets = this.getComponentTargets();
-    let index = targets.getIndex(singular_height);
+    let index = targets.indexOf(singular_height);
     _assert(index >= 0);
     let component = this[index];
+    _assert(component);
 
     // Expansive on singular heights, contractive on regular heights
     if (regular_monotone[regular_height_below] == regular_monotone[regular_height_above]) {
-      return [2 * regular_monotone[regular_height_below], ...component.forward_limit.updateSliceBackward(rest)];
+      return [2 * regular_monotone[regular_height_below],
+        ...component.target_data.forward_limit.updateSliceBackward(rest)];
     }
 
     // Contractive on singular heights, expansive on regular heights
     let source_first_singular = regular_monotone[regular_height_below];
     let component_subindex = source_first_singular - component.first;
-    _assert(component.subindex >= 0);
-    _assert(component.subindex < component.source_data.length);
+    _assert(component_subindex >= 0);
+    _assert(component_subindex < component.source_data.length);
     let first_limit = component.source_data[component_subindex].forward_limit;
     let second_limit = this.subLimit(source_first_singular);
     let composed_limit = second_limit.compose(first_limit);

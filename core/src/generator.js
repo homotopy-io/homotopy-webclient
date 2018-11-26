@@ -14,6 +14,11 @@ export class Generator {
     this.target = target;
     this.id = id;
 
+    if (this.n > 1) {
+      _assert(source.source.equals(target.source));
+      _assert(source.getTarget().equals(target.getTarget()));
+    }
+
     // Build content
     if (this.n > 0) {
       let first_limit = this.source.contractForwardLimit(this, null, null);

@@ -80,8 +80,15 @@ export const SliceControl = ({
   let selections = [];
   for (let max of bounds) {
     let options = [];
-    for (let j = 0; j <= max; j++) {
-      options.push(j);
+    for (let j = -1; j <= max + 1; j++) {
+      options.push({index: j, boundary: j == -1 ? 'S' : j == max + 1 ? 'T' : null});
+      /*
+      if (j == max + 1) {
+        options.push(-2);
+      } else {
+        options.push(j);
+      }
+      */
     }
     selections.push(options);
   }
@@ -91,9 +98,8 @@ export const SliceControl = ({
       {selections.map((options, i) =>
         <select onChange={e => onChange(i, Number(e.target.value))} value={slice[i]} key={i}>
           {options.map(option =>
-            <option value={option} key={option}>
-              {Math.floor(option / 2)}
-              {option % 2 == 0 ? "" : "*"}
+            <option value={option.index} key={option.index}>
+              {option.boundary ? option.boundary : Math.floor(option.index / 2) + (option.index % 2 == 0 ? '' : '*')}
             </option>
           )}
         </select>

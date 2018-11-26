@@ -84,9 +84,8 @@ export const updateSlices = createSelector(
   state => state.diagram.projection,
   state => state.diagram.renderer,
   (slice, diagram, projection, renderer) => {
-    if (diagram == null) {
-      return [];
-    }
+
+    if (diagram == null) return [];
 
     let sliceCount = diagram.n - renderer - projection;
 
@@ -97,8 +96,8 @@ export const updateSlices = createSelector(
     }
 
     for (let i = 0; i < slice.length; i++) {
-      slice[i] = Math.max(slice[i], 0);
-      slice[i] = Math.min(slice[i], diagram.data.length * 2);
+      slice[i] = Math.max(slice[i], -1);
+      slice[i] = Math.min(slice[i], diagram.data.length * 2 + 1);
       diagram = Core.Geometry.getSlice(diagram, slice[i]);
     }
 
@@ -107,39 +106,74 @@ export const updateSlices = createSelector(
 );
 
 export default createReducer({
+
   [DiagramActions.SET_SOURCE]: (state) => {
     let { target, diagram } = state.diagram;
+    let source = diagram;
 
-    if (diagram == null) {
-    } else if (target != null) {
-      if (target.n == diagram.n) {
-        state = createGenerator(state, diagram, target);
-        state = dotProp.set(state, "diagram.diagram", null);
-        state = dotProp.set(state, "diagram.target", null);
+    if (diagram == null) return state;
+    
+    // If there is already a source, create a new generator
+    if (target != null) {
+
+      if (target.n != source.n) {
+        alert ('Source and target must have the same dimension');
+        return state;
       }
-    } else {
-      state = dotProp.set(state, "diagram.source", diagram);
+
+      if (source.n > 1) {
+        if (!source.source.equals(target.source)
+          || !source.getTarget().equals(target.getTarget())) {
+            alert ('Source and target must have the same boundary');
+            return state;
+        }
+      }
+
+      state = createGenerator(state, source, target);
       state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "diagram.target", null);
+      return state;
     }
-    return state;
+
+    // If there is not already a source, just store this target
+    else {
+      state = dotProp.set(state, "diagram.source", source);
+      state = dotProp.set(state, "diagram.diagram", null);
+      return state;
+    }
   },
 
   [DiagramActions.SET_TARGET]: (state) => {
     let { source, diagram } = state.diagram;
+    let target = diagram;
 
-    if (diagram == null) {
-      return state;
-    } else if (source != null) {
-      if (source.n == diagram.n) {
-        state = createGenerator(state, source, diagram);
-        state = dotProp.set(state, "diagram.diagram", null);
-        state = dotProp.set(state, "diagram.source", null);
-        return state;
-      } else {
+    if (diagram == null) return state;
+    
+    // If there is already a source, create a new generator
+    if (source != null) {
+
+      if (source.n != target.n) {
+        alert ('Source and target must have the same dimension');
         return state;
       }
-    } else {
-      state = dotProp.set(state, "diagram.target", diagram);
+
+      if (source.n >= 1) {
+        if (!source.source.equals(target.source)
+          || !source.getTarget().equals(target.getTarget())) {
+            alert ('Source and target must have the same boundary');
+            return state;
+        }
+      }
+
+      state = createGenerator(state, source, target);
+      state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "diagram.source", null);
+      return state;
+    }
+
+    // If there is not already a source, just store this target
+    else {
+      state = dotProp.set(state, "diagram.target", target);
       state = dotProp.set(state, "diagram.diagram", null);
       return state;
     }
@@ -216,7 +250,11 @@ export default createReducer({
 
   [DiagramActions.TAKE_IDENTITY]: (state) => {
     state = dotProp.set(state, "diagram.diagram", diagram => diagram.boost());
-    state = dotProp.set(state, "diagram.slice", updateSlices(state));
+    let slice = state.diagram.slice.slice();
+    let diagram = state.diagram.diagram;
+    let sliceCount = diagram.n - state.diagram.renderer - state.diagram.projection;
+    if (sliceCount > slice.length) slice.push(1);
+    state = dotProp.set(state, "diagram.slice", slice);
     return state;
   },
 

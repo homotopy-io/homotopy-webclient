@@ -94,7 +94,7 @@ export class Monotone extends Array {
     let first = this;
     _assert(second instanceof Monotone);
     _assert(first.length == second.length);
-    _assert(right == null || (typeof(right) == "boolean"));
+    _assert(typeof(right) == "number" && right >= -1 && right <= 1);
     _assert(n == null || isNatural(n));
     if (fibre) {
       _propertylist(fibre, ["L1F1M", "L1F2M", "L2F1M", "L2F2M"]); // check arguments
@@ -122,18 +122,11 @@ export class Monotone extends Array {
     if (n == 0) return {
       first: new Monotone(0, []),
       second: new Monotone(0, []),
-      fibre: fibre ? {
-        J1M: new Monotone(0, []),
-        J2M: new Monotone(0, [])
-      } : null
+      fibre: fibre ? { J1M: new Monotone(0, []), J2M: new Monotone(0, []) } : null
     }; // base case
 
     // Recursive case
-    let injections = this.unify({
-      second,
-      right,
-      fibre
-    }, n - 1);
+    let injections = this.unify({ second, right, fibre }, n - 1);
     _assert(injections.first instanceof Monotone);
     _assert(injections.second instanceof Monotone);
     _assert(injections.first.target_size == injections.second.target_size);
@@ -164,10 +157,10 @@ export class Monotone extends Array {
             else if (f1_order == f2_order) preference = f1_order;
             else throw "inconsistent fibre ordering";
           }
-        } else if (right != null) {
+        } else if (right != 0) {
           if (left_done == left_delta - 1) preference = +1;
           else if (right_done == right_delta - 1) preference = -1;
-          else preference = right ? 1 : -1;
+          else preference = right;// ? 1 : -1;
         } else throw "no monotone unification at depth " + n + ", cannot unify head-to-head monotones without a bias";
 
         if (fibre) {
@@ -439,7 +432,7 @@ export class Monotone extends Array {
     while (Monotone.multiUnify_singlePass({ lower_included, upper_included, lower, upper, cocone })) {}
 
     // Check that all levels have been included
-    for (let i = 0; i < lower.length; i++) _assert(lower_included[i]);
+    for (let i = 0; i < lower.length; i++) _assert(lower_included[i] || lower[i].left.monotone.length == 0);
     for (let i = 0; i < upper.length; i++) _assert(upper_included[i]);
 
     // Return the cocone data that has been computed
@@ -454,23 +447,28 @@ export class Monotone extends Array {
       // If this part has already been included, skip it
       if (lower_included[i]) continue;
 
+      let lower_length = lower[i].left.monotone.length;
+
       let left_inc = upper_included[lower[i].left.target];
       let right_inc = upper_included[lower[i].right.target];
 
-      // If neither upper target is included, handle this component later, as it's disconnected
+      // If we're unbiased and neither upper target is included, handle this component later, as it's disconnected
       if (!left_inc && !right_inc) continue;
+
+      // If the source monotone is empty, handle later unless both targets are included
+      if ((lower[i].bias == 0) && lower_length == 0 && (!left_inc || !right_inc)) continue;
 
       if (left_inc && right_inc) { // If both upper targets are included, then glue in the lower object
         Monotone.multiUnify_glueLower({ i, lower_included, upper_included, lower, upper, cocone });
       } else { // Only one upper target is included, so glue the other one in with respect to the base.
         if (left_inc) {
           //let bias_new = (lower[i].bias == null ? null : (lower[i].bias ? true : false)); // can be simplified
-          let bias_new = lower[i].bias == null ? true : lower[i].bias; // bias is helpful as it lets us temporarily resolve local conflicts
+          let bias_new = lower[i].bias == 0 ? 1 : lower[i].bias; // bias is helpful as it lets us temporarily resolve local conflicts
           //if (bias_new != null) debugger;
           Monotone.multiUnify_glueBoth({ lower, upper, cocone, new_data: lower[i].right, old_data: lower[i].left, bias_new });
         } else {
           //let bias_new = (lower[i].bias == null ? null : (lower[i].bias ? false : true)); // can be simplified
-          let bias_new = lower[i].bias == null ? true : !lower[i].bias;
+          let bias_new = lower[i].bias == 0 ? -1 : -lower[i].bias;
           //if (bias_new != null) debugger;
           Monotone.multiUnify_glueBoth({ lower, upper, cocone, new_data: lower[i].left, old_data: lower[i].right, bias_new });
         }
