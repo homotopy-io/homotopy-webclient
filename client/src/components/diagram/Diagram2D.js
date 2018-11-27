@@ -163,7 +163,8 @@ export class Diagram2D extends React.Component {
     // Otherwise, adjust the lightness cyclically
     var husl = HSLuv.hexToHsluv(generator.color);
     var lightnesses = [30, 50, 70];
-    husl[2] = lightnesses[(n - generator.generator.n) % 3];
+    //husl[2] = lightnesses[(n - generator.generator.n) % 3];
+    husl[2] = 10 + ((husl[2] + (n - generator.generator.n) * 33.8309886184) % 90);
     return HSLuv.hsluvToHex(husl);
 
   }
@@ -287,8 +288,17 @@ export class Diagram2D extends React.Component {
     let fill_opacity = 1;
     let r = 12.5;
     if (point.homotopy) {
-      fill_opacity = 0;
-      r = 20;
+      if (point.count_depths == null) {
+        fill_opacity = 0;
+        r = 20;
+      } else if (point.count_depths <= 1) {
+        fill_opacity = 1;
+        r = 12.5;
+        colour = this.getColour(generator, this.diagram.n - 1);
+      } else {
+        fill_opacity = 0;
+        r = 20;
+      }
     }
     else if (!point.algebraic) {
       fill_opacity = 0;
@@ -559,6 +569,9 @@ export class Diagram2D extends React.Component {
       }
       groups.push(groups_temp[i]);
     }
+
+    // Tell the vertex how many depths there are
+    vertex.count_depths = groups.length;
 
     // Draw the groups nearest-first
     let mask_edges = [];

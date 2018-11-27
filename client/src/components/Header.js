@@ -2,7 +2,7 @@ import * as React from "react";
 import styled from "styled-components";
 
 export const Header = () =>
-  <Actions>
+  <Actions style={{userSelect: 'none'}}>
     <Action>Log In</Action>
     <Action>Sign Up</Action>
     <Action>Gallery</Action>

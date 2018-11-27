@@ -8,7 +8,7 @@ export const Tool = ({
   actions = [],
   children
 }) =>
-  <Wrapper>
+  <Wrapper style={{userSelect: 'none'}}>
     <Header>
       <Title>{title}</Title>
       <Actions>{actions.map((action, index) => <Action key={index} {...action} />)}</Actions>

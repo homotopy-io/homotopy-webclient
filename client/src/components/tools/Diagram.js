@@ -5,6 +5,7 @@ import { clearDiagram, setProjection, setSlice, setRenderer } from "~/state/acti
 import { getDiagram, getSlice, getProjection, getSliceBounds, getRenderer } from "~/state/store/diagram";
 
 import Tool, { Control } from "~/components/Tool";
+import styled from "styled-components";
 
 export const DiagramTool = ({
   diagram,
@@ -22,7 +23,9 @@ export const DiagramTool = ({
   }
 
   return (
-    <Tool title="Diagram" actions={[
+    <Tool
+      title="Diagram"
+      actions={[
       { label: "Clear diagram", icon: "close", onClick: onClearDiagram }
     ]}>
       <Control label="Dimension">{diagram.n}</Control>

@@ -141,6 +141,9 @@ export class Content {
     let f = this.forward_limit;
     let b = this.backward_limit;
 
+    // If this content is the identity, it type checks
+    if (f.length == 0 && b.length == 0) return true;
+
     // We are promised that 'this' represents a content object with unique central nontrivial singular data
     _assert(f.length <= 1 && b.length <= 1);
     _assert(f.length > 0 || b.length > 0);
@@ -826,7 +829,7 @@ export class Limit extends Array {
             source_delta = 0; // we're skipping a component
             continue; 
           }
-          new_components.push(this[i]);
+          new_components.push(this[j]);
         }
         let source_size = new_components.length > 0 ? this.source_size - source_delta : null;
         return new Limit(this.n, new_components, source_size);
