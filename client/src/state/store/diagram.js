@@ -248,6 +248,22 @@ export default createReducer({
     return state;
   },
 
+  [DiagramActions.RESTRICT_DIAGRAM]: (state) => {
+    let diagram = state.diagram.diagram;
+    let slice = state.diagram.slice;
+    for (let i=0; i<slice.length; i++) {
+      if (slice > 0 && slice < 2 * diagram.data.length) {
+        if (slice % 2 == 1) {
+          alert('Cannot restrict diagram to singular slice');
+          return state;
+        }
+      }
+    }
+    state = dotProp.set(state, "diagram.diagram", diagram.getSlice(...slice));
+    state = dotProp.set(state, "diagram.slice", []);
+    return state;
+  },
+
   [DiagramActions.TAKE_IDENTITY]: (state) => {
     state = dotProp.set(state, "diagram.diagram", diagram => diagram.boost());
     let slice = state.diagram.slice.slice();

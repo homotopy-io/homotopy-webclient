@@ -287,7 +287,7 @@ export class Diagram2D extends React.Component {
     let key = `point#${point.position.join(":")}`;
     let fill_opacity = 1;
     let r = 12.5;
-    if (point.homotopy) {
+    if (point.nontrivial && !point.algebraic) {
       if (point.count_depths == null) {
         fill_opacity = 0;
         r = 20;
@@ -435,7 +435,7 @@ export class Diagram2D extends React.Component {
     // whether it's algebraic.
     let nontrivial = false;
     let algebraic = false;
-    let homotopy = false;
+    //let homotopy = false;
     if (!slice[0].regular && !slice[1].regular) {
       let data = this.diagram.data[slice[0].height];
       let forward_nontrivial = data.forward_limit.analyzeSingularNeighbourhoods();
@@ -443,11 +443,11 @@ export class Diagram2D extends React.Component {
       nontrivial = forward_nontrivial[slice[1].height] || backward_nontrivial[slice[1].height];
       if (nontrivial) {
         algebraic = (generator.generator.n >= this.diagram.n);
-        homotopy = !algebraic;
+        //homotopy = !algebraic;
       }
     }
 
-    return { point, generator, position, ref, nontrivial, algebraic, homotopy, slice, boundary };
+    return { point, generator, position, ref, nontrivial, algebraic, /* homotopy, */ slice, boundary };
   }
 
   // Store the control points for each edge
@@ -573,6 +573,11 @@ export class Diagram2D extends React.Component {
     // Tell the vertex how many depths there are
     vertex.count_depths = groups.length;
 
+    // Don't add homotopy data for flat algebraic vertices
+    if (vertex.count_depths == 1 && vertex.algebraic) {
+      return;
+    }
+
     // Draw the groups nearest-first
     let mask_edges = [];
     for (let i = 0; i < groups.length; i++) {
@@ -643,7 +648,8 @@ export class Diagram2D extends React.Component {
 
       if (i == groups.length - 1) break;
       let height = vertex.position[1];
-      masks.push({ mask_edges, left, right, height });
+      let mask_point = (vertex.algebraic /*&& i > 0*/) ? vertex : null;
+      masks.push({ mask_edges, left, right, height, mask_point });
     }
 
     // Assign control points to the intermediate regular edges
@@ -660,8 +666,8 @@ export class Diagram2D extends React.Component {
         st_controls.push(source_edges[2 * i + 1].st_control);
         ts_controls.push(source_edges[2 * i + 1].ts_control);
       }
-      _assert(!edge.st_control);
-      _assert(!edge.ts_control);
+      //_assert(!edge.st_control);
+      //_assert(!edge.ts_control);
       if (st_controls.length == 1) {
         edge.st_control = st_controls[0];
         edge.ts_control = ts_controls[0];
@@ -683,8 +689,8 @@ export class Diagram2D extends React.Component {
         st_controls.push(target_edges[2 * i + 1].st_control);
         ts_controls.push(target_edges[2 * i + 1].ts_control);
       }
-      _assert(!edge.st_control);
-      _assert(!edge.ts_control);
+      //_assert(!edge.st_control);
+      //_assert(!edge.ts_control);
       if (st_controls.length == 1) {
         edge.st_control = st_controls[0];
         edge.ts_control = ts_controls[0];
@@ -903,7 +909,7 @@ export class Diagram2D extends React.Component {
     }
 
     // Group edges by target nontrivial vertex, and set control points
-    let edges_nontrivial_target = edges.filter(edge => edge.target_point.homotopy);
+    let edges_nontrivial_target = edges.filter(edge => edge.target_point.nontrivial);
     let edges_by_target = edges_nontrivial_target.reduce((acc, currValue, currIndex, array) => {
       let ref = currValue.target_point.ref;
       for (let i=0; i<acc.length; i++) {
@@ -988,6 +994,22 @@ export class Diagram2D extends React.Component {
         >
       </path>
     )];
+
+    if (mask.mask_point) {
+      paths.push(
+        <circle
+          cx={mask.mask_point.position[0]}
+          cy={mask.mask_point.position[1]}
+          r={20}
+          strokeWidth={0}
+          fill={'#000'}
+          fillOpacity={1}
+          //onClick={e => this.onSelect(e, [point.point])}
+          //onMouseDown={e => this.onStartDrag(e, point.point)}
+          key={'mask' + index + '-point'}>
+        </circle>
+      );
+    }
 
     for (let i=0; i<mask.mask_edges.length; i++) {
       paths.push(this.renderMaskEdge(mask.mask_edges[i], index, i));

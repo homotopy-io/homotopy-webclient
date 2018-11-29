@@ -403,7 +403,11 @@ export class Diagram {
 
       // Create the LimitComponent to embed this slice of the normalized diagram
       if (recursive.embedding.length > 0) {
-        let component = new LimitComponent(this.n, {first: i, source_data: [this.data[i]], sublimits: [recursive.embedding], target_data: new_content });
+        let component = new LimitComponent(this.n,
+          {first: i,
+          source_data: [this.data[i]],
+          sublimits: [recursive.embedding],
+          target_data: /*new_content*/ this.data[i] });
         embedding_components.push(component);
       }
 
@@ -924,23 +928,43 @@ export class Diagram {
       try {
 
         let data = this.data[location[0].height];
+
+        // Forward pullback
         let forward_pullback = data.forward_limit.pullback(recursive);
         if (!forward_pullback) {
           throw "Can't pullback expansion with forward limit at depth " + location.length - 1;
         }
-        if (forward_pullback.left.length > 0) {
+        let regular_slice_left = this.getSlice({regular: true, height: location[0].height});
+        let p_left = forward_pullback.left.rewrite_backward(regular_slice_left);
+        let p_left_norm = p_left.normalize();
+        let forward_pullback_norm = {
+          left: forward_pullback.left.compose(p_left_norm.embedding),
+          right: forward_pullback.right.compose(p_left_norm.embedding)
+        };
+        if (forward_pullback_norm.left.length > 0) {
           throw "expansion on singular slice, forward pullback changes the regular level";
         }
+
+        // Backward pullback
         let backward_pullback = recursive.pullback(data.backward_limit);
         if (!backward_pullback) {
           throw "Can't pullback expansion with backward limit at depth " + location.length - 1;
         }
-        if (backward_pullback.right.length > 0) {
+        let regular_slice_right = this.getSlice({regular: true, height: 1 + location[0].height});
+        let p_right = backward_pullback.right.rewrite_backward(regular_slice_right);
+        let p_right_norm = p_right.normalize();
+        let backward_pullback_norm = {
+          left: backward_pullback.left.compose(p_right_norm.embedding),
+          right: backward_pullback.right.compose(p_right_norm.embedding)
+        };
+        if (backward_pullback_norm.right.length > 0) {
           throw "expansion on singular slice, backward pullback changes the regular level";
         }
+
+        // Construct expansion data
         let first = location[0].height;
         let target_data = this.data[first];
-        let source_data = [new Content(this.n - 1, forward_pullback.right, backward_pullback.left)];
+        let source_data = [new Content(this.n - 1, forward_pullback_norm.right, backward_pullback_norm.left)];
         let sublimits = [recursive];
         let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
         let limit = new Limit(this.n, [component], this.data.length);
@@ -954,7 +978,8 @@ export class Diagram {
       // If the pullback has failed, just insert a bubble
       catch(e) {
 
-        console.log('Pullback failed, inserting bubble');
+        console.log('Pullback failed: ' + e);
+        console.log('Inserting bubble instead');
 
         // Insert bubble
         let first = location[0].height;

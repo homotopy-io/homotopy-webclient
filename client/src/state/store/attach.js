@@ -138,6 +138,10 @@ export default createReducer({
     return clearOptions(state);
   },
 
+  [DiagramActions.RESTRICT_DIAGRAM]: (state) => {
+    return clearOptions(state);
+  },
+
   [DiagramActions.SET_PROJECTION]: (state) => {
     return clearOptions(state);
   },

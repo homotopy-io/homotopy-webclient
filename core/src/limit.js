@@ -1102,10 +1102,12 @@ export class Limit extends Array {
 
     // It must be a source or target
     let type = this.getUniqueTargetType();
+    /*
     if (type.n != this.n + 1) {
       console.log("Typecheck failed: singular point has the wrong dimension");
       return false;
     }
+    */
     let match_diagram = forward ? type.source : type.target;
     if (!source.equals(match_diagram)) {
       console.log("Typecheck failed: singular point has improper neighbourhood");
@@ -1349,6 +1351,7 @@ export class Limit extends Array {
 
     let left = new Limit(this.n, left_components, source_height);
     let right = new Limit(this.n, right_components, source_height);
+
     _assert(left instanceof Limit);
     _assert(right instanceof Limit);
     return { left, right };
@@ -1577,6 +1580,8 @@ export class Limit extends Array {
     // Build pullback diagram data
     let P_size = pl_mon.length;
     let P_data = [];
+    let ignore_level = [];
+    let count_ignore = 0;
     for (let step=0; step<P_size; step++) {
 
       let i = step_i[step];
@@ -1608,8 +1613,38 @@ export class Limit extends Array {
         }
       }
 
+      // If nothing is happening here, remember that, so we can omit this level later
+      if (forward_limit.length == 0 && backward_limit.length == 0) {
+        ignore_level[step] = true;
+        count_ignore ++;
+      }
+
+      // Push this data onto the list for p
       P_data.push(new Content(this.n - 1, forward_limit, backward_limit));
     }
+
+    /*
+    // Modify pl_mon, pr_mon to avoid trivial levels
+    let new_pl_mon = [];
+    let new_pr_mon = [];
+    for (let i=0; i<pl_mon.length; i++) {
+      if (ignore_level[i]) continue;
+      new_pl_mon.push(pl_mon[i]);
+      new_pr_mon.push(pr_mon[i]);
+    }
+    pl_mon = new Monotone(pl_mon.target_size, new_pl_mon);
+    pr_mon = new Monotone(pr_mon.target_size, new_pr_mon);
+
+    // Modify P_data, step_i, step_j, P_size to avoid trivial levels
+    for (let i=P_size - 1; i>=0; i--) {
+      if (!ignore_level[i]) continue;
+      P_size --;
+      step_i = step_i.splice(i);
+      step_j = step_j.splice(i);
+      P_data = P_data.splice(i);
+    }
+    */
+
 
     // Build the left projection
     let left_components = [];
@@ -1683,7 +1718,6 @@ export class Limit extends Array {
 
     _assert(pullback.left instanceof Limit);
     _assert(pullback.right instanceof Limit);
-    _assert(f.source_size === g.source_size);
 
     // Don't allow the cone maps to be identities
     // (this simplifies some things, if it turns out to be too strong we can deal with it later)
@@ -1698,6 +1732,8 @@ export class Limit extends Array {
       if (!f.equals(pullback.left)) return null;
       return new Limit(f.n, []);
     }
+
+    _assert(f.source_size === g.source_size);
 
     // Base case
     if (f.n == 0) {
