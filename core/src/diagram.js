@@ -19,59 +19,61 @@ export class Diagram {
       this.source = args.source;
       this.data = args.data;
       Object.freeze(this.data);
-      
-      if (n == 1) {
 
-        let type = this.source.type;
-        for (let i=0; i<this.data.length; i++) {
-          let f = this.data[i].forward_limit;
-          if (f.length > 0) {
-            if (_debug) _assert(f[0].source_type.id == type.id);
-            type = f[0].target_type;
+      if (_debug) {
+
+        if (n == 1) {
+
+          let type = this.source.type;
+          for (let i=0; i<this.data.length; i++) {
+            let f = this.data[i].forward_limit;
+            if (f.length > 0) {
+              if (_debug) _assert(f[0].source_type.id == type.id);
+              type = f[0].target_type;
+            }
+            let b = this.data[i].backward_limit;
+            if (b.length > 0) {
+              if (_debug) _assert(b[0].target_type.id == type.id);
+              type = b[0].source_type;
+            }
           }
-          let b = this.data[i].backward_limit;
-          if (b.length > 0) {
-            if (_debug) _assert(b[0].target_type.id == type.id);
-            type = b[0].source_type;
+  
+        } else {
+  
+          // Shallow source/data consistency check
+          let slice_data = this.source.data.slice();
+          for (let i=0; i<this.data.length; i++) {
+            let data = this.data[i];
+  
+            if (data.forward_limit.length > 0) {
+              if (_debug) _assert(data.forward_limit.source_size == slice_data.length);
+            }
+  
+            // Check forward limit data
+            for (let j=data.forward_limit.length - 1; j>=0; j--) {
+              let component = data.forward_limit[j];
+              for (let k=0; k<component.source_data.length; k++) {
+                if (_debug) _assert(slice_data[component.first + k].equals(component.source_data[k]));
+              }
+              slice_data.splice(component.first, component.source_data.length, component.target_data);
+            }
+  
+  
+            if (data.backward_limit.length > 0) {
+  
+              let targets = data.backward_limit.getComponentTargets();
+  
+              // Check backward limit data
+              for (let j=data.backward_limit.length - 1; j>=0; j--) {
+                let component = data.backward_limit[j];
+                if (_debug) _assert(slice_data[targets[j]].equals(component.target_data));
+                slice_data.splice(targets[j], 1, ...component.source_data);
+              }
+  
+              if (_debug) _assert(data.backward_limit.source_size == slice_data.length);
+            }
           }
         }
-
-      } else {
-
-        // Shallow source/data consistency check
-        let slice_data = this.source.data.slice();
-        for (let i=0; i<this.data.length; i++) {
-          let data = this.data[i];
-
-          if (data.forward_limit.length > 0) {
-            if (_debug) _assert(data.forward_limit.source_size == slice_data.length);
-          }
-
-          // Check forward limit data
-          for (let j=data.forward_limit.length - 1; j>=0; j--) {
-            let component = data.forward_limit[j];
-            for (let k=0; k<component.source_data.length; k++) {
-              if (_debug) _assert(slice_data[component.first + k].equals(component.source_data[k]));
-            }
-            slice_data.splice(component.first, component.source_data.length, component.target_data);
-          }
-
-
-          if (data.backward_limit.length > 0) {
-
-            let targets = data.backward_limit.getComponentTargets();
-
-            // Check backward limit data
-            for (let j=data.backward_limit.length - 1; j>=0; j--) {
-              let component = data.backward_limit[j];
-              if (_debug) _assert(slice_data[targets[j]].equals(component.target_data));
-              slice_data.splice(targets[j], 1, ...component.source_data);
-            }
-
-            if (_debug) _assert(data.backward_limit.source_size == slice_data.length);
-          }
-        }
-
       }
     }
 
