@@ -1,4 +1,4 @@
-import { _assert } from "~/util/debug";
+import { _assert, _debug } from "~/util/debug";
 
 /**
  * Find all embeddings of the `subdiagram` in the `diagram`.
@@ -17,7 +17,7 @@ export const getMatches = (diagram, subdiagram) => {
 
 export const getAttachmentOptions = (diagram, generators, inverse, points) => {
   let matches = [];
-  _assert(points instanceof Array);
+  if (_debug) _assert(points instanceof Array);
 
   for (let generator of generators) {
     if (generator.n == 0) {
@@ -43,7 +43,7 @@ export const getAttachmentOptions = (diagram, generators, inverse, points) => {
 export const containsPoint = (subdiagram, match, point) => {
   if (point.length == 0) return true;
   //_assert(subdiagram.n == point.length);
-  _assert(subdiagram.n == match.length);
+  if (_debug) _assert(subdiagram.n == match.length);
 
   if (subdiagram.n == 0) {
     return true;

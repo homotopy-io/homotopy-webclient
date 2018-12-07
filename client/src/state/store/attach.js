@@ -3,7 +3,7 @@ import createReducer from "~/util/create-reducer";
 import * as DiagramActions from "~/state/actions/diagram";
 import * as AttachActions from "~/state/actions/attach";
 import * as Core from "homotopy-core";
-import { _assert } from "../../../../core/src/util/debug";
+import { _assert, _debug } from "../../../../core/src/util/debug";
 
 export const getOptions = (state) => {
   // TODO: Memoized selector
@@ -77,8 +77,8 @@ export default createReducer({
     let { generators } = state.signature;
 
     if (diagram == null) return;
-    _assert(points instanceof Array);
-    _assert(points.length > 0);
+    if (_debug) _assert(points instanceof Array);
+    if (_debug) _assert(points.length > 0);
 
     // Respect the current slices
     for (let i=0; i<points.length; i++) {

@@ -1,4 +1,4 @@
-import { _assert, isNatural, _propertylist } from "~/util/debug";
+import { _assert, _debug, isNatural, _propertylist } from "~/util/debug";
 import * as ArrayUtil from "~/util/array";
 import { Limit, Content, LimitComponent } from "~/limit";
 import { Generator } from "~/generator";
@@ -8,17 +8,71 @@ export class Diagram {
 
   constructor(n, args) {
     this["_t"] = "Diagram";
-    _assert(isNatural(n));
+    if (_debug) _assert(isNatural(n));
     this.n = n;
     if (n == 0) {
-      _assert(args.type instanceof Generator);
+      if (_debug) _assert(args.type instanceof Generator);
       this.type = args.type;
     } else {
-      _assert(args.source && (args.source.n + 1 == n));
-      _assert(args.data instanceof Array);
+      if (_debug) _assert(args.source && (args.source.n + 1 == n));
+      if (_debug) _assert(args.data instanceof Array);
       this.source = args.source;
       this.data = args.data;
       Object.freeze(this.data);
+      
+      if (n == 1) {
+
+        let type = this.source.type;
+        for (let i=0; i<this.data.length; i++) {
+          let f = this.data[i].forward_limit;
+          if (f.length > 0) {
+            if (_debug) _assert(f[0].source_type.id == type.id);
+            type = f[0].target_type;
+          }
+          let b = this.data[i].backward_limit;
+          if (b.length > 0) {
+            if (_debug) _assert(b[0].target_type.id == type.id);
+            type = b[0].source_type;
+          }
+        }
+
+      } else {
+
+        // Shallow source/data consistency check
+        let slice_data = this.source.data.slice();
+        for (let i=0; i<this.data.length; i++) {
+          let data = this.data[i];
+
+          if (data.forward_limit.length > 0) {
+            if (_debug) _assert(data.forward_limit.source_size == slice_data.length);
+          }
+
+          // Check forward limit data
+          for (let j=data.forward_limit.length - 1; j>=0; j--) {
+            let component = data.forward_limit[j];
+            for (let k=0; k<component.source_data.length; k++) {
+              if (_debug) _assert(slice_data[component.first + k].equals(component.source_data[k]));
+            }
+            slice_data.splice(component.first, component.source_data.length, component.target_data);
+          }
+
+
+          if (data.backward_limit.length > 0) {
+
+            let targets = data.backward_limit.getComponentTargets();
+
+            // Check backward limit data
+            for (let j=data.backward_limit.length - 1; j>=0; j--) {
+              let component = data.backward_limit[j];
+              if (_debug) _assert(slice_data[targets[j]].equals(component.target_data));
+              slice_data.splice(targets[j], 1, ...component.source_data);
+            }
+
+            if (_debug) _assert(data.backward_limit.source_size == slice_data.length);
+          }
+        }
+
+      }
     }
 
     Object.freeze(this);
@@ -63,7 +117,7 @@ export class Diagram {
   getSlice(...locations) {
     if (locations.length == 0) return this;
 
-    _assert(this.n > 0);
+    if (_debug) _assert(this.n > 0);
 
     // Recursive case
     let pos = locations.shift();
@@ -74,8 +128,8 @@ export class Diagram {
       pos = { height: Math.floor(pos / 2), regular: pos % 2 == 0 };
     }
 
-    _assert(!isNaN(pos.height));
-    _assert(pos.regular != undefined);
+    if (_debug) _assert(!isNaN(pos.height));
+    if (_debug) _assert(pos.regular != undefined);
 
     if (locations.length > 0) {
       // No need to copy slice.
@@ -87,8 +141,8 @@ export class Diagram {
       return this.source;
     }
 
-    _assert((pos.regular && pos.height <= this.data.length) || (!pos.regular && pos.height < this.data.length));
-    _assert(pos.height <= this.data.length);
+    if (_debug) _assert((pos.regular && pos.height <= this.data.length) || (!pos.regular && pos.height < this.data.length));
+    if (_debug) _assert(pos.height <= this.data.length);
 
     if (pos.height == 0 && pos.regular) return this.source;
 
@@ -111,7 +165,7 @@ export class Diagram {
     start_height,
     max_height
   }) {
-    _assert(this.n == goal.n);
+    if (_debug) _assert(this.n == goal.n);
 
     // Base case
     if (this.n == 0) {
@@ -207,7 +261,7 @@ export class Diagram {
       else position = [1];
     }
     if (this.data.length == 0) return this.source.getActionType(position.slice(1)); // is this necessary?
-    _assert(position.length > 0);
+    if (_debug) _assert(position.length > 0);
     let [slice, ...rest] = position;
     slice = Math.max(slice, 0);
     slice = Math.min(slice, 2 * this.data.length);
@@ -313,7 +367,7 @@ export class Diagram {
     let depths = [];
     for (let i = p.first; i < p.last; i++) {
       let n = source.data[i].getFirstSingularNeighbourhood();
-      _assert(n != null);
+      if (_debug) _assert(n != null);
       let sublimit = limit.subLimit(i);
       let sublimit_source = source.getSlice({ height: i, regular: false });
       let sublimit_mono = sublimit.getMonotone(sublimit_source.data.length, sublimit_target.data.length);
@@ -337,8 +391,8 @@ export class Diagram {
   normalizeRelative(limits) {
     for (let i = 0; i < limits.length; i++) {
       let limit = limits[i];
-      _assert(limit instanceof Limit);
-      _assert(limit.n == this.n);
+      if (_debug) _assert(limit instanceof Limit);
+      if (_debug) _assert(limit.n == this.n);
     }
 
     // Starting point is that all limits have themselves as the factorization
@@ -405,7 +459,7 @@ export class Diagram {
       if (recursive.embedding.length > 0) {
         let component = new LimitComponent(this.n,
           {first: i,
-          source_data: [this.data[i]],
+          source_data: [ new_content /*this.data[i]*/ ],
           sublimits: [recursive.embedding],
           target_data: /*new_content*/ this.data[i] });
         embedding_components.push(component);
@@ -439,6 +493,9 @@ export class Diagram {
 
     // Build the embedding of 'diagram' into 'this'
     let embedding = new Limit(this.n, embedding_components, diagram.data.length);
+
+    // Consistency debug check
+    embedding.verifySource(diagram);
 
     // Build the factorizations
     //let factorizations = [];
@@ -474,7 +531,7 @@ export class Diagram {
         in_image = true;
         break;
         */
-        let fac = factorization_monotones[i];
+        let fac = factorization_monotones[j];
         if (fac) {
           let preimage = fac.preimage({first: i, last: i+1});
           if (preimage.first == preimage.last) continue;          
@@ -508,12 +565,15 @@ export class Diagram {
 
     }
 
+    // Consistency debug check
+    embedding.verifySource(diagram);
+
     return { diagram, embedding, factorizations };
   }
 
   // Build a new diagram which omits a given level
   removeLevel(i) {
-    _assert(isNatural(i));
+    if (_debug) _assert(isNatural(i));
     let new_data = [...this.data.slice(0, i), ...this.data.slice(i+1)];
     return new Diagram(this.n, {data: new_data, source: this.source});
   }
@@ -531,11 +591,101 @@ export class Diagram {
   typecheck() {
     console.log('n=' + this.n + ', typechecking diagram');
     if (this.n == 0) return true; // 0-diagrams always typecheck
+    let regular = this.source;
     for (let i = 0; i < this.data.length; i++) {
-      if (!this.data[i].typecheck()) return false;
+      let data = this.data[i];
+      if (!data.typecheck(regular)) return false;
+      let singular = data.forward_limit.rewrite_forward(regular);
+      regular = data.backward_limit.rewrite_backward(singular);
     }
     if (!this.source.typecheck()) return false;
     return true;
+  }
+
+  getUniqueSingularType() {
+    if (this.n == 0) return this.type;
+    if (_debug) _assert(this.data.length == 1);
+    let slice = this.getSlice({height: 0, regular: false});
+    return slice.getUniqueSingularType();
+  }
+
+  // Typecheck a diagram with unique singular content
+  typecheckBaseCase() {
+
+    // Identity diagrams type check
+    if (this.data.length == 0) return true;
+
+    // Get the type that sits at the centre of this diagram
+    let type = this.getUniqueSingularType();
+    
+    // Zero dimensional diagrams typecheck only for zero dimensional types
+    if (this.n == 0) {
+      if (type.n > 0) {
+        console.log("Typecheck failed, 0-diagram must be a 0-cell");
+        return false;
+      }
+    }
+
+    // If the dimension of the central type is high, it cannot typecheck
+    if (type.n > this.n) {
+      console.log("Typecheck failed, dimension of central type is too high");
+      return false;
+    }
+
+    // If the dimension of the central type is low, the separate limits must be homotopies
+    if (type.n < this.n) {
+      let f = this.data[0].forward_limit;
+      let b = this.data[0].backward_limit;
+      if (!f.typecheck({ forward: null, source: this.source })) {
+        console.log("Typecheck failed, forward limit is not a homotopy");
+        return false;
+      }
+      if (!b.typecheck({ forward: null, source: this.getTarget() })) {
+        console.log("Typecheck failed, backward limit is not a homotopy");
+        return false;
+      }
+      return true;
+    }
+
+    // Otherwise, it must be exactly the defining diagram of a generator
+    if (!type.source.equals(this.source)) {
+      console.log("Source boundary error");
+      return false;
+    }
+    if (!type.target.equals(this.getTarget())) {
+      console.log("Target boundary error");
+      return false;
+    }
+    return true;
+
+
+    /*
+    // Test if it's algebraic
+
+    if (type.n == this.n) {
+
+    }
+    if (type.n != this.n + 1) {
+      console.log("Typecheck failed: singular point has the wrong dimension");
+      return false;
+    }
+    let match_diagram = forward ? type.source : type.target;
+    if (!source.equals(match_diagram)) {
+      console.log("Typecheck failed: singular point has improper neighbourhood");
+      return false;
+    }
+
+
+
+    // Check that the forward and backward limits typecheck
+    let target = normalized.getTarget();
+    if (!normalized.data[0].forward_limit.typecheck({ forward: true, source: normalized.source })) return false;
+    if (!normalized.data[0].backward_limit.typecheck({ forward: false, source: target })) return false;
+
+    // The content typechecks
+    return true;
+    */
+
   }
 
   // Normalize the diagram in a way that also normalizes the boundaries
@@ -565,7 +715,7 @@ export class Diagram {
   
       // Build the new source diagram
       let data = [];
-      _assert(data_limits.length % 2 == 0);
+      if (_debug) _assert(data_limits.length % 2 == 0);
       for (let i=0; i<data_limits.length / 2; i++) {
         let forward_limit = data_limits[2 * i];
         let backward_limit = data_limits[2 * i + 1];
@@ -586,8 +736,8 @@ export class Diagram {
 
   
   composeAtRegularLevel({ height, limit }) {
-    _assert(isNatural(height));
-    _assert(limit instanceof Limit);
+    if (_debug) _assert(isNatural(height));
+    if (_debug) _assert(limit instanceof Limit);
 
     // Base case
     if (this.n == limit.n + 1) {
@@ -614,7 +764,7 @@ export class Diagram {
       return new Diagram(this.n, { source, data });
     }
 
-    _assert(this.n > limit.n);
+    if (_debug) _assert(this.n > limit.n);
 
     let source = this.source.composeAtRegularLevel({ height, limit });
     let data = [];
@@ -638,7 +788,7 @@ export class Diagram {
 
   // Get the bounding box surrounding a diagram component
   getLocationBoundingBox(location) {
-    _assert(this.n == location.length);
+    if (_debug) _assert(this.n == location.length);
 
     if (this.n == 0) return { min: [], max: [] };
     if (location.length == 0) debugger;
@@ -654,20 +804,23 @@ export class Diagram {
   /**
    * Pad the diagram content to remain consistent with a higher source attachment.
    */
-  pad(depth, source_boundary /* boolean */) {
+   /*
+  pad(depth, source_boundary) {
     if (depth == 1) return;
     let source = this.source;
+    //let source = this.source.pad(depth - 1, source_boundary);
     let data = this.data.map(content => content.pad(depth - 1, source_boundary));
     return new Diagram(this.n, { source, data });
   }
+  */
 
   // Create the limit which contracts the a subdiagram at a given position, to a given type
   contractForwardLimit(type, position, subdiagram) {
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
-    _assert(position.length == this.n);
-    _assert(this.n == subdiagram.n);
+    if (_debug) _assert(position.length == this.n);
+    if (_debug) _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
       let source_type = subdiagram.type;
@@ -709,8 +862,8 @@ export class Diagram {
     position = position || Array(this.n).fill(0);
     subdiagram = subdiagram || this;
 
-    _assert(position.length == this.n);
-    _assert(this.n == subdiagram.n);
+    if (_debug) _assert(position.length == this.n);
+    if (_debug) _assert(this.n == subdiagram.n);
 
     if (this.n == 0) {
       let component = new LimitComponent(0, { source_type: subdiagram.type, target_type: this.type });
@@ -780,7 +933,7 @@ export class Diagram {
 
     // Get the subdiagram where the user is clicking
     let click_diagram = this.getSlice(...(location.slice(0, location.length - (horizontal ? 1 : 2))));
-    _assert(click_diagram);
+    if (_debug) _assert(click_diagram);
 
     if (click_diagram.n < 2) {
       throw "Need more dimensions to perform a homotopy";
@@ -799,10 +952,10 @@ export class Diagram {
 
       // Add the depth of the component that the user is implicitly selecting
       let content = click_diagram.data[last_point.height];
-      _assert(content);
+      if (_debug) _assert(content);
       let targets = [...content.forward_limit.getComponentTargets(), ...content.backward_limit.getComponentTargets()];
       targets = targets.sort((a, b) => a - b);
-      _assert(targets.length > 0);
+      if (_debug) _assert(targets.length > 0);
       location.push({height: targets[0], regular: false});
 
     }
@@ -839,8 +992,8 @@ export class Diagram {
     let second_last = location[location.length - 2];
     let content = click_diagram.data[second_last.height];
     let targets = [...new Set([...content.forward_limit.getComponentTargets(), ...content.backward_limit.getComponentTargets()])];
-    _assert(targets.length > 0);
-    _assert(targets.indexOf(last.height) >= 0);
+    if (_debug) _assert(targets.length > 0);
+    if (_debug) _assert(targets.indexOf(last.height) >= 0);
     let expansion = targets.length > 1;
 
     // Build the content object
@@ -879,13 +1032,13 @@ export class Diagram {
   // Recursive procedure constructing a Limit object that expands a diagram at a given position
   getExpansionLimit({location, direction}) {
 
-    _assert(location instanceof Array);
-    _assert(location.length >= 2); // Expansion requires at least 2 coordinates
+    if (_debug) _assert(location instanceof Array);
+    if (_debug) _assert(location.length >= 2); // Expansion requires at least 2 coordinates
 
     if (location.length == 2) {
 
       // Expansion base case
-      _assert(!location[0].regular && !location[1].regular); // both coordinates must be singular
+      if (_debug) _assert(!location[0].regular && !location[1].regular); // both coordinates must be singular
       let r1 = this.getSlice({ height: location[0].height, regular: true });
       let r2 = this.getSlice({ height: location[0].height + 1, regular: true });
       let s = this.getSlice({ height: location[0].height, regular: false });
@@ -914,8 +1067,6 @@ export class Diagram {
     } else if (location[0].regular) {
 
       throw "Can't perform expansion on regular slice";
-
-      // maybe we should bubble? may be reasonable in some cases.
 
     } else { // Recursive expansion on singular slice, 2018-11-HIO-4
 
@@ -1002,16 +1153,16 @@ export class Diagram {
   // Recursive procedure that constructs a limit contracting a diagram at a given position
   getContractionLimit({location, tendency}) {
     
-    _assert(location instanceof Array);
-    _assert(location.length >= 1); // Contraction requires at least 1 coordinate
+    if (_debug) _assert(location instanceof Array);
+    if (_debug) _assert(location.length >= 1); // Contraction requires at least 1 coordinate
     let height = location[0].height;
-    _assert(!isNaN(height));
+    if (_debug) _assert(!isNaN(height));
 
     if (location.length == 1) {
 
       // Contraction base case
-      _assert(!location[0].regular); // The UI should never trigger contraction from a regular slice
-      _assert(height >= 0);
+      if (_debug) _assert(!location[0].regular); // The UI should never trigger contraction from a regular slice
+      if (_debug) _assert(height >= 0);
       if (height >= this.data.length - 1) {
         throw "Can't perform contraction off the top of the diagram";
       }
@@ -1064,7 +1215,7 @@ export class Diagram {
 
     }
 
-    _assert(false);
+    if (_debug) _assert(false);
 
   }
 
@@ -1073,22 +1224,22 @@ export class Diagram {
 
     let n = upper[0].n;
     for (let i = 0; i < upper.length; i++) {
-      _assert(upper[i] instanceof Diagram);
-      _assert(upper[i].n == n);
+      if (_debug) _assert(upper[i] instanceof Diagram);
+      if (_debug) _assert(upper[i].n == n);
     }
 
     for (let i = 0; i < lower.length; i++) {
       let l = lower[i];
       _propertylist(l, ["left_index", "left_limit", "right_index", "right_limit", "diagram"], ["bias"]);
-      _assert(l.diagram instanceof Diagram && l.left_limit instanceof Limit && l.right_limit instanceof Limit);
-      _assert(isNatural(l.left_index) && isNatural(l.right_index));
-      _assert(l.left_index < upper.length && l.right_index < upper.length);
-      _assert(l.diagram.n == n && l.left_limit.n == n && l.right_limit.n == n);
-      _assert(Number.isInteger(l.bias) && (l.bias >= -1) && (l.bias <= 1));
+      if (_debug) _assert(l.diagram instanceof Diagram && l.left_limit instanceof Limit && l.right_limit instanceof Limit);
+      if (_debug) _assert(isNatural(l.left_index) && isNatural(l.right_index));
+      if (_debug) _assert(l.left_index < upper.length && l.right_index < upper.length);
+      if (_debug) _assert(l.diagram.n == n && l.left_limit.n == n && l.right_limit.n == n);
+      if (_debug) _assert(Number.isInteger(l.bias) && (l.bias >= -1) && (l.bias <= 1));
     }
 
-    _assert(depth == null || isNatural(depth));
-    _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
+    if (_debug) _assert(depth == null || isNatural(depth));
+    if (_debug) _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
 
     // Base case
     if (n == 0) {
@@ -1099,7 +1250,7 @@ export class Diagram {
       for (let i = 0; i < lower.length; i++) Diagram.updateTopTypes(top_types, lower[i].diagram.type);
 
       // If there's more than one top-dimensional type, throw an error
-      _assert(top_types.length > 0);
+      if (_debug) _assert(top_types.length > 0);
       if (top_types.length > 1) throw "no unification, multiple top types in base case";
       let target_type = top_types[0];
 
@@ -1165,14 +1316,14 @@ export class Diagram {
       return;
     }
     if (type.n < top_types[0].n) return;
-    _assert(type.n > top_types[0].n);
+    if (_debug) _assert(type.n > top_types[0].n);
     top_types.length = 0;
     top_types.push(type);
   }
 
   static updateTypes(types, type) {
-    _assert(type instanceof Generator);
-    _assert(types.type1 != types.type2 || (types.type1 == null && types.type2 == null));
+    if (_debug) _assert(type instanceof Generator);
+    if (_debug) _assert(types.type1 != types.type2 || (types.type1 == null && types.type2 == null));
     if (types.type1 != null && types.type2 != null) _assert(types.type1.n < types.type2.n);
     if (types.type2 != null) _assert(types.type1 != null);
     if (types.type1 == type || types.type2 == type) return;
@@ -1248,7 +1399,7 @@ export class Diagram {
       }
     }
     let exploded = { upper: upper_exploded, lower: lower_exploded };
-    _assert(upper_exploded.length > 0);
+    if (_debug) _assert(upper_exploded.length > 0);
     let nonempty_upper = null;
     for (let i = 0; i < upper.length; i++) {
       if (upper_preimage[i].data.length > 0) {
@@ -1257,7 +1408,7 @@ export class Diagram {
       }
     }
 
-    _assert(nonempty_upper != null);
+    if (_debug) _assert(nonempty_upper != null);
 
     // Recursively unify
     let recursive = Diagram.multiUnify(exploded);
@@ -1316,7 +1467,7 @@ export class Diagram {
     // Return nothing
     if (subset === undefined) return null;
 
-    _assert(subset instanceof Array);
+    if (_debug) _assert(subset instanceof Array);
 
     // Check top-level range of the subset of the target
     let range = {first: null, last: null};
@@ -1328,7 +1479,7 @@ export class Diagram {
 
     // Handle the case of a regular subset
     if (subset.regular) {
-      _assert(range.last == range.first + 1);
+      if (_debug) _assert(range.last == range.first + 1);
       let regular = this.getSlice({height: range.first, regular: true});
       let restricted = regular.restrictToSubset(subset[range.first]);
       return new Diagram(this.n, { source: restricted, data: [] });
@@ -1370,7 +1521,7 @@ function sub_data(data, subdata, offset) {
 
 // Check if a forward limit contains all the content of another
 function sub_limit(limit, sublimit, offset) {
-  _assert(limit.n == sublimit.n);
+  if (_debug) _assert(limit.n == sublimit.n);
   if (limit.length != sublimit.length) return false; // number of components must be the same
   for (let i = 0; i < limit.length; i++) {
     if (!sub_limit_component(limit[i], sublimit[i], offset)) return false;
@@ -1379,8 +1530,8 @@ function sub_limit(limit, sublimit, offset) {
 }
 
 function sub_limit_component(component, subcomponent, offset) {
-  _assert(component.n == subcomponent.n);
-  _assert(offset.length == component.n);
+  if (_debug) _assert(component.n == subcomponent.n);
+  if (_debug) _assert(offset.length == component.n);
   if (component.n == 0) return component.type == subcomponent.type;
   if (component.first != subcomponent.first + offset[0]) return false;
   if (component.getLast() != subcomponent.getLast() + offset[0]) return false;

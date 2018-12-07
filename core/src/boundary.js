@@ -1,5 +1,5 @@
 import * as Match from "~/matches";
-import { _assert } from "~/util/debug";
+import { _assert, _debug } from "~/util/debug";
 
 /**
  * @param {Diagram} diagram
@@ -14,7 +14,7 @@ export const getPath = (diagram, point) => {
     };
   }
 
-  _assert(point.length > 0);
+  if (_debug) _assert(point.length > 0);
 
   let [height, ...rest] = point;
 

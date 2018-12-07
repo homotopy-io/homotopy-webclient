@@ -1,4 +1,4 @@
-import {_assert} from '../util/debug'
+import { _assert, _debug } from '../util/debug'
 import * as Kiwi from "kiwi.js";
 import UnionFind from "union-find";
 
@@ -134,14 +134,14 @@ class Solver {
   addRelation(source, target, codim, dir) {
     let relations = this.points.get(pointId(source)).relations;
     let key = `${codim}:${dir}`;
-    _assert(relations.get(key));
+    if (_debug) _assert(relations.get(key));
     relations.get(key).points.push(target);
   }
 
   getVariableId(point, codim) {
     let pointid = this.points.get(pointId(point));
     if (!pointid) return null;
-    _assert(pointid);
+    if (_debug) _assert(pointid);
     return pointid.variables[codim - 1];
   }
 

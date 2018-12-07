@@ -1,4 +1,4 @@
-import { _assert } from "homotopy-core/dist/src/util/debug";
+import { _assert, _debug } from "homotopy-core/dist/src/util/debug";
 
 /* Class representing a cubic Bezier curve. All nontrivial code taken from
 https://www.particleincell.com/wp-content/uploads/2013/08/cubic-line.svg */
@@ -6,11 +6,11 @@ https://www.particleincell.com/wp-content/uploads/2013/08/cubic-line.svg */
 export class BezierCubic {
 
   constructor({p1, p2, c1, c2}) {
-    _assert(p1 instanceof Array);
-    _assert(p2 instanceof Array);
-    _assert(c1 instanceof Array);
-    _assert(c2 instanceof Array);
-    _assert(p1.length == 2 && p2.length == 2 && c1.length == 2 && c2.length == 2);
+    if (_debug) _assert(p1 instanceof Array);
+    if (_debug) _assert(p2 instanceof Array);
+    if (_debug) _assert(c1 instanceof Array);
+    if (_debug) _assert(c2 instanceof Array);
+    if (_debug) _assert(p1.length == 2 && p2.length == 2 && c1.length == 2 && c2.length == 2);
     this.p1 = p1;
     this.p2 = p2;
     this.c1 = c1;
@@ -51,7 +51,7 @@ export class BezierCubic {
     let c = 3 * y[0] - 3 * y[1];
     let d = (y[3] - y[0]) / 2;
     let r = this.cubicRoots(a, b, c, d).filter(x => x >= 0 && x <= 1);
-    _assert(r.length == 1);
+    if (_debug) _assert(r.length == 1);
     let t = r[0];
 
     // Return the parts

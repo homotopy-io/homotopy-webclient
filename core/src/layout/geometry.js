@@ -1,4 +1,4 @@
-import { _assert, isNatural } from "~/util/debug";
+import { _assert, _debug, isNatural } from "~/util/debug";
 
 /*
 export const typeAt = (diagram, point) => {
@@ -8,8 +8,8 @@ export const typeAt = (diagram, point) => {
     return diagram.getLastPoint();
 
     for (let t of typesOf(diagram)) {
-      _assert(t);
-      _assert(isNatural(t.n));
+      if (_debug) _assert(t);
+      if (_debug) _assert(isNatural(t.n));
       if (!maxType || t.n > maxType.n) {
         maxType = t;
       }
@@ -20,11 +20,11 @@ export const typeAt = (diagram, point) => {
   } else {
     let [height, ...rest] = point;
 
-    _assert(!isNaN(height));
+    if (_debug) _assert(!isNaN(height));
     height = Math.max(0, height);
-    _assert(!isNaN(height));
+    if (_debug) _assert(!isNaN(height));
     height = Math.min(height, 2 * diagram.data.length);
-    _assert(!isNaN(height));
+    if (_debug) _assert(!isNaN(height));
 
     let slice = diagram.getSlice({
       height: Math.floor(height / 2),
@@ -44,7 +44,7 @@ export const typeAt = (diagram, point) => {
 /*
 export const typesOf = function*(diagram) {
   if (diagram.n == 0) {
-    _assert(diagram.type);
+    if (_debug) _assert(diagram.type);
     yield diagram.type;
     return;
   } else {
@@ -52,7 +52,7 @@ export const typesOf = function*(diagram) {
 
     for (let content of diagram.data) {
       let type = content.forward_limit[0].target_type;
-      _assert(type);
+      if (_debug) _assert(type);
       yield type;
     }
   }
@@ -60,7 +60,7 @@ export const typesOf = function*(diagram) {
 */
 
 export const pointsOf = function*(diagram, dimension) {
-  _assert(diagram.n >= dimension);
+  if (_debug) _assert(diagram.n >= dimension);
 
   if (dimension == 0) {
     yield [];
@@ -68,7 +68,7 @@ export const pointsOf = function*(diagram, dimension) {
     for (let [height, slice] of slicesOf(diagram)) {
       for (let point of pointsOf(slice, dimension - 1)) {
         point.unshift(height);
-        _assert(point);
+        if (_debug) _assert(point);
         yield point;
       }
     }
@@ -76,7 +76,7 @@ export const pointsOf = function*(diagram, dimension) {
 };
 
 export const boundaryOf = (diagram, dimension) => {
-  _assert(diagram.n >= dimension);
+  if (_debug) _assert(diagram.n >= dimension);
 
   if (dimension == 0) {
     return [];
@@ -90,7 +90,7 @@ export const boundaryOf = (diagram, dimension) => {
 };
 
 export const slicesOf = function*(diagram) {
-  _assert(diagram.n > 0);
+  if (_debug) _assert(diagram.n > 0);
 
   yield [-1, diagram.source];
 
@@ -182,10 +182,10 @@ export const edgesOf = function*(diagram, dimension) {
           type: 'limit action backward edge',
           wire: !point_regular
         };
-        _assert(obj.source.length == obj.target.length);
+        if (_debug) _assert(obj.source.length == obj.target.length);
         for (let i=0; i<obj.source.length; i++) {
-          _assert(obj.source[i] >= -1);
-          _assert(obj.target[i] >= -1);
+          if (_debug) _assert(obj.source[i] >= -1);
+          if (_debug) _assert(obj.target[i] >= -1);
         }
         yield obj;
       }
@@ -198,10 +198,10 @@ export const edgesOf = function*(diagram, dimension) {
           type: 'limit action forward edge ',
           wire: !point_regular
         };
-        _assert(obj.source.length == obj.target.length);
+        if (_debug) _assert(obj.source.length == obj.target.length);
         for (let i=0; i<obj.source.length; i++) {
-          _assert(obj.source[i] >= -1);
-          _assert(obj.target[i] >= -1);
+          if (_debug) _assert(obj.source[i] >= -1);
+          if (_debug) _assert(obj.target[i] >= -1);
         }
         yield obj;
       }
@@ -251,7 +251,7 @@ const limitAction = (limit, point) => {
     for (let component of limit) {
       offset += component.getLast() * 2 - component.first * 2 - 2;
     }
-    _assert(height - offset >= -1);
+    if (_debug) _assert(height - offset >= -1);
     cumulative.push([height - offset, ...rest]);
     //return [[height - offset, ...rest]];
   }

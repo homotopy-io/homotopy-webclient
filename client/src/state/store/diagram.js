@@ -1,4 +1,4 @@
-import { _assert } from "../../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug } from "../../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
 import { createSelector } from "reselect";
 import createReducer from "~/util/create-reducer";
@@ -38,7 +38,7 @@ export const getSliceBounds = (state) => {
     return [];
   } else {
     let options = [];
-    _assert(slice instanceof Array);
+    if (_debug) _assert(slice instanceof Array);
     for (let height of slice) {
       options.push(diagram.data.length * 2);
       diagram = Core.Geometry.getSlice(diagram, height);

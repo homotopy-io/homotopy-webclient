@@ -11,7 +11,7 @@ import * as HSLuv from "hsluv";
 import BezierCubic from "~/util/bezier";
 
 import compose from "~/util/compose";
-import { _assert, isNatural } from "../../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug, isNatural } from "../../../../core/src/util/debug"; // this is a mess
 //import { _assert } from "~/util/debug";
 import Graph from "~/util/graph";
 import withSize from "~/components/misc/Sized";
@@ -152,8 +152,8 @@ export class Diagram2D extends React.Component {
   // Get the display colour of the generator in a given ambient dimension
   getColour(generator, n) {
 
-    _assert(isNatural(n));
-    _assert(generator);
+    if (_debug) _assert(isNatural(n));
+    if (_debug) _assert(generator);
 
     //if (n >= 3) debugger;
 
@@ -189,9 +189,9 @@ export class Diagram2D extends React.Component {
     let position = point.position;
     let generator = point.generator;
 
-    _assert(point.slice.length == 0);
+    if (_debug) _assert(point.slice.length == 0);
 
-    _assert(generator);
+    if (_debug) _assert(generator);
 
     let colour = this.getColour(generator, this.diagram.n);
     let key = `point`;
@@ -219,7 +219,7 @@ export class Diagram2D extends React.Component {
     let position = point.position;
     let generator = point.generator;
 
-    _assert(point.slice.length == 1);
+    if (_debug) _assert(point.slice.length == 1);
 
     // Don't show boundary points
     if (point.boundary) {
@@ -231,7 +231,7 @@ export class Diagram2D extends React.Component {
       return null;
     }
 
-    _assert(generator);
+    if (_debug) _assert(generator);
 
     if (generator.generator.n < this.diagram.n) {
       //return null;
@@ -264,7 +264,7 @@ export class Diagram2D extends React.Component {
     let generator = point.generator;
 
     if (this.props.dimension == 2) {
-      _assert(point.slice.length == 2);
+      if (_debug) _assert(point.slice.length == 2);
 
       // Don't show boundary points
       if (point.boundary) {
@@ -277,7 +277,7 @@ export class Diagram2D extends React.Component {
       }
     }
 
-    _assert(generator);
+    if (_debug) _assert(generator);
 
     if (generator.generator.n < this.diagram.n) {
       //return null;
@@ -338,7 +338,7 @@ export class Diagram2D extends React.Component {
   }
 
   coordsToObject(p) {
-    _assert(p instanceof Array);
+    if (_debug) _assert(p instanceof Array);
     let r = [];
     for (let i=0; i<p.length; i++) {
       //_assert(p[i] instanceof Number);
@@ -367,7 +367,7 @@ export class Diagram2D extends React.Component {
   }
 
   preparePoint0d(point) {
-    _assert(point.length == 0);
+    if (_debug) _assert(point.length == 0);
     let ref = '';
     let generator = this.getGenerator(point);
     let position = this.getPosition(point);
@@ -377,7 +377,7 @@ export class Diagram2D extends React.Component {
   }
 
   preparePoint1d(point) {
-    _assert(point.length == 1);
+    if (_debug) _assert(point.length == 1);
 
     let ref = point.join(',').toString();
     let generator = this.getGenerator(point);
@@ -403,9 +403,9 @@ export class Diagram2D extends React.Component {
   }
 
   preparePoint2d(point) {
-    _assert(point.length == 2);
-    _assert(point[0] >= -1);
-    _assert(point[1] >= -1);
+    if (_debug) _assert(point.length == 2);
+    if (_debug) _assert(point[0] >= -1);
+    if (_debug) _assert(point[1] >= -1);
     let ref = point.join(',').toString();
     let generator = this.getGenerator(point);
     let position = this.getPosition(point);
@@ -454,14 +454,14 @@ export class Diagram2D extends React.Component {
   prepareEdge(edge, points) {
     let s = edge.source;
     let t = edge.target;
-    _assert(s);
-    _assert(t);
+    if (_debug) _assert(s);
+    if (_debug) _assert(t);
     let s_ref = s.join(',');
     let t_ref = t.join(',');
     edge.source_point = points.find(v => v.ref == s_ref);
     edge.target_point = points.find(v => v.ref == t_ref);
-    _assert(edge.source_point);
-    _assert(edge.target_point);
+    if (_debug) _assert(edge.source_point);
+    if (_debug) _assert(edge.target_point);
     let sGenerator = edge.source_point.generator;
     let tGenerator = edge.target_point.generator;
     let sPosition = edge.source_point.position;
@@ -502,7 +502,7 @@ export class Diagram2D extends React.Component {
   prepareEdgeSVGPath(edge) {
     if (edge.svg_path) return edge;
     if (edge.st_control || edge.ts_control) {    
-      _assert(edge.st_control && edge.ts_control);
+      if (_debug) _assert(edge.st_control && edge.ts_control);
       if (edge.type == 'triangle edge') {
         edge.svg_path = ` C ${edge.ts_control.join(" ")} ${edge.st_control.join(" ")} ${edge.source_point.position.join(" ")}`;
       } else {
@@ -524,13 +524,13 @@ export class Diagram2D extends React.Component {
     if (this.diagram.n < 3) return;
     if (edges.length == 0) return;
     let vertex = edges[0].target_point;
-    _assert(vertex.slice);
+    if (_debug) _assert(vertex.slice);
     let wires = this.diagram.getWireDepths(vertex.slice[0].height, vertex.slice[1].height);
 
     // Separate out the source and target edges
     let source_edges = edges.filter(edge => edge.source_point.point[0] < vertex.point[0]);
     let target_edges = edges.filter(edge => edge.source_point.point[0] > vertex.point[0]);
-    _assert(source_edges.length + target_edges.length + 2 == edges.length);
+    if (_debug) _assert(source_edges.length + target_edges.length + 2 == edges.length);
 
     // Order these edges
     source_edges = source_edges.sort((a, b) => a.source_point.point[1] - b.source_point.point[1]); 
@@ -799,9 +799,9 @@ export class Diagram2D extends React.Component {
 
   renderSurface(sm, mt, st) {
 //return;
-    _assert(sm.source_point === st.source_point);
-    _assert(st.target_point === mt.target_point);
-    _assert(mt.source_point === sm.target_point);
+    if (_debug) _assert(sm.source_point === st.source_point);
+    if (_debug) _assert(st.target_point === mt.target_point);
+    if (_debug) _assert(mt.source_point === sm.target_point);
     let s = sm.source_point;
     let t = st.target_point;
     let m = sm.target_point;
@@ -899,7 +899,7 @@ export class Diagram2D extends React.Component {
     for (let i=0; i<points.length; i++) {
       let point = points[i].point;
       for (let j=0; j<point.length; j++) {
-        _assert(point[j] >= -1);
+        if (_debug) _assert(point[j] >= -1);
       }
     }
 
@@ -1055,7 +1055,7 @@ export class Diagram2D extends React.Component {
 
   findSurfaces(diagram, edges_raw, edges) {
 
-    _assert(edges);
+    if (_debug) _assert(edges);
 
     for (let edge of edges_raw) {
       edges.push(edge);
@@ -1068,10 +1068,10 @@ export class Diagram2D extends React.Component {
 
     for (let i=0; i<edges_raw.length; i++) {
       let edge = edges_raw[i];
-      _assert(edge.source[0] >= -1);
-      _assert(edge.source[1] >= -1);
-      _assert(edge.target[0] >= -1);
-      _assert(edge.target[1] >= -1);
+      if (_debug) _assert(edge.source[0] >= -1);
+      if (_debug) _assert(edge.source[1] >= -1);
+      if (_debug) _assert(edge.target[0] >= -1);
+      if (_debug) _assert(edge.target[1] >= -1);
       graph.addEdge(edge.source, edge.target, { edge });
     }
 
@@ -1081,7 +1081,7 @@ export class Diagram2D extends React.Component {
 
       for (let [c, w] of graph.edgesFrom(b)) {
         let x = graph.getEdge(a, c);
-        _assert(x === undefined);
+        if (_debug) _assert(x === undefined);
         let edge = edges.find(edge => edge.source === a && edge.target === c);
         if (!edge) {
           edge = { source: a, target: c, codim: null, dir: null, type: 'triangle edge', wire: false };          
@@ -1128,9 +1128,9 @@ export class Diagram2D extends React.Component {
         edge_2 = { source_point: new_point, target_point: edge.target_point, parent_edge, st_control: split[1].c1, ts_control: split[1].c2, edge_type, wire };
       }
 
-      _assert(new_point.position instanceof Array);
+      if (_debug) _assert(new_point.position instanceof Array);
       for (let i=0; i<new_point.position.length; i++) {
-        _assert(!isNaN(new_point.position[i]));
+        if (_debug) _assert(!isNaN(new_point.position[i]));
       }
       new_points.push(new_point);
       new_edges.push(edge_1);
@@ -1149,9 +1149,9 @@ export class Diagram2D extends React.Component {
       let mt = surface[1];
       let st = surface[2];
       //let [sm, mt, st] = surfaces[i];
-      _assert(sm);
-      _assert(mt);
-      _assert(st);
+      if (_debug) _assert(sm);
+      if (_debug) _assert(mt);
+      if (_debug) _assert(st);
 
       // Create new edges internal to the surface
       let edge_s = { source_point: sm.child_point, target_point: st.child_point };
@@ -1178,17 +1178,18 @@ export class Diagram2D extends React.Component {
   }
 
   validateSurface([sm, mt, st]) {
-    _assert(sm.source_point === st.source_point);
-    _assert(sm.target_point === mt.source_point);
-    _assert(mt.target_point === st.target_point);
+    if (!_debug) return;
+    if (_debug) _assert(sm.source_point === st.source_point);
+    if (_debug) _assert(sm.target_point === mt.source_point);
+    if (_debug) _assert(mt.target_point === st.target_point);
   }
 
   getMeanPoint(p, q) {
     let m = [];
-    _assert(p.length == q.length);
+    if (_debug) _assert(p.length == q.length);
     for (let i=0; i<p.length; i++) {
       m[i] = (p[i] + q[i]) / 2;
-      _assert(!isNaN(m[i]));
+      if (_debug) _assert(!isNaN(m[i]));
     }
     return m;
   }
