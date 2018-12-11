@@ -7,6 +7,7 @@ import { Monotone } from "~/monotone";
 export class Diagram {
 
   constructor(n, args) {
+
     this["_t"] = "Diagram";
     if (_debug) _assert(isNatural(n));
     this.n = n;
@@ -92,6 +93,18 @@ export class Diagram {
         data: this.data.map(x => x.toJSON())
       };
     }
+  }
+
+  static fromJSON(val) {
+    let n = val.n;
+    if (n == 0) {
+      let type = getGenerator(val.type);
+    } else {
+      let source = new Diagram(val.source);
+      let data = val.data.map(x => Content.fromJSON(x));
+      return new Diagram(n, { source, data });
+    }
+
   }
 
   validate() {

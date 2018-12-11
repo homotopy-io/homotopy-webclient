@@ -25,6 +25,8 @@ import {
   setRenderer
 } from "~/state/actions/diagram";
 
+import { Diagram } from "../../core/src/diagram";
+
 const coreTransform = ReduxPersist.createTransform(
   (inboundState, key) => JSON.stringify(inboundState),
   (outboundState, key) => {
@@ -34,8 +36,10 @@ const coreTransform = ReduxPersist.createTransform(
           return new Core.Generator(val.id, null, null);
         } else {
           // TODO: reserialise diagrams
-          return new Core.Generator(val.id, Object.assign(new Diagram, val.source), Object.assign(new Diagram, val.target));
+          return new Core.Generator(val.id, Diagram.fromJSON(val.source), Diagram.fromJSON(val.target));
         }
+      } else if (name == 'diagram') {
+        return Diagram.fromJSON(val);
       } else {
         return val;
       }
