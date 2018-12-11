@@ -1,4 +1,5 @@
 import { _assert, _debug, _validate, isNatural, _propertylist } from "~/util/debug";
+import { DirectedQuotientGraph } from "~/directed_graph";
 
 export class Monotone extends Array {
 
@@ -91,17 +92,12 @@ export class Monotone extends Array {
   }
 
   // Unify with a second monotone, with the indicated tendency to the right if specified. Throws exception on failure.
-  unify({ second, right, fibre }, n) {
+  unify({ second, right }, n) {
     let first = this;
     if (_debug) _assert(second instanceof Monotone);
     if (_debug) _assert(first.length == second.length);
     if (_debug) _assert(typeof(right) == "number" && right >= -1 && right <= 1);
     if (_debug) _assert(n == null || isNatural(n));
-    if (fibre) {
-      _propertylist(fibre, ["L1F1M", "L1F2M", "L2F1M", "L2F2M"]); // check arguments
-      if (_debug) _assert(fibre.L1F1M.target_size == fibre.L2F1M.target_size); // agreement on F1 size
-      if (_debug) _assert(fibre.L1F2M.target_size == fibre.L2F2M.target_size); // agreement on F2 size
-    }
     if (n == null) {
       /*
       if (first.length == 0) {
@@ -122,12 +118,11 @@ export class Monotone extends Array {
     // Base case
     if (n == 0) return {
       first: new Monotone(0, []),
-      second: new Monotone(0, []),
-      fibre: fibre ? { J1M: new Monotone(0, []), J2M: new Monotone(0, []) } : null
+      second: new Monotone(0, [])
     }; // base case
 
     // Recursive case
-    let injections = this.unify({ second, right, fibre }, n - 1);
+    let injections = this.unify({ second, right }, n - 1);
     if (_debug) _assert(injections.first instanceof Monotone);
     if (_debug) _assert(injections.second instanceof Monotone);
     if (_debug) _assert(injections.first.target_size == injections.second.target_size);
@@ -148,33 +143,11 @@ export class Monotone extends Array {
         let preference; // negative for left, zero for both, positive for right
         let left_pos = left_start + left_done;
         let right_pos = right_start + right_done;
-        if (fibre) {
-          if (left_done == left_delta - 1) preference = +1; // check consistency with fibre?
-          else if (right_done == right_delta - 1) preference = -1; // check consistency with fibre?
-          else { // Get preference by looking at ordering in fibres
-            let f1_order = fibre.L1F1M[left_pos] - fibre.L2F1M[right_pos];
-            let f2_order = fibre.L1F2M[left_pos] - fibre.L2F2M[right_pos];
-            if (f1_order == 0 || f2_order == 0) preference = 0;
-            else if (f1_order == f2_order) preference = f1_order;
-            else throw "inconsistent fibre ordering";
-          }
-        } else if (right != 0) {
+        if (right != 0) {
           if (left_done == left_delta - 1) preference = +1;
           else if (right_done == right_delta - 1) preference = -1;
           else preference = right;// ? 1 : -1;
         } else throw "no monotone unification at depth " + n + ", cannot unify head-to-head monotones without a bias";
-
-        if (fibre) {
-          if (preference < 0) {
-            injections.fibre.J1M.append(fibre.L1F1M[left_pos]);
-            injections.fibre.J2M.append(fibre.L1F2M[left_pos]);
-          } else if (preference == 0) {
-
-          } else { // preference == -1
-            injections.fibre.J1M.append(fibre.L2F1M[right_pos]);
-            injections.fibre.J2M.append(fibre.L2F2M[right_pos]);
-          }
-        }
 
         if (preference < 0) {
           injections.first.grow();
@@ -191,10 +164,6 @@ export class Monotone extends Array {
         let t = injections.first.target_size;
         injections.first.append(t);
         injections.second.append(t);
-        if (fibre) {
-          injections.fibre.J1M.grow();
-          injections.fibre.J2M.grow();
-        }
       }
 
       /*
@@ -219,63 +188,27 @@ export class Monotone extends Array {
     } else { // deltas (1,>1) or (>1,1)
       // fibre analysis at 2018-2-ANC-30
       for (let i = 0; i < left_delta - 1; i++) {
-        if (fibre) injections.fibre.J1M.append(fibre.L1F1M[injections.first.length]);
-        if (fibre) injections.fibre.J2M.append(fibre.L1F2M[injections.first.length]);
         injections.first.grow();
       }
       for (let i = 0; i < right_delta - 1; i++) {
-        if (fibre) injections.fibre.J1M.append(fibre.L2F1M[injections.second.length]);
-        if (fibre) injections.fibre.J2M.append(fibre.L2F2M[injections.second.length]);
         injections.second.grow();
       }
       let t = (left_delta > 1 ? injections.first.target_size : injections.second.target_size);
       if (n <= first.length) {
         injections.first.append(t);
         injections.second.append(t);
-        if (fibre) {
-          injections.fibre.J1M.grow();
-          injections.fibre.J2M.grow();
-        }
       } else {
         injections.first.target_size = t;
         injections.second.target_size = t;
       }
     }
     if (n == first.length + 1) {
-      // Append any trailing elements to the injections
-      /*
-      let left_trailing = first.target_size - first.last() - 1;
-      let right_trailing = second.target_size - second.last() - 1;
-      if (right == null && left_trailing > 0 && right_trailing > 0) throw "no monotone unification at depth " + n + ", cannot unify head-to-head trailing elements without a bias";
-      let major = right ? { monotone: injections.second, delta: right_trailing } : { monotone: injections.first, delta: left_trailing };
-      let minor = right ? { monotone: injections.first, delta: left_trailing } : { monotone: injections.second, delta: right_trailing };
-      for (let i = 0; i < major.delta; i++) major.monotone.grow();
-      minor.monotone.target_size += major.delta;
-      for (let i = 0; i < minor.delta; i++) minor.monotone.grow();
-      major.monotone.target_size = minor.monotone.target_size;
-      */
 
       // Perform final consistency checks
       if (_debug) _assert(injections.first.length == first.target_size);
       if (_debug) _assert(injections.second.length == second.target_size);
       if (_debug) _assert(injections.first.target_size == injections.second.target_size);
       if (_debug) _assert(injections.first.compose(first).equals(injections.second.compose(second)));
-      if (fibre) { // See 2018-2-ANC-29
-        if (_debug) _assert(injections.fibre);
-        if (_debug) _assert(injections.fibre.J1M.length == injections.first.target_size);
-        if (_debug) _assert(injections.fibre.J2M.length == injections.first.target_size);
-        if (_debug) _assert(injections.fibre.J1M.target_size == fibre.L1F1M.target_size);
-        if (_debug) _assert(injections.fibre.J2M.taret_size == fibre.L1F2M.target_size);
-        let J1M = injections.fibre.J1M;
-        let J2M = injections.fibre.J2M;
-        let I1 = injections.first;
-        let I2 = injections.second;
-        let f = fibre;
-        if (_debug) _assert(J1M.compose(I1).equals(f.L1F1M));
-        if (_debug) _assert(J2M.compose(I2).equals(f.L2F2M));
-        if (_debug) _assert(J1M.compose(I2).equals(f.L2F1M));
-        if (_debug) _assert(J2M.compose(I1).equals(f.L1F2M));
-      }
     }
     return injections;
   }
@@ -405,7 +338,7 @@ export class Monotone extends Array {
   }
 
   // Simultaneously unify an entire diagram of monotones
-  static multiUnify({ lower, upper }) {
+  static multiUnify_OLD({ lower, upper }) {
     for (let i of upper) {
       if (_debug) _assert(isNatural(i));
     }
@@ -566,6 +499,61 @@ export class Monotone extends Array {
       regular.push(level);
     }
     return new Monotone(this.length + 1, regular);
+  }
+
+  static multiUnify({lower, upper}) {
+
+    // Build a graph from unions of the upper monotones
+    let g = new DirectedQuotientGraph();
+    let upper_elements = [];
+    let x = 0;
+    for (let i=0; i<upper.length; i++) {
+      let upper_list = [];
+      for (let j=0; j<upper[i].size; j++) {
+        upper_list.push(x);
+        x++;
+      }
+      upper_elements.push(upper_list);
+      g.addLinearGraph(upper_list, upper[i].bias_left);
+    }
+
+    // Quotient by the data of the lower monotones
+    for (let i=0; i<lower.length; i++) {
+      let left = lower[i].left;
+      let right = lower[i].right;
+      if (_debug) _assert(left.monotone.length == right.monotone.length);
+      for (let j=0; j<left.monotone.length; j++) {
+        let left_label = upper_elements[left.target][left.monotone[j]];
+        let right_label = upper_elements[right.target][right.monotone[j]];
+        g.quotient(left_label, right_label);
+      }
+    }
+
+    // Transitively close it
+    g.transitiveClosure();
+
+    // Skeletalize it
+    g.acyclicQuotient();
+
+    // Get the resulting linear order
+    let order = g.getLinearOrder();
+
+    // If it wasn't linearly orderable, fail
+    //if (!order) return null;
+
+    // Build the cocones, which should be monotones
+    let size = g.getNumNodes();
+    let monotones = [];
+    for (let i=0; i<upper.length; i++) {
+      let arr = [];
+      for (let j=0; j<upper[i].size; j++) {
+        arr.push(order.get(upper_elements[i][j]));
+      }
+      monotones.push(new Monotone(size, arr));
+    }
+
+    // Return the cocone maps
+    return monotones;
   }
 
 }

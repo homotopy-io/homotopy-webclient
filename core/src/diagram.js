@@ -992,11 +992,16 @@ export class Diagram {
     // Decide if it's a contraction or expansion
     let last = location[location.length - 1];
     let second_last = location[location.length - 2];
-    let content = click_diagram.data[second_last.height];
-    let targets = [...new Set([...content.forward_limit.getComponentTargets(), ...content.backward_limit.getComponentTargets()])];
-    if (_debug) _assert(targets.length > 0);
-    if (_debug) _assert(targets.indexOf(last.height) >= 0);
-    let expansion = targets.length > 1;
+    let expansion;
+    if (second_last.regular) {
+      expansion = true;
+    } else {
+      let content = click_diagram.data[second_last.height];
+      let targets = [...new Set([...content.forward_limit.getComponentTargets(), ...content.backward_limit.getComponentTargets()])];
+      if (_debug) _assert(targets.length > 0);
+      if (_debug) _assert(targets.indexOf(last.height) >= 0);
+      expansion = targets.length > 1;
+    }
 
     // Build the content object
     if (expansion) {
@@ -1038,6 +1043,108 @@ export class Diagram {
     if (_debug) _assert(location.length >= 2); // Expansion requires at least 2 coordinates
 
     if (location.length == 2) {
+
+      // Smoothing
+      if (location[0].regular) {
+
+        // Check whether this is a valid smoothing scenario
+        let smoothing_position;
+        let r1_height;
+        let c;
+
+        // Forwards smoothing
+        if (direction > 0) {
+          r1_height = location[0].height;
+          c = this.data[r1_height];
+          if (c.forward_limit.length == 0 || c.backward_limit.length == 0) {
+            console.log("Can't smooth homotopy here, trivial limiting behaviour");
+            throw 0;
+          }
+          let pushed_index = c.forward_limit.updateSliceForward([2 * location[1].height + (location[1].regular ? 0 : 1)]);
+          smoothing_position = {height: Math.floor(pushed_index / 2), regular: pushed_index % 2 == 0};
+          if (smoothing_position.regular) {
+            console.log("Can't smooth homotopy here, chosen point flows to regular height");
+            throw 0;
+          }
+        }
+
+        // Backwards smoothing
+        else {
+
+          r1_height = location[0].height - 1;
+          c = this.data[r1_height];
+          if (c.forward_limit.length == 0 || c.backward_limit.length == 0) {
+            console.log("Can't smooth homotopy here, trivial limiting behaviour");
+            throw 0;
+          }
+          let pushed_index = c.backward_limit.updateSliceForward([2 * location[1].height + (location[1].regular ? 0 : 1)]);
+          smoothing_position = {height: Math.floor(pushed_index / 2), regular: pushed_index % 2 == 0};
+          if (smoothing_position.regular) {
+            console.log("Can't smooth homotopy here, chosen point flows to regular height");
+            throw 0;
+          }
+
+        }
+
+
+        let targets_f = c.forward_limit.getComponentTargets();
+        let index_f = targets_f.indexOf(smoothing_position.height);
+        let targets_b = c.backward_limit.getComponentTargets();
+        let index_b = targets_b.indexOf(smoothing_position.height);
+        if (index_f < 0 || index_b < 0) {
+          console.log("Can't smooth homotopy here, chosen location not suitable");
+          throw 0;
+        }
+
+        let range = { first: smoothing_position.height, last: smoothing_position.height + 1 };
+        let forward_preimage = c.forward_limit.preimage(range);
+        let backward_preimage = c.backward_limit.preimage(range);
+        if (_debug) _assert(forward_preimage.length == 1);
+        if (_debug) _assert(backward_preimage.length == 1);
+        if (!forward_preimage.equals(backward_preimage)) {
+          console.log("Can't smooth homotopy here, incoming limits not locally symmetrical");
+          throw 0;
+        }
+        let new_forward_components = [];
+        for (let i=0; i<c.forward_limit.length; i++) {
+          if (i == index_f) continue;
+          new_forward_components.push(c.forward_limit[i]);
+        }
+        let new_backward_components = [];
+        for (let i=0; i<c.backward_limit.length; i++) {
+          if (i == index_b) continue;
+          new_backward_components.push(c.backward_limit[i]);
+        }
+        let new_forward = c.forward_limit.copy({components: new_forward_components});
+        let new_backward = c.backward_limit.copy({components: new_backward_components});
+        let new_content = new Content(this.n - 1, new_forward, new_backward);
+        let source_data = [new_content];
+
+        let offset_first = c.forward_limit[index_f].first;
+        for (let i=0; i<index_f; i++) {
+          let component = c.forward_limit[i];
+          offset_first -= component.source_data.length - 1;
+        }
+        let sublimit_component = c.forward_limit[index_f].copy({ first: offset_first });
+        let r1 = this.getSlice({height: r1_height, regular: true});
+        let new_singular = new_forward.rewrite_forward(r1);
+        let sublimit = new Limit(this.n - 1, [sublimit_component], new_singular.data.length);
+
+        // Construct expansion limit
+        let collapse = c.forward_limit.length == 1 && c.backward_limit.length == 1;
+        let component;
+        if (collapse) {
+          component = new LimitComponent(this.n, {first: r1_height,
+            source_data: [], sublimits: [], target_data: c});
+        } else {            
+          component = new LimitComponent(this.n, {first: r1_height,
+            source_data, sublimits: [sublimit], target_data: c});
+        }
+
+        let expansion_limit = new Limit(this.n, [component], this.data.length - (collapse ? 1 : 0));
+        return expansion_limit;
+
+      }
 
       // Expansion base case
       if (_debug) _assert(!location[0].regular && !location[1].regular); // both coordinates must be singular
@@ -1173,8 +1280,14 @@ export class Diagram {
       let D2 = this.getSlice({ height: height + 1, regular: false });
       let L1 = this.data[height].backward_limit;
       let L2 = this.data[height + 1].forward_limit;
+      /*
       let upper = [D1, D2];
-      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: tendency /* true means right, false means left, null means none */ }];
+      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: tendency }];
+      */
+
+      let upper = [{diagram: D1, bias_left: tendency <= 0}, {diagram: D2, bias_left: tendency > 0}];
+      let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2 }];
+
       let contract_data = Diagram.multiUnify({ lower, upper });
 
       // Build the limit to the contracted diagram
@@ -1224,24 +1337,128 @@ export class Diagram {
   // Compute a simultaneous unification of limits
   static multiUnify({ lower, upper, depth }) {
 
-    let n = upper[0].n;
+    _assert(upper[0].diagram);
+    let n = upper[0].diagram.n;
+
+    if (_debug) {
+
+      for (let i = 0; i < upper.length; i++) {
+        _propertylist(upper[i], ["diagram", "bias_left"]);
+        _assert(upper[i].diagram instanceof Diagram);
+        _assert(upper[i].diagram.n == n);
+      }
+
+      for (let i = 0; i < lower.length; i++) {
+        let l = lower[i];
+        _propertylist(l, ["left_index", "left_limit", "right_index", "right_limit", "diagram"]);
+        _assert(l.diagram instanceof Diagram && l.left_limit instanceof Limit && l.right_limit instanceof Limit);
+        _assert(isNatural(l.left_index) && isNatural(l.right_index));
+        _assert(l.left_index < upper.length && l.right_index < upper.length);
+        _assert(l.diagram.n == n && l.left_limit.n == n && l.right_limit.n == n);
+        //_assert(Number.isInteger(l.bias) && (l.bias >= -1) && (l.bias <= 1));
+      }
+
+      _assert(depth == null || isNatural(depth));
+      _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
+
+    }
+
+    // Base case
+    if (n == 0) {
+
+      // Tabulate the top-dimensional types that appear
+      let top_types = [];
+      for (let i = 0; i < upper.length; i++) Diagram.updateTopTypes(top_types, upper[i].diagram.type);
+      for (let i = 0; i < lower.length; i++) Diagram.updateTopTypes(top_types, lower[i].diagram.type);
+
+      // If there's more than one top-dimensional type, throw an error
+      if (_debug) _assert(top_types.length > 0);
+      if (top_types.length > 1) throw "no unification, multiple top types in base case";
+      let target_type = top_types[0];
+
+      // Build the cocone maps
+      let limits = [];
+      for (let i = 0; i < upper.length; i++) {
+        let source_type = upper[i].diagram.type;
+        limits.push(new Limit(0, source_type == target_type ? [] : [new LimitComponent(0, { source_type, target_type })]));
+      }
+
+      // Return the final data
+      let target = new Diagram(0, { type: target_type });
+      return { limits, target };
+      
+    }
+
+    // Get the unification of the singular monotones
+    let m_upper = [];
     for (let i = 0; i < upper.length; i++) {
-      if (_debug) _assert(upper[i] instanceof Diagram);
-      if (_debug) _assert(upper[i].n == n);
+      m_upper[i] = { size: upper[i].diagram.data.length, bias_left: upper[i].bias_left };
     }
-
+    let m_lower = [];
     for (let i = 0; i < lower.length; i++) {
-      let l = lower[i];
-      _propertylist(l, ["left_index", "left_limit", "right_index", "right_limit", "diagram"], ["bias"]);
-      if (_debug) _assert(l.diagram instanceof Diagram && l.left_limit instanceof Limit && l.right_limit instanceof Limit);
-      if (_debug) _assert(isNatural(l.left_index) && isNatural(l.right_index));
-      if (_debug) _assert(l.left_index < upper.length && l.right_index < upper.length);
-      if (_debug) _assert(l.diagram.n == n && l.left_limit.n == n && l.right_limit.n == n);
-      if (_debug) _assert(Number.isInteger(l.bias) && (l.bias >= -1) && (l.bias <= 1));
+      let m_left = lower[i].left_limit.getMonotone(lower[i].diagram, upper[lower[i].left_index].diagram);
+      let left = { target: lower[i].left_index, monotone: m_left };
+      let m_right = lower[i].right_limit.getMonotone(lower[i].diagram, upper[lower[i].right_index].diagram);
+      let right = { target: lower[i].right_index, monotone: m_right };
+      //let bias = lower[i].bias;
+      m_lower.push({ left, right });
+    }
+    let m_unif = Monotone.multiUnify({ lower: m_lower, upper: m_upper });
+
+    // Find size of unification set
+    let target_size = m_unif[0].target_size;
+
+    // For each element of unification set, recursively unify
+    let limit_components = [];
+    for (let i = 0; i < upper.length; i++) limit_components[i] = [];
+    let target_content = [];
+    for (let i = 0; i < target_size; i++) {
+      let component = Diagram.multiUnifyComponent({ upper, lower }, m_unif, m_lower, i);
+      target_content.push(component.target_content);
+      for (let j = 0; j < upper.length; j++) {
+        if (!component.cocone_components[j]) continue;
+        limit_components[j].push(component.cocone_components[j]);
+      }
     }
 
-    if (_debug) _assert(depth == null || isNatural(depth));
-    if (_debug) _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
+    // Build final data
+    let target = new Diagram(n, { source: upper[0].diagram.source, data: target_content });
+    let limits = [];
+    for (let i = 0; i < upper.length; i++) {
+      limits.push(new Limit(n, limit_components[i], upper[i].diagram.data.length));
+    }
+
+    // Return final data
+    return { limits, target };
+  }
+
+
+  // Compute a simultaneous unification of limits
+  static multiUnify_OLD({ lower, upper, depth }) {
+
+    let n = upper[0].n;
+
+    if (_debug) {
+
+      for (let i = 0; i < upper.length; i++) {
+        _assert(upper[i] instanceof Diagram);
+        _assert(upper[i].n == n);
+      }
+
+      for (let i = 0; i < lower.length; i++) {
+        let l = lower[i];
+        _propertylist(l, ["left_index", "left_limit", "right_index", "right_limit", "diagram"], ["bias"]);
+        _assert(l.diagram instanceof Diagram && l.left_limit instanceof Limit && l.right_limit instanceof Limit);
+        _assert(isNatural(l.left_index) && isNatural(l.right_index));
+        _assert(l.left_index < upper.length && l.right_index < upper.length);
+        _assert(l.diagram.n == n && l.left_limit.n == n && l.right_limit.n == n);
+        _assert(Number.isInteger(l.bias) && (l.bias >= -1) && (l.bias <= 1));
+      }
+
+      _assert(depth == null || isNatural(depth));
+      _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
+
+    }
 
     // Base case
     if (n == 0) {
@@ -1266,6 +1483,7 @@ export class Diagram {
       // Return the final data
       let target = new Diagram(0, { type: target_type });
       return { limits, target };
+
     }
 
     // Get the unification of the singular monotones
@@ -1346,21 +1564,20 @@ export class Diagram {
     let lower_ranges = [];
     for (let i = 0; i < upper.length; i++) {
       upper_ranges[i] = m_cocone[i].preimage(height);
-      upper_preimage.push(upper[i].restrict(upper_ranges[i]));
+      upper_preimage.push(upper[i].diagram.restrict(upper_ranges[i]));
     }
     for (let i = 0; i < lower.length; i++) {
       let l = lower[i];
       let left_index = l.left_index;
       let right_index = l.right_index;
-
       let left_limit = l.left_limit.preimage(upper_ranges[left_index]);
       let right_limit = l.right_limit.preimage(upper_ranges[right_index]);
-      let left_monotone = l.left_limit.getMonotone(l.diagram.data.length, upper[l.left_index].data.length);
+      let left_monotone = l.left_limit.getMonotone(l.diagram.data.length, upper[l.left_index].diagram.data.length);
       let left_preimage = left_monotone.preimage(upper_ranges[l.left_index]);
       lower_ranges.push(left_preimage);
       let diagram = l.diagram.restrict(left_preimage);
       let bias = l.bias;
-      lower_preimage.push({ left_index, right_index, left_limit, right_limit, diagram, bias });
+      lower_preimage.push({ left_index, right_index, left_limit, right_limit, diagram /*, bias*/ });
     }
 
     // Explode the upper singular and regular diagrams
@@ -1370,16 +1587,19 @@ export class Diagram {
     for (let i = 0; i < upper.length; i++) {
       let u = upper_preimage[i];
       let slice_positions = [];
+      let bias_left = upper[i].bias_left;
       for (let j = 0; j < u.data.length; j++) {
         slice_positions.push(upper_exploded.length);
-        upper_exploded.push(u.getSlice({ height: j, regular: false }));
+        //upper_exploded.push(u.getSlice({ height: j, regular: false }));
+        upper_exploded.push({diagram: u.getSlice({ height: j, regular: false }), bias_left});
         if (j == 0) continue; // one less regular level than singular level to include
         let diagram = u.getSlice({ height: j, regular: true });
         let left_limit = u.data[j - 1].backward_limit;
         let right_limit = u.data[j].forward_limit;
         let left_index = upper_exploded.length - 2;
         let right_index = upper_exploded.length - 1;
-        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index, bias: 0 });
+        //lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index, bias: 0 });
+        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index /*, bias: 0*/ });
       }
       upper_slice_position.push(slice_positions);
     }
@@ -1397,7 +1617,8 @@ export class Diagram {
         let left_index = upper_slice_position[l.left_index][m_lower[i].left.monotone[j + lower_offset] - upper_left_offset];
         let right_index = upper_slice_position[l.right_index][m_lower[i].right.monotone[j + lower_offset] - upper_right_offset];
         let bias = l.bias;
-        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index, bias });
+        //lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index, bias });
+        lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index /*, bias*/ });
       }
     }
     let exploded = { upper: upper_exploded, lower: lower_exploded };
@@ -1416,7 +1637,7 @@ export class Diagram {
     let recursive = Diagram.multiUnify(exploded);
 
     // Get the content for the main diagram
-    let nu = upper[nonempty_upper];
+    let nu = upper[nonempty_upper].diagram;
     let recursive_first = recursive.limits[upper_slice_position[nonempty_upper][0]];
     let forward = recursive_first.compose(nu.data[upper_ranges[nonempty_upper].first].forward_limit);
     let last_slice_position = ArrayUtil.last(upper_slice_position[nonempty_upper]);
@@ -1438,7 +1659,7 @@ export class Diagram {
         cocone_components[i] = null;
       } else {
         let source_data = upper_preimage[i].data.slice();
-        cocone_components[i] = new LimitComponent(upper[0].n, { first, source_data, target_data: target_content, sublimits });
+        cocone_components[i] = new LimitComponent(upper[0].diagram.n, { first, source_data, target_data: target_content, sublimits });
       }
     }
 

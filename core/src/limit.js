@@ -2170,11 +2170,22 @@ export class Limit extends Array {
     if (_debug) _assert(index >= 0);
     let component = this[index];
     if (_debug) _assert(component.source_data.length > 0);
+
+    let first_limit = component.source_data[regular_height - component.first].forward_limit;
+
+    //let first_limit = this.data[regular_height].forward_limit;
+    let second_limit = this.subLimit(regular_height);
+    let composed_limit = second_limit.compose(first_limit);
+    let updated = composed_limit.updateSliceForward(rest);
+    return [2 * s_target + 1, ...updated];
+    /*
+
     let first_limit = component.source_data[0].backward_limit;
     let second_limit = this.subLimit(s_below);
     let composed_limit = second_limit.compose(first_limit);
     let updated = composed_limit.updateSliceForward(rest);
     return [2 * s_target + 1, ...updated];
+    */
 
     /*
     // Identity locally
