@@ -142,6 +142,10 @@ export default createReducer({
     return clearOptions(state);
   },
 
+  [DiagramActions.MAKE_THEOREM]: (state) => {
+    return clearOptions(state);
+  },
+
   [DiagramActions.SET_PROJECTION]: (state) => {
     return clearOptions(state);
   },

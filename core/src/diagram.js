@@ -1711,6 +1711,7 @@ export class Diagram {
     let source;
     let data = [];
     for (let i=range.first; i<range.last; i++) {
+      if (_debug) _assert(this.data[i]);
       let forward_limit = this.data[i].forward_limit.restrictToPreimage(subset[i]);
       let backward_limit = this.data[i].backward_limit.restrictToPreimage(subset[i]);
       let content = new Content(this.n - 1, forward_limit, backward_limit);

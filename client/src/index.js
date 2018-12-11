@@ -17,6 +17,7 @@ import {
   takeIdentity,
   clearDiagram,
   restrictDiagram,
+  makeTheorem,
   setRenderer
 } from "~/state/actions/diagram";
 
@@ -33,6 +34,7 @@ Rx.fromEvent(document, "keydown")
     case "i": return store.dispatch(takeIdentity());
     case "c": return store.dispatch(clearDiagram());
     case "r": return store.dispatch(restrictDiagram());
+    case "h": return store.dispatch(makeTheorem());
     //case "r": return store.dispatch(setRenderer(2));
     //case "R": return store.dispatch(setRenderer(3));
     }

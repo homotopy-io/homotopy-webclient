@@ -5,7 +5,7 @@ import createReducer from "~/util/create-reducer";
 import * as DiagramActions from "~/state/actions/diagram";
 import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
-import { createGenerator } from "~/state/store/signature";
+import { createGenerator, getGenerator } from "~/state/store/signature";
 
 export const getDiagram = (state) => {
   return state.diagram.diagram;
@@ -179,41 +179,20 @@ export default createReducer({
     }
   },
 
+  [DiagramActions.MAKE_THEOREM]: (state) => {
+    let { diagram } = state.diagram;
+    state = createGenerator(state, diagram.source, diagram.getTarget());
+    let generator = getGenerator(state, state.signature.id - 1);
+    state = createGenerator(state, generator.generator.diagram, diagram);
+    state = dotProp.set(state, "diagram.diagram", null);
+    return state;
+  },
+
   [DiagramActions.SET_RENDERER]: (state, { renderer }) => {
     state = dotProp.set(state, "diagram.renderer", renderer);
     state = dotProp.set(state, "diagram.slice", updateSlices(state));
     return state;
   },
-
-  /*
-  [DiagramActions.CONTRACT]: (state, { point, direction }) => {
-    let { diagram, slice } = state.diagram;
-
-    if (diagram == null || point.length < 2) return state;
-
-    let point_expanded = [...slice, ...point];
-    //let point_unprojected = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
-
-    // ONLY THE PATH MATTERS FOR THE CONTRACTION
-    let path = Core.Boundary.getPath(diagram, point_expanded);
-    //path.point[path.point.length - 2] -= direction[1] < 0 ? 2 : 0;
-
-    try {
-      diagram = Core.attach(diagram,
-        (boundary, point) => { return boundary.homotopy(point.slice(0, -1), direction); },
-        path
-      );
-
-      state = dotProp.set(state, "diagram.diagram", diagram);
-      state = dotProp.set(state, "diagram.slice", updateSlices(state));
-      return state;
-
-    } catch(error) {
-      console.error(error);
-      return state;
-    }
-  },
-  */
 
   [DiagramActions.HOMOTOPY]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;

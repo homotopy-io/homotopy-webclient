@@ -7,6 +7,7 @@ export const CLEAR_BOUNDARY = "diagram/clear-boundary";
 export const CLEAR_DIAGRAM = "diagram/clear-diagram";
 export const TAKE_IDENTITY = "diagram/take-identity";
 export const RESTRICT_DIAGRAM = "diagram/restrict-diagram";
+export const MAKE_THEOREM = "diagram/make-theorem";
 export const SELECT_CELL = "diagram/select-cell";
 export const HOMOTOPY = "diagram/homotopy";
 
@@ -47,6 +48,10 @@ export const takeIdentity = () => ({
 
 export const restrictDiagram = () => ({
   type: RESTRICT_DIAGRAM
+});
+
+export const makeTheorem = () => ({
+  type: MAKE_THEOREM
 });
 
 export const selectCell = (points) => {
