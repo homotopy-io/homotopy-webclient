@@ -6,6 +6,8 @@ export const SET_RENDERER = "diagram/set-renderer";
 export const CLEAR_BOUNDARY = "diagram/clear-boundary";
 export const CLEAR_DIAGRAM = "diagram/clear-diagram";
 export const TAKE_IDENTITY = "diagram/take-identity";
+export const RESTRICT_DIAGRAM = "diagram/restrict-diagram";
+export const MAKE_THEOREM = "diagram/make-theorem";
 export const SELECT_CELL = "diagram/select-cell";
 export const HOMOTOPY = "diagram/homotopy";
 
@@ -44,10 +46,19 @@ export const takeIdentity = () => ({
   type: TAKE_IDENTITY
 });
 
-export const selectCell = (point) => ({
-  type: SELECT_CELL,
-  payload: { point }
+export const restrictDiagram = () => ({
+  type: RESTRICT_DIAGRAM
 });
+
+export const makeTheorem = () => ({
+  type: MAKE_THEOREM
+});
+
+export const selectCell = (points) => {
+  return {
+  type: SELECT_CELL,
+  payload: { points }
+}};
 
 export const homotopy = (point, direction) => ({
   type: HOMOTOPY,

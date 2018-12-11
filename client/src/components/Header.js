@@ -3,7 +3,7 @@ import styled from "styled-components";
 import downloadJSON from "~/util/export";
 
 export const Header = () =>
-  <Actions>
+  <Actions style={{userSelect: 'none'}}>
     <Action>Log In</Action>
     <Action>Sign Up</Action>
     <Action>Gallery</Action>

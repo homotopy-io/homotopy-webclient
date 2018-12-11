@@ -1,4 +1,4 @@
-import {_assert} from '../util/debug'
+import { _assert, _debug } from '../util/debug'
 import * as Kiwi from "kiwi.js";
 import UnionFind from "union-find";
 
@@ -52,6 +52,20 @@ class Solver {
 
     // Analyze the inputs and outputs that should be averaged over.
     for (let { source, target, codim, dir } of this.edges) {
+
+      if (codim == this.dimension - 1 && this.dimension > 1) {
+        if (source[codim] % 2 == 0) {
+          this.addRelation(source, target, codim, dir);
+        }
+
+        // Singular target
+        if (target[codim] % 2 != 0) {
+          this.addRelation(target, source, codim, dir);
+        }
+
+        continue;
+      }
+
       if (codim >= this.dimension - 1) {
         continue;
       }
@@ -120,13 +134,14 @@ class Solver {
   addRelation(source, target, codim, dir) {
     let relations = this.points.get(pointId(source)).relations;
     let key = `${codim}:${dir}`;
+    if (_debug) _assert(relations.get(key));
     relations.get(key).points.push(target);
   }
 
   getVariableId(point, codim) {
     let pointid = this.points.get(pointId(point));
     if (!pointid) return null;
-    _assert(pointid);
+    if (_debug) _assert(pointid);
     return pointid.variables[codim - 1];
   }
 
@@ -164,7 +179,7 @@ class Solver {
       }
 
       if (codim == 1 && source[0] % 2 == 1) {
-        continue;
+        //continue;
       }
 
       yield new Kiwi.Constraint(

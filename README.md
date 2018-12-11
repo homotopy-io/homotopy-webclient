@@ -1,5 +1,8 @@
 # homotopy.io
 
+## License
+
+This work is made available under the CC BY-NC 3.0, Attribution-NonCommercial 3.0 Unported
 
 ## Build Instructions
 

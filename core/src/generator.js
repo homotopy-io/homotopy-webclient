@@ -1,18 +1,23 @@
-import { _assert, isNatural } from "~/util/debug";
+import { _assert, _debug, isNatural } from "~/util/debug";
 import { Diagram } from "~/diagram";
 import { Content } from "~/limit";
 
 export class Generator {
 
   constructor(id, source = null, target = null) {
-    _assert(id !== undefined);
-    _assert(source == null || source instanceof Diagram);
-    _assert(target == null || target instanceof Diagram);
+    if (_debug) _assert(id !== undefined);
+    if (_debug) _assert(source == null || source instanceof Diagram);
+    if (_debug) _assert(target == null || target instanceof Diagram);
 
     this.n = source == null ? 0 : source.n + 1;
     this.source = source;
     this.target = target;
     this.id = id;
+
+    if (this.n > 1) {
+      if (_debug) _assert(source.source.equals(target.source));
+      if (_debug) _assert(source.getTarget().equals(target.getTarget()));
+    }
 
     // Build content
     if (this.n > 0) {
@@ -46,7 +51,7 @@ export class Generator {
   }
 
   validate() {
-    _assert(this.n == 0 || this.source);
+    if (_debug) _assert(this.n == 0 || this.source);
   }
 
   // Mirror a generator

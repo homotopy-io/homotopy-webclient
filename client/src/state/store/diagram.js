@@ -1,11 +1,11 @@
-import { _assert } from "../../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug } from "../../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
 import { createSelector } from "reselect";
 import createReducer from "~/util/create-reducer";
 import * as DiagramActions from "~/state/actions/diagram";
 import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
-import { createGenerator } from "~/state/store/signature";
+import { createGenerator, getGenerator } from "~/state/store/signature";
 
 export const getDiagram = (state) => {
   return state.diagram.diagram;
@@ -38,7 +38,7 @@ export const getSliceBounds = (state) => {
     return [];
   } else {
     let options = [];
-    _assert(slice instanceof Array);
+    if (_debug) _assert(slice instanceof Array);
     for (let height of slice) {
       options.push(diagram.data.length * 2);
       diagram = Core.Geometry.getSlice(diagram, height);
@@ -84,9 +84,8 @@ export const updateSlices = createSelector(
   state => state.diagram.projection,
   state => state.diagram.renderer,
   (slice, diagram, projection, renderer) => {
-    if (diagram == null) {
-      return [];
-    }
+
+    if (diagram == null) return [];
 
     let sliceCount = diagram.n - renderer - projection;
 
@@ -97,8 +96,8 @@ export const updateSlices = createSelector(
     }
 
     for (let i = 0; i < slice.length; i++) {
-      slice[i] = Math.max(slice[i], 0);
-      slice[i] = Math.min(slice[i], diagram.data.length * 2);
+      slice[i] = Math.max(slice[i], -1);
+      slice[i] = Math.min(slice[i], diagram.data.length * 2 + 1);
       diagram = Core.Geometry.getSlice(diagram, slice[i]);
     }
 
@@ -107,42 +106,86 @@ export const updateSlices = createSelector(
 );
 
 export default createReducer({
+
   [DiagramActions.SET_SOURCE]: (state) => {
     let { target, diagram } = state.diagram;
+    let source = diagram;
 
-    if (diagram == null) {
-    } else if (target != null) {
-      if (target.n == diagram.n) {
-        state = createGenerator(state, diagram, target);
-        state = dotProp.set(state, "diagram.diagram", null);
-        state = dotProp.set(state, "diagram.target", null);
+    if (diagram == null) return state;
+    
+    // If there is already a source, create a new generator
+    if (target != null) {
+
+      if (target.n != source.n) {
+        alert ('Source and target must have the same dimension');
+        return state;
       }
-    } else {
-      state = dotProp.set(state, "diagram.source", diagram);
+
+      if (source.n > 1) {
+        if (!source.source.equals(target.source)
+          || !source.getTarget().equals(target.getTarget())) {
+            alert ('Source and target must have the same boundary');
+            return state;
+        }
+      }
+
+      state = createGenerator(state, source, target);
       state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "diagram.target", null);
+      return state;
     }
-    return state;
+
+    // If there is not already a source, just store this target
+    else {
+      state = dotProp.set(state, "diagram.source", source);
+      state = dotProp.set(state, "diagram.diagram", null);
+      return state;
+    }
   },
 
   [DiagramActions.SET_TARGET]: (state) => {
     let { source, diagram } = state.diagram;
+    let target = diagram;
 
-    if (diagram == null) {
-      return state;
-    } else if (source != null) {
-      if (source.n == diagram.n) {
-        state = createGenerator(state, source, diagram);
-        state = dotProp.set(state, "diagram.diagram", null);
-        state = dotProp.set(state, "diagram.source", null);
-        return state;
-      } else {
+    if (diagram == null) return state;
+    
+    // If there is already a source, create a new generator
+    if (source != null) {
+
+      if (source.n != target.n) {
+        alert ('Source and target must have the same dimension');
         return state;
       }
-    } else {
-      state = dotProp.set(state, "diagram.target", diagram);
+
+      if (source.n >= 1) {
+        if (!source.source.equals(target.source)
+          || !source.getTarget().equals(target.getTarget())) {
+            alert ('Source and target must have the same boundary');
+            return state;
+        }
+      }
+
+      state = createGenerator(state, source, target);
+      state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "diagram.source", null);
+      return state;
+    }
+
+    // If there is not already a source, just store this target
+    else {
+      state = dotProp.set(state, "diagram.target", target);
       state = dotProp.set(state, "diagram.diagram", null);
       return state;
     }
+  },
+
+  [DiagramActions.MAKE_THEOREM]: (state) => {
+    let { diagram } = state.diagram;
+    state = createGenerator(state, diagram.source, diagram.getTarget());
+    let generator = getGenerator(state, state.signature.id - 1);
+    state = createGenerator(state, generator.generator.diagram, diagram);
+    state = dotProp.set(state, "diagram.diagram", null);
+    return state;
   },
 
   [DiagramActions.SET_RENDERER]: (state, { renderer }) => {
@@ -150,36 +193,6 @@ export default createReducer({
     state = dotProp.set(state, "diagram.slice", updateSlices(state));
     return state;
   },
-
-  /*
-  [DiagramActions.CONTRACT]: (state, { point, direction }) => {
-    let { diagram, slice } = state.diagram;
-
-    if (diagram == null || point.length < 2) return state;
-
-    let point_expanded = [...slice, ...point];
-    //let point_unprojected = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
-
-    // ONLY THE PATH MATTERS FOR THE CONTRACTION
-    let path = Core.Boundary.getPath(diagram, point_expanded);
-    //path.point[path.point.length - 2] -= direction[1] < 0 ? 2 : 0;
-
-    try {
-      diagram = Core.attach(diagram,
-        (boundary, point) => { return boundary.homotopy(point.slice(0, -1), direction); },
-        path
-      );
-
-      state = dotProp.set(state, "diagram.diagram", diagram);
-      state = dotProp.set(state, "diagram.slice", updateSlices(state));
-      return state;
-
-    } catch(error) {
-      console.error(error);
-      return state;
-    }
-  },
-  */
 
   [DiagramActions.HOMOTOPY]: (state, { point, direction }) => {
     let { diagram, slice } = state.diagram;
@@ -214,9 +227,29 @@ export default createReducer({
     return state;
   },
 
+  [DiagramActions.RESTRICT_DIAGRAM]: (state) => {
+    let diagram = state.diagram.diagram;
+    let slice = state.diagram.slice;
+    for (let i=0; i<slice.length; i++) {
+      if (slice > 0 && slice < 2 * diagram.data.length) {
+        if (slice % 2 == 1) {
+          alert('Cannot restrict diagram to singular slice');
+          return state;
+        }
+      }
+    }
+    state = dotProp.set(state, "diagram.diagram", diagram.getSlice(...slice));
+    state = dotProp.set(state, "diagram.slice", []);
+    return state;
+  },
+
   [DiagramActions.TAKE_IDENTITY]: (state) => {
     state = dotProp.set(state, "diagram.diagram", diagram => diagram.boost());
-    state = dotProp.set(state, "diagram.slice", updateSlices(state));
+    let slice = state.diagram.slice.slice();
+    let diagram = state.diagram.diagram;
+    let sliceCount = diagram.n - state.diagram.renderer - state.diagram.projection;
+    if (sliceCount > slice.length) slice.push(1);
+    state = dotProp.set(state, "diagram.slice", slice);
     return state;
   },
 

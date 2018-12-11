@@ -8,9 +8,10 @@ import * as Core from "homotopy-core";
 import * as Rx from "rxjs";
 import * as RxOps from "rxjs/operators";
 import * as HSLuv from "hsluv";
+import BezierCubic from "~/util/bezier";
 
 import compose from "~/util/compose";
-import { _assert, isNatural } from "../../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug, isNatural } from "../../../../core/src/util/debug"; // this is a mess
 //import { _assert } from "~/util/debug";
 import Graph from "~/util/graph";
 import withSize from "~/components/misc/Sized";
@@ -39,30 +40,32 @@ export class Diagram2D extends React.Component {
   }
 
   componentDidMount() {
+    /*
     this.panzoom = panzoom(this.diagramRef.current, {
-      panEnabled: /*this.props.interactive*/ false,
+      panEnabled: this.props.interactive,
       zoomEnabled: this.props.interactive,
       dblClickZoomEnabled: this.props.interactive,
       zoomScaleSensitivity: 0.4,
       minZoom: 0.001,
       maxZoom: 1000
     });
+    */
   }
 
   componentDidUpdate(props) {
     if (this.props.layout != props.layout) {
-      this.panzoom.destroy();
+      //this.panzoom.destroy();
       this.componentDidMount();
     }
   }
 
   componentWillUnmount() {
-    this.panzoom.destroy();
+    //this.panzoom.destroy();
   }
 
-  onSelect(e, point) {
+  onSelect(e, points) {
     if (this.props.interactive) {
-      this.props.onSelect && this.props.onSelect(point);
+      this.props.onSelect && this.props.onSelect(points);
     }
   }
 
@@ -149,7 +152,8 @@ export class Diagram2D extends React.Component {
   // Get the display colour of the generator in a given ambient dimension
   getColour(generator, n) {
 
-    _assert(isNatural(n));
+    if (_debug) _assert(isNatural(n));
+    if (_debug) _assert(generator);
 
     //if (n >= 3) debugger;
 
@@ -159,7 +163,8 @@ export class Diagram2D extends React.Component {
     // Otherwise, adjust the lightness cyclically
     var husl = HSLuv.hexToHsluv(generator.color);
     var lightnesses = [30, 50, 70];
-    husl[2] = lightnesses[(n - generator.generator.n) % 3];
+    //husl[2] = lightnesses[(n - generator.generator.n) % 3];
+    husl[2] = 10 + ((husl[2] + (n - generator.generator.n) * 33.8309886184) % 90);
     return HSLuv.hsluvToHex(husl);
 
   }
@@ -179,23 +184,123 @@ export class Diagram2D extends React.Component {
     return control;
   }
 
-  renderPoint(point) {
+  renderPoint0d(point) {
+
     let position = point.position;
     let generator = point.generator;
 
-    if (this.props.dimension == 2 && !point.nontrivial && !point.boundary) {
+    if (_debug) _assert(point.slice.length == 0);
+
+    if (_debug) _assert(generator);
+
+    let colour = this.getColour(generator, this.diagram.n);
+    let key = `point`;
+    let fill_opacity = 1;
+    let r = 12.5;
+    return (
+      <circle
+        cx={position[0]}
+        cy={position[1]}
+        r={r}
+        strokeWidth={0}
+        fill={colour}
+        fillOpacity={fill_opacity}
+        onClick={e => this.onSelect(e, [point.point])}
+        onMouseDown={e => this.onStartDrag(e, point.point)}
+        key={key}>
+        {this.props.interactive && <title>{generator.name}</title>}
+      </circle>
+    );
+
+  }
+
+  renderPoint1d(point) {
+
+    let position = point.position;
+    let generator = point.generator;
+
+    if (_debug) _assert(point.slice.length == 1);
+
+    // Don't show boundary points
+    if (point.boundary) {
+      return null; // keep showing these for now
+    }
+
+    // No points on regular slices of 1d diagrams
+    else if (point.slice[0].regular) {
       return null;
     }
+
+    if (_debug) _assert(generator);
 
     if (generator.generator.n < this.diagram.n) {
       //return null;
     }
 
     let colour = this.getColour(generator, this.diagram.n);
-    let key = `point#${point.point.join(":")}`;
+    let key = `point#${point.position.join(":")}`;
     let fill_opacity = 1;
     let r = 12.5;
-    if (point.homotopy) {
+    return (
+      <circle
+        cx={position[0]}
+        cy={position[1]}
+        r={r}
+        strokeWidth={0}
+        fill={colour}
+        fillOpacity={fill_opacity}
+        onClick={e => this.onSelect(e, [point.point])}
+        onMouseDown={e => this.onStartDrag(e, point.point)}
+        key={key}>
+        {this.props.interactive && <title>{generator.name}</title>}
+      </circle>
+    );
+
+  }
+
+  renderPoint2d(point) {
+
+    let position = point.position;
+    let generator = point.generator;
+
+    if (this.props.dimension == 2) {
+      if (_debug) _assert(point.slice.length == 2);
+
+      // Don't show boundary points
+      if (point.boundary) {
+        return null;
+      }
+
+      // No points on regular-regular or singular-regular slices
+      else if (point.slice[1].regular) {
+        return null;
+      }
+    }
+
+    if (_debug) _assert(generator);
+
+    if (generator.generator.n < this.diagram.n) {
+      //return null;
+    }
+
+    let colour = this.getColour(generator, this.diagram.n);
+    let key = `point#${point.position.join(":")}`;
+    let fill_opacity = 1;
+    let r = 12.5;
+    if (point.nontrivial && !point.algebraic) {
+      if (point.count_depths == null) {
+        fill_opacity = 0;
+        r = 20;
+      } else if (point.count_depths <= 1) {
+        fill_opacity = 1;
+        r = 12.5;
+        colour = this.getColour(generator, this.diagram.n - 1);
+      } else {
+        fill_opacity = 0;
+        r = 20;
+      }
+    }
+    else if (!point.algebraic) {
       fill_opacity = 0;
       r = 20;
     }
@@ -207,12 +312,22 @@ export class Diagram2D extends React.Component {
         strokeWidth={0}
         fill={colour}
         fillOpacity={fill_opacity}
-        onClick={e => this.onSelect(e, point.point)}
+        onClick={e => this.onSelect(e, [point.point])}
         onMouseDown={e => this.onStartDrag(e, point.point)}
         key={key}>
         {this.props.interactive && <title>{generator.name}</title>}
       </circle>
     );
+  }
+
+  renderPoint(point) {
+    if (this.props.dimension == 0) {
+      return this.renderPoint0d(point)
+    } else if (this.props.dimension == 1) {
+      return this.renderPoint1d(point);
+    } else if (this.props.dimension == 2) {
+      return this.renderPoint2d(point);
+    } else _assert(false);
   }
 
   coordToObject(p) {
@@ -223,7 +338,7 @@ export class Diagram2D extends React.Component {
   }
 
   coordsToObject(p) {
-    _assert(p instanceof Array);
+    if (_debug) _assert(p instanceof Array);
     let r = [];
     for (let i=0; i<p.length; i++) {
       //_assert(p[i] instanceof Number);
@@ -252,7 +367,7 @@ export class Diagram2D extends React.Component {
   }
 
   preparePoint0d(point) {
-    _assert(point.length == 0);
+    if (_debug) _assert(point.length == 0);
     let ref = '';
     let generator = this.getGenerator(point);
     let position = this.getPosition(point);
@@ -262,7 +377,7 @@ export class Diagram2D extends React.Component {
   }
 
   preparePoint1d(point) {
-    _assert(point.length == 1);
+    if (_debug) _assert(point.length == 1);
 
     let ref = point.join(',').toString();
     let generator = this.getGenerator(point);
@@ -284,13 +399,13 @@ export class Diagram2D extends React.Component {
     let slice = [{regular, height}];
     let nontrivial = !regular;
 
-    return { point, generator, position, ref, slice, nontrivial };
+    return { point, generator, position, ref, slice, nontrivial, boundary };
   }
 
   preparePoint2d(point) {
-    _assert(point.length == 2);
-    _assert(point[0] >= -1);
-    _assert(point[1] >= -1);
+    if (_debug) _assert(point.length == 2);
+    if (_debug) _assert(point[0] >= -1);
+    if (_debug) _assert(point[1] >= -1);
     let ref = point.join(',').toString();
     let generator = this.getGenerator(point);
     let position = this.getPosition(point);
@@ -320,7 +435,7 @@ export class Diagram2D extends React.Component {
     // whether it's algebraic.
     let nontrivial = false;
     let algebraic = false;
-    let homotopy = false;
+    //let homotopy = false;
     if (!slice[0].regular && !slice[1].regular) {
       let data = this.diagram.data[slice[0].height];
       let forward_nontrivial = data.forward_limit.analyzeSingularNeighbourhoods();
@@ -328,33 +443,40 @@ export class Diagram2D extends React.Component {
       nontrivial = forward_nontrivial[slice[1].height] || backward_nontrivial[slice[1].height];
       if (nontrivial) {
         algebraic = (generator.generator.n >= this.diagram.n);
-        homotopy = !algebraic;
+        //homotopy = !algebraic;
       }
     }
 
-    return { point, generator, position, ref, nontrivial, algebraic, homotopy, slice, boundary };
+    return { point, generator, position, ref, nontrivial, algebraic, /* homotopy, */ slice, boundary };
   }
 
   // Store the control points for each edge
   prepareEdge(edge, points) {
     let s = edge.source;
     let t = edge.target;
-    _assert(s);
-    _assert(t);
+    if (_debug) _assert(s);
+    if (_debug) _assert(t);
     let s_ref = s.join(',');
     let t_ref = t.join(',');
     edge.source_point = points.find(v => v.ref == s_ref);
     edge.target_point = points.find(v => v.ref == t_ref);
-    _assert(edge.source_point);
-    _assert(edge.target_point);
+    if (_debug) _assert(edge.source_point);
+    if (_debug) _assert(edge.target_point);
     let sGenerator = edge.source_point.generator;
     let tGenerator = edge.target_point.generator;
     let sPosition = edge.source_point.position;
     let tPosition = edge.target_point.position;
     if (edge.target_point.nontrivial) {
-      if (edge.target_point.algebraic) {
-        edge.st_control = this.getControlPoint(sGenerator, sPosition, tPosition);
-        edge.ts_control = this.getControlPoint(tGenerator, tPosition, sPosition);
+      if (edge.target_point.algebraic && sPosition[1] != tPosition[1]) {
+
+        edge.st_control = sPosition.slice();
+        edge.st_control[1] = (4 * edge.st_control[1] + tPosition[1]) / 5;
+        edge.ts_control = tPosition.slice();
+        edge.ts_control[0] = sPosition[0];
+
+
+        //edge.st_control = this.getControlPoint(sGenerator, sPosition, tPosition);
+        //edge.ts_control = this.getControlPoint(tGenerator, tPosition, sPosition);
         /*
         if (edge.type == 'triangle edge') {
           edge.svg_path = ` C ${edge.ts_control.join(" ")} ${st_control.join(" ")} ${sPosition.join(" ")}`;
@@ -380,7 +502,7 @@ export class Diagram2D extends React.Component {
   prepareEdgeSVGPath(edge) {
     if (edge.svg_path) return edge;
     if (edge.st_control || edge.ts_control) {    
-      _assert(edge.st_control && edge.ts_control);
+      if (_debug) _assert(edge.st_control && edge.ts_control);
       if (edge.type == 'triangle edge') {
         edge.svg_path = ` C ${edge.ts_control.join(" ")} ${edge.st_control.join(" ")} ${edge.source_point.position.join(" ")}`;
       } else {
@@ -402,13 +524,13 @@ export class Diagram2D extends React.Component {
     if (this.diagram.n < 3) return;
     if (edges.length == 0) return;
     let vertex = edges[0].target_point;
-    _assert(vertex.slice);
+    if (_debug) _assert(vertex.slice);
     let wires = this.diagram.getWireDepths(vertex.slice[0].height, vertex.slice[1].height);
 
     // Separate out the source and target edges
     let source_edges = edges.filter(edge => edge.source_point.point[0] < vertex.point[0]);
     let target_edges = edges.filter(edge => edge.source_point.point[0] > vertex.point[0]);
-    _assert(source_edges.length + target_edges.length + 2 == edges.length);
+    if (_debug) _assert(source_edges.length + target_edges.length + 2 == edges.length);
 
     // Order these edges
     source_edges = source_edges.sort((a, b) => a.source_point.point[1] - b.source_point.point[1]); 
@@ -446,6 +568,14 @@ export class Diagram2D extends React.Component {
         continue;
       }
       groups.push(groups_temp[i]);
+    }
+
+    // Tell the vertex how many depths there are
+    vertex.count_depths = groups.length;
+
+    // Don't add homotopy data for flat algebraic vertices
+    if (vertex.count_depths == 1 && vertex.algebraic) {
+      return;
     }
 
     // Draw the groups nearest-first
@@ -508,6 +638,8 @@ export class Diagram2D extends React.Component {
         // Calculate control points for this segment
         let edge = segment.edge;
         let start_y = vertex.position[1];//edge.source_point.position[1] + (segment.source ? -1 : +1) * 50;
+        //_assert(!edge.st_control);
+        //_assert(!edge.ts_control);
         edge.st_control = [edge.source_point.position[0], start_y + (segment.source ? c1l : -c1l)];
         edge.ts_control = [segment.source ? c2x_source : c2x_target, segment.source ? c2y_source : c2y_target];
         edge.mask = mask_url;
@@ -516,7 +648,8 @@ export class Diagram2D extends React.Component {
 
       if (i == groups.length - 1) break;
       let height = vertex.position[1];
-      masks.push({ mask_edges, left, right, height });
+      let mask_point = (vertex.algebraic /*&& i > 0*/) ? vertex : null;
+      masks.push({ mask_edges, left, right, height, mask_point });
     }
 
     // Assign control points to the intermediate regular edges
@@ -533,6 +666,8 @@ export class Diagram2D extends React.Component {
         st_controls.push(source_edges[2 * i + 1].st_control);
         ts_controls.push(source_edges[2 * i + 1].ts_control);
       }
+      //_assert(!edge.st_control);
+      //_assert(!edge.ts_control);
       if (st_controls.length == 1) {
         edge.st_control = st_controls[0];
         edge.ts_control = ts_controls[0];
@@ -554,6 +689,8 @@ export class Diagram2D extends React.Component {
         st_controls.push(target_edges[2 * i + 1].st_control);
         ts_controls.push(target_edges[2 * i + 1].ts_control);
       }
+      //_assert(!edge.st_control);
+      //_assert(!edge.ts_control);
       if (st_controls.length == 1) {
         edge.st_control = st_controls[0];
         edge.ts_control = ts_controls[0];
@@ -569,31 +706,91 @@ export class Diagram2D extends React.Component {
 
     if (!edge.wire) return;
     
-    let s = edge.source_point;
-    let t = edge.target_point;
-    let sGenerator = s.generator;
-    let sPosition = s.position;
-    let tPosition = t.position;
+    let path = ' M ' + edge.source_point.position.join(" ") + this.getPathTo({point: edge.target_point, st_control: edge.st_control, ts_control: edge.ts_control});
+    let colour = this.getColour(edge.source_point.generator, this.diagram.n - 1);
+    //let key = 'wire#' + s.point.join(":") + '#' + t.point.join(":") + (edge.type == 'triangle edge' ? '#T' : ' ');
+    let key = 'wire#' + edge.source_point.position.join(":") + '#' + edge.target_point.position.join(":") + (edge.type == 'triangle edge' ? '#T' : ' ');
+    let stroke_width = edge.wire ? 10 : 2;
+    if (!edge.wire) colour = '#000';
 
-    let start = edge.type == 'triangle edge' ? tPosition : sPosition;
-    let path = 'M ' + start.join(" ") + edge.svg_path;
-    let colour = this.getColour(sGenerator, this.diagram.n - 1);
-    let key = 'wire#' + s.point.join(":") + '#' + t.point.join(":") + (edge.type == 'triangle edge' ? '#T' : ' ');
+    ///if (this.diagram.n == 3) debugger;
 
-    //if (this.diagram.n == 3) debugger;
+    let points = [edge.source_point, edge.target_point];
+
+    // If any points are boundary, then only take boundary
+    if (points.some(point => point.boundary)) {
+      points = points.filter(point => point.boundary);
+    }
+
+    // We only want the raw coordinates
+    points = points.map(point => point.point);
+
+    // Choose the trigger point for click-and-drag
+    let drag_point;
+    if ([edge.source_point, edge.target_point].some(point => point.boundary)) {
+      drag_point = edge.target_point.point;
+    } else {
+      drag_point = edge.source_point.point;
+    }
+
+    // This little filler path prevents artifacts where wire segments meet
+    let filler_point = edge.source_point.point[0] < edge.target_point.point[0]
+      ? edge.source_point : edge.target_point;
+    let fpos = filler_point.position;
+    let filler_path =
+      ` M ${fpos[0] - stroke_width / 2} ${fpos[1]}`
+      + ` L ${fpos[0] + stroke_width / 2} ${fpos[1]}`;
+  
+  /*
+  return (<path
+        d={path}
+        stroke={colour}
+        strokeWidth={stroke_width}
+        fill="none"
+        key={key}
+        mask={edge.mask || ''}
+        onMouseDown={e => this.onStartDrag(e, drag_point)}
+        onClick={e => this.onSelect(e, points)}>
+        {this.props.interactive && <title>{edge.source_point.generator.name}</title>}
+      </path>);
+      */
 
     return (
+      <React.Fragment key={'fragment#' + key}>
       <path
         d={path}
         stroke={colour}
-        strokeWidth={10}
+        strokeWidth={stroke_width}
         fill="none"
-        key={`wire#${s.point.join(":")}#${t.point.join(":")}`}
+        key={key}
         mask={edge.mask || ''}
-        onClick={e => this.onSelect(e, s.point, t.point)}>
-        {this.props.interactive && <title>{sGenerator.name}</title>}
+        shapeRendering='crispEdges'
+        onMouseDown={e => this.onStartDrag(e, drag_point)}
+        onClick={e => this.onSelect(e, points)}>
+        {this.props.interactive && <title>{edge.source_point.generator.name}</title>}
       </path>
+      </React.Fragment>
     );
+
+
+      /*
+      <path
+        d={filler_path}
+        key={'filler#' + key}
+        mask={edge.mask || ''}
+        vectorEffect={"non-scaling-stroke"}
+        strokeWidth={2}
+        stroke={colour}>
+      </path>
+      */
+  }
+
+  getPathTo({point, st_control, ts_control}) {
+    if (st_control == null) {
+      return ' L ' + point.position.join(' ');
+    } else {
+      return ' C ' + st_control.join(' ') + ' ' + ts_control.join(' ') + ' ' + point.position.join(' ');
+    }
   }
 
   getGeneratorPosition(p) {
@@ -601,10 +798,10 @@ export class Diagram2D extends React.Component {
   }
 
   renderSurface(sm, mt, st) {
-
-    _assert(sm.source_point === st.source_point);
-    _assert(st.target_point === mt.target_point);
-    _assert(mt.source_point === sm.target_point);
+//return;
+    if (_debug) _assert(sm.source_point === st.source_point);
+    if (_debug) _assert(st.target_point === mt.target_point);
+    if (_debug) _assert(mt.source_point === sm.target_point);
     let s = sm.source_point;
     let t = st.target_point;
     let m = sm.target_point;
@@ -625,7 +822,10 @@ export class Diagram2D extends React.Component {
       this.isPointHighlighted(t.point)
     );
 
-    let path = 'M ' + sPosition.join(" ") + ' ' + sm.svg_path + mt.svg_path + st.svg_path;
+    let path = 'M ' + sPosition.join(" ")// + ' ' + sm.svg_path + mt.svg_path + st.svg_path;
+      + this.getPathTo({point: m, st_control: sm.st_control, ts_control: sm.ts_control})
+      + this.getPathTo({point: t, st_control: mt.st_control, ts_control: mt.ts_control})
+      + this.getPathTo({point: s, st_control: st.ts_control, ts_control: st.st_control});
 
     /*
     let path = [
@@ -644,23 +844,43 @@ export class Diagram2D extends React.Component {
 
     let sGenerator = s.generator;
     let colour = this.getColour(sGenerator, this.diagram.n - 2);
+    //let key = 'surface#' + s.point.join(":") + '#' + m.point.join(":") + '#' + t.point.join(":")';
+    let key = 'surface#' + s.position.join(":")
+      + '#' + m.position.join(":")
+      + '#' + t.position.join(":");
+
+    // Choose the points to trigger on click
+    let points = [s, m, t];
+
+    // If any point is a boundary point, only allow boundary points
+    if (points.some(point => point.boundary)) {
+      points = points.filter(point => point.boundary);
+    }
+
+    // We only need to pass the coordinates through
+    points = points.map(point => point.point);
 
     /* Remove stroke here to see triangles when debugging */
     return (
       <path
         d={path}
-        stroke={/*'#fff'*/ colour}
+        stroke={/*'#fff'*/ colour }
         strokeWidth={1}
         vectorEffect={"non-scaling-stroke"}
+        shapeRendering='crispEdges'
         fill={highlight ? "#f1c40f" : colour}
-        key={`surface#${s.point.join(":")}#${m.point.join(" ")}#${t.point.join(":")}`}
-        onClick={e => this.onSelect(e, s.point, m.point, t.point)}>
+        key={key}
+        onClick={e => this.onSelect(e, points)}>
         {this.props.interactive && <title>{sGenerator.name}</title>}
       </path>
     );
   }
 
   render() {
+
+    if (this.props.highlight) {
+      //debugger;
+    }
 
     let edges_raw = this.props.layout.edges;
     let points_raw = this.props.layout.points;
@@ -679,7 +899,7 @@ export class Diagram2D extends React.Component {
     for (let i=0; i<points.length; i++) {
       let point = points[i].point;
       for (let j=0; j<point.length; j++) {
-        _assert(point[j] >= -1);
+        if (_debug) _assert(point[j] >= -1);
       }
     }
 
@@ -706,15 +926,47 @@ export class Diagram2D extends React.Component {
       this.prepareEdgesAtTarget(edges_by_target[i], masks);
     }
 
-    // Set svg path strings if missing
+    /*
+    let subdivide = false;
+
+    if (subdivide) {
+
+      // Subdivide everything
+      let subdivision = this.subdivideEdges({ surfaces, edges, points });
+
+      // Set svg path strings if missing
+      //subdivision.edges.map(this.prepareEdgeSVGPath, this);
+      surfaces = subdivision.surfaces;
+      edges = subdivision.edges;
+      points = subdivision.points;
+
+    }
+    */
+
     edges.map(this.prepareEdgeSVGPath, this);
+    let x_coords = points.map(point => point.position[0]);
+    let y_coords = points.map(point => point.position[1]);
+    
+    let delta = 25;
+    let min_x = Math.min(...x_coords) - delta;
+    let max_x = Math.max(...x_coords) + delta;
+    let min_y = Math.min(...y_coords) - delta;
+    let max_y = Math.max(...y_coords) + delta;
+    let dx = max_x - min_x;
+    let dy = max_y - min_y;
 
     return (
-      <DiagramSVG width={this.props.width} height={this.props.height} innerRef={this.diagramRef}>
-        <g>
+      <DiagramSVG
+        width={this.props.width}
+        height={this.props.height}
+        innerRef={this.diagramRef}
+        preserveAspectRatio="xMidYMid meet"
+        viewBox={min_x + ' ' + min_y + ' ' + dx + ' ' + dy}
+        >
           <defs>
-            {masks.map(this.renderMask, this)}
+            {masks.map((mask, index) => this.renderMask(mask, index, min_x, min_y, dx, dy), this)}
           </defs>
+        <g>
           {surfaces.map(([x, y, z]) => this.renderSurface(x, y, z))}
           {edges.map(edge => this.renderWire(edge))}
           {points.map(point => this.renderPoint(point))}
@@ -723,7 +975,7 @@ export class Diagram2D extends React.Component {
     );
   }
 
-  renderMask(mask, index) {
+  renderMask(mask, index, min_x, min_y, dx, dy) {
 
     let outline_d =
       [`M ${mask.left - 125} ${mask.height - 60}`,
@@ -739,10 +991,25 @@ export class Diagram2D extends React.Component {
         fill={"white"}
         strokeOpacity={1}
         fillOpacity={1}
-        //element_type={"mask_transparent"}
         >
       </path>
     )];
+
+    if (mask.mask_point) {
+      paths.push(
+        <circle
+          cx={mask.mask_point.position[0]}
+          cy={mask.mask_point.position[1]}
+          r={20}
+          strokeWidth={0}
+          fill={'#000'}
+          fillOpacity={1}
+          //onClick={e => this.onSelect(e, [point.point])}
+          //onMouseDown={e => this.onStartDrag(e, point.point)}
+          key={'mask' + index + '-point'}>
+        </circle>
+      );
+    }
 
     for (let i=0; i<mask.mask_edges.length; i++) {
       paths.push(this.renderMaskEdge(mask.mask_edges[i], index, i));
@@ -751,8 +1018,19 @@ export class Diagram2D extends React.Component {
     return (
       <mask
         id={"mask" + index}
-        key={'mask' + index}
-        //maskUnits={"userSpaceOnUse"}
+        key={'#key#mask' + index}
+        maskUnits="userSpaceOnUse"
+        //maskContentUnits='userSpaceOnUse'
+        x={min_x}
+        y={min_y}
+        width={dx}
+        height={dy}
+        //x="0"
+        //y="0"
+        //width="100"
+        //height="100"
+        maskUnits="userSpaceOnUse"
+        maskContentUnits="userSpaceOnUse"
         >
         {paths}
       </mask>
@@ -767,7 +1045,7 @@ export class Diagram2D extends React.Component {
         key={'mask' + index + '-path' + subindex}
         d={edge_path}
         stroke={"black"}
-        fill={"none"}
+        //fill={"none"}
         strokeOpacity={1}
         fillOpacity={1}
         strokeWidth = {25}
@@ -777,7 +1055,7 @@ export class Diagram2D extends React.Component {
 
   findSurfaces(diagram, edges_raw, edges) {
 
-    _assert(edges);
+    if (_debug) _assert(edges);
 
     for (let edge of edges_raw) {
       edges.push(edge);
@@ -790,10 +1068,10 @@ export class Diagram2D extends React.Component {
 
     for (let i=0; i<edges_raw.length; i++) {
       let edge = edges_raw[i];
-      _assert(edge.source[0] >= -1);
-      _assert(edge.source[1] >= -1);
-      _assert(edge.target[0] >= -1);
-      _assert(edge.target[1] >= -1);
+      if (_debug) _assert(edge.source[0] >= -1);
+      if (_debug) _assert(edge.source[1] >= -1);
+      if (_debug) _assert(edge.target[0] >= -1);
+      if (_debug) _assert(edge.target[1] >= -1);
       graph.addEdge(edge.source, edge.target, { edge });
     }
 
@@ -803,7 +1081,7 @@ export class Diagram2D extends React.Component {
 
       for (let [c, w] of graph.edgesFrom(b)) {
         let x = graph.getEdge(a, c);
-        _assert(x === undefined);
+        if (_debug) _assert(x === undefined);
         let edge = edges.find(edge => edge.source === a && edge.target === c);
         if (!edge) {
           edge = { source: a, target: c, codim: null, dir: null, type: 'triangle edge', wire: false };          
@@ -815,39 +1093,108 @@ export class Diagram2D extends React.Component {
     return surfaces;
   }
 
-}
+  subdivideEdges({ surfaces, edges, points }) {
 
+    let new_edges = [];
+    let new_surfaces = [];
+    let new_points = points.slice();
 
-/*
-const findSurfaces = (diagram, edges) => {
-  if (diagram.n < 2) return [];
+    let temp_vertex = points.filter(p => {return p.position[0] == 0 && p.position[1] == -150})[0];
 
-  let graph = new Graph();
+    // Subdivide the edges
+    for (let i=0; i<edges.length; i++) {
 
-  for (let edge of edges) {
-    graph.addEdge(edge.source, edge.target, { edge });
-  }
+      let edge = edges[i];
 
-  let surfaces = [];
-  let new_edges = [];
-  for (let [a, b, v] of graph.edges()) {
-    //let aType = Core.Geometry.typeAt(diagram, a);
+      if (edge.source_point === temp_vertex || edge.target_point === temp_vertex) {
+        console.log('Edge to algebraic point ');
+      }
 
-    for (let [c, w] of graph.edgesFrom(b)) {
-      let x = graph.getEdge(a, c);
-      _assert(x === undefined);
-      let new_edge = { source: a, target: b, codim: null, dir: null, type: 'triangle edge', wire: false };
-      surfaces.push([a, b, c, v.edge, w.edge, new_edge]); // points then edges
-      new_edges.push(new_edge);
+      let edge_type = edge.edge_type;
+      let wire = edge.wire;
+      let parent_edge = edge;
+      let new_point, edge_1, edge_2;
+
+      if (edge.st_control == null) { // Linear
+        let position = this.getMeanPoint(edge.source_point.position, edge.target_point.position);
+        new_point = { position, parent_edge: edge, generator: edge.source_point.generator };
+        edge_1 = { source_point: edge.source_point, target_point: new_point, parent_edge, subdivide_source: true, edge_type, wire };
+        edge_2 = { source_point: new_point, target_point: edge.target_point, parent_edge, subdivide_source: false, edge_type, wire };
+      } else { // Bezier
+        let bezier = new BezierCubic({ p1: edge.source_point.position, c1: edge.st_control, c2: edge.ts_control, p2: edge.target_point.position });
+        let split = bezier.splitAtMidHeight();
+        new_point = { position: split[0].p2, parent_edge: edge, generator: edge.source_point.generator };
+        edge_1 = { source_point: edge.source_point, target_point: new_point, parent_edge, st_control: split[0].c1, ts_control: split[0].c2, edge_type, wire };
+        edge_2 = { source_point: new_point, target_point: edge.target_point, parent_edge, st_control: split[1].c1, ts_control: split[1].c2, edge_type, wire };
+      }
+
+      if (_debug) _assert(new_point.position instanceof Array);
+      for (let i=0; i<new_point.position.length; i++) {
+        if (_debug) _assert(!isNaN(new_point.position[i]));
+      }
+      new_points.push(new_point);
+      new_edges.push(edge_1);
+      new_edges.push(edge_2);
+      edge.child_1 = edge_1;
+      edge.child_2 = edge_2;
+      edge.child_point = new_point;
     }
+
+    // Subdivide the surfaces
+    for (let i=0; i<surfaces.length; i++) {
+
+
+      let surface = surfaces[i];
+      let sm = surface[0];
+      let mt = surface[1];
+      let st = surface[2];
+      //let [sm, mt, st] = surfaces[i];
+      if (_debug) _assert(sm);
+      if (_debug) _assert(mt);
+      if (_debug) _assert(st);
+
+      // Create new edges internal to the surface
+      let edge_s = { source_point: sm.child_point, target_point: st.child_point };
+      let edge_m = { source_point: sm.child_point, target_point: mt.child_point, type: 'triangle edge' };
+      let edge_t = { source_point: st.child_point, target_point: mt.child_point };
+      let [s, m, t] = [sm.source_point, mt.source_point, st.target_point]; 
+      new_edges.push(edge_s, edge_m, edge_t);
+
+
+      // Create new surfaces
+      let surface_1 = [ sm.child_1, edge_s, st.child_1 ];
+      this.validateSurface(surface_1);
+      let surface_2 = [ sm.child_2, mt.child_1, edge_m ];
+      this.validateSurface(surface_2);
+      let surface_3 = [ edge_t, mt.child_2, st.child_2 ];
+      this.validateSurface(surface_3);
+      let surface_4 = [ edge_s, edge_t, edge_m ];
+      this.validateSurface(surface_4);
+      new_surfaces.push(surface_1, surface_2, surface_3, surface_4);
+
+    }
+
+    return { points: new_points, edges: new_edges, surfaces: new_surfaces };
   }
 
-  // Add the new edges
-  edges = [...edges, ...new_edges];
+  validateSurface([sm, mt, st]) {
+    if (!_debug) return;
+    if (_debug) _assert(sm.source_point === st.source_point);
+    if (_debug) _assert(sm.target_point === mt.source_point);
+    if (_debug) _assert(mt.target_point === st.target_point);
+  }
 
-  return surfaces;
-};
-*/
+  getMeanPoint(p, q) {
+    let m = [];
+    if (_debug) _assert(p.length == q.length);
+    for (let i=0; i<p.length; i++) {
+      m[i] = (p[i] + q[i]) / 2;
+      if (_debug) _assert(!isNaN(m[i]));
+    }
+    return m;
+  }
+  
+}
 
 export const Loading = () =>
   <LoadingWrapper>

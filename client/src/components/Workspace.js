@@ -52,7 +52,7 @@ export default connect(
     test: state.diagram
   }),
   dispatch => ({
-    onSelectCell: (point) => dispatch(selectCell(point)),
+    onSelectCell: (points) => dispatch(selectCell(points)),
     onHomotopy: (point, direction) => dispatch(homotopy(point, direction))
   })
 )(Workspace);

@@ -11,7 +11,7 @@ import IconButton from "~/components/misc/IconButton";
 export const Signature = ({
   groups, onAddGenerator
 }) =>
-  <Wrapper>
+  <Wrapper style={{userSelect: 'none'}}>
     {groups.map((generators, dimension) =>
       <Group key={dimension}>
         <GroupHeader>
