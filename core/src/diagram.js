@@ -81,7 +81,17 @@ export class Diagram {
   }
 
   toJSON() {
-    return "TODO: serialise diagrams";
+    if (this.n == 0) {
+      return {
+        type: this.type.id
+      }
+    } else {
+      return {
+        n: this.n,
+        source: this.source.toJSON(),
+        data: this.data.map(x => x.toJSON())
+      };
+    }
   }
 
   validate() {

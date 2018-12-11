@@ -46,7 +46,8 @@ export class Generator {
     return {
       id: this.id,
       source: this.source,
-      target: this.target
+      target: this.target,
+      n: this.n
     };
   }
 

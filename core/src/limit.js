@@ -46,6 +46,13 @@ export class Content {
     _validate(this);
   }
 
+  toJSON() {
+    return {
+      forward_limit: this.forward_limit.toJSON(),
+      backward_limit: this.backward_limit.toJSON()
+    };
+  }
+
   validate() {
     _propertylist(this, ["n", "forward_limit", "backward_limit"]);
     _validate(this.forward_limit, this.backward_limit);
@@ -395,6 +402,23 @@ export class LimitComponent {
     }
   }
 
+  toJSON() {
+    if (this.n == 0) {
+      return {
+        n: 0,
+        source_type: this.source_type.id,
+        target_type: this.target_type.id
+      }
+    } else {
+      return {
+        first: this.first,
+        sublimits: this.sublimits.map(x => x.toJSON()),
+        source_data: this.source_data.map(x => x.toJSON()),
+        target_data: this.target_data.toJSON()
+      }
+    }
+  }
+
   equals(b) {
     let a = this;
     if (a.n != b.n) return false;
@@ -537,6 +561,12 @@ export class Limit extends Array {
       if (_debug) _assert(this.length == 1);
       if (_debug) _assert(this[0].source_type.id != this[0].target_type.id);
     }
+  }
+
+  toJSON() {
+    return {
+      components: [...this].map(x => x.toJSON())
+    };
   }
 
   usesCell(generator) {
