@@ -52,6 +52,7 @@ export class Diagram2D extends React.Component {
     */
   }
 
+
   componentDidUpdate(props) {
     if (this.props.layout != props.layout) {
       //this.panzoom.destroy();
@@ -164,7 +165,7 @@ export class Diagram2D extends React.Component {
     var husl = HSLuv.hexToHsluv(generator.color);
     var lightnesses = [30, 50, 70];
     //husl[2] = lightnesses[(n - generator.generator.n) % 3];
-    husl[2] = 10 + ((husl[2] + (n - generator.generator.n) * 33.8309886184) % 90);
+    husl[2] = 20 + ((husl[2] + (n - generator.generator.n) * 17.8309886184) % 60);
     return HSLuv.hsluvToHex(husl);
 
   }
@@ -648,8 +649,10 @@ export class Diagram2D extends React.Component {
 
       if (i == groups.length - 1) break;
       let height = vertex.position[1];
-      let mask_point = (vertex.algebraic /*&& i > 0*/) ? vertex : null;
-      masks.push({ mask_edges, left, right, height, mask_point });
+      //let mask_point = (vertex.algebraic /*&& i > 0*/) ? vertex : null;
+      let mask_point = vertex;
+      let mask_algebraic = vertex.algebraic;
+      masks.push({ mask_edges, left, right, height, mask_point, mask_algebraic });
     }
 
     // Assign control points to the intermediate regular edges
@@ -733,7 +736,7 @@ export class Diagram2D extends React.Component {
       drag_point = edge.source_point.point;
     }
 
-    // This little filler path prevents artifacts where wire segments meet
+    // This little filler path at the bottom end prevents artifacts where wire segments meet
     let filler_point = edge.source_point.point[0] < edge.target_point.point[0]
       ? edge.source_point : edge.target_point;
     let fpos = filler_point.position;
@@ -755,20 +758,34 @@ export class Diagram2D extends React.Component {
       </path>);
       */
 
+    let paths = [];
+    paths.push(<path
+      d={path}
+      stroke={colour}
+      strokeWidth={stroke_width}
+      fill="none"
+      key={key}
+      mask={edge.mask || ''}
+      shapeRendering='crispEdges'
+      onMouseDown={e => this.onStartDrag(e, drag_point)}
+      onClick={e => this.onSelect(e, points)}>
+      {this.props.interactive && <title>{edge.source_point.generator.name}</title>}
+    </path>);
+    if (!filler_point.boundary && !edge.mask) {
+      paths.push(<circle
+        cx={fpos[0]}
+        cy={fpos[1]}
+        r={stroke_width / 2}
+        shapeRendering='crispEdges'
+        fill={colour}
+        fillOpacity={1}
+        key={'fragment#filllercircle#' + key}>
+      </circle>);
+    }
+
     return (
       <React.Fragment key={'fragment#' + key}>
-      <path
-        d={path}
-        stroke={colour}
-        strokeWidth={stroke_width}
-        fill="none"
-        key={key}
-        mask={edge.mask || ''}
-        shapeRendering='crispEdges'
-        onMouseDown={e => this.onStartDrag(e, drag_point)}
-        onClick={e => this.onSelect(e, points)}>
-        {this.props.interactive && <title>{edge.source_point.generator.name}</title>}
-      </path>
+        {paths}      
       </React.Fragment>
     );
 
@@ -995,12 +1012,13 @@ export class Diagram2D extends React.Component {
       </path>
     )];
 
-    if (mask.mask_point) {
+    //if (mask.mask_point)
+    {
       paths.push(
         <circle
           cx={mask.mask_point.position[0]}
           cy={mask.mask_point.position[1]}
-          r={20}
+          r={mask.mask_algebraic ? 20 : 10}
           strokeWidth={0}
           fill={'#000'}
           fillOpacity={1}

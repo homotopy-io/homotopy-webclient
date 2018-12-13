@@ -150,9 +150,11 @@ export class Diagram {
 
     if (pos.regular) {
       let singular = this.getSlice({ height: pos.height - 1, regular: false });
+      if (_debug) _assert(this.data[pos.height - 1]);
       return this.data[pos.height - 1].backward_limit.rewrite_backward(singular);
     } else {
       let regular = this.getSlice({ height: pos.height, regular: true });
+      if (_debug) _assert(this.data[pos.height]);
       return this.data[pos.height].forward_limit.rewrite_forward(regular);
     }
   }
@@ -1184,6 +1186,40 @@ export class Diagram {
       let slice = this.getSlice(location[0]);
       let recursive = slice.getExpansionLimit({location: location.slice(1), direction});
 
+      // Try to factorize
+      try {
+
+        // Factorize on the left and right
+        let data = this.data[location[0].height];
+
+        // Forward factorization
+        let forward_factorization = data.forward_limit.factorThrough(recursive);
+        if (forward_factorization.error) {
+          throw Error("couldn't factorize forward limit\n" + forward_factorization.error);
+        }
+
+        // Backward factorization
+        let backward_factorization = data.backward_limit.factorThrough(recursive);
+        if (backward_factorization.error) {
+          throw Error("couldn't factorize backward limit\n" + backward_factorization.error);
+        }
+
+        // Construct expansion data
+        let first = location[0].height;
+        let target_data = this.data[first];
+        let source_data = [new Content(this.n - 1, forward_factorization, backward_factorization)];
+        let sublimits = [recursive];
+        let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
+        let limit = new Limit(this.n, [component], this.data.length);
+        let preimage_diagram = limit.rewrite_backward(this);
+        let normalization = preimage_diagram.normalize();
+        console.log("Performed pullback");
+        return limit.compose(normalization.embedding);
+
+      }
+
+      /*
+
       // Try to do a pullback
       try {
 
@@ -1192,7 +1228,7 @@ export class Diagram {
         // Forward pullback
         let forward_pullback = data.forward_limit.pullback(recursive);
         if (!forward_pullback) {
-          throw "Can't pullback expansion with forward limit at depth " + location.length - 1;
+          throw new Error("Can't pullback expansion with forward limit at depth " + (location.length - 1));
         }
         let regular_slice_left = this.getSlice({regular: true, height: location[0].height});
         let p_left = forward_pullback.left.rewrite_backward(regular_slice_left);
@@ -1202,13 +1238,13 @@ export class Diagram {
           right: forward_pullback.right.compose(p_left_norm.embedding)
         };
         if (forward_pullback_norm.left.length > 0) {
-          throw "expansion on singular slice, forward pullback changes the regular level";
+          throw new Error("expansion on singular slice, forward pullback changes the regular level");
         }
 
         // Backward pullback
         let backward_pullback = recursive.pullback(data.backward_limit);
         if (!backward_pullback) {
-          throw "Can't pullback expansion with backward limit at depth " + location.length - 1;
+          throw new Error("Can't pullback expansion with backward limit at depth " + (location.length - 1));
         }
         let regular_slice_right = this.getSlice({regular: true, height: 1 + location[0].height});
         let p_right = backward_pullback.right.rewrite_backward(regular_slice_right);
@@ -1218,7 +1254,7 @@ export class Diagram {
           right: backward_pullback.right.compose(p_right_norm.embedding)
         };
         if (backward_pullback_norm.right.length > 0) {
-          throw "expansion on singular slice, backward pullback changes the regular level";
+          throw new Error("expansion on singular slice, backward pullback changes the regular level");
         }
 
         // Construct expansion data
@@ -1235,10 +1271,12 @@ export class Diagram {
 
       }
 
-      // If the pullback has failed, just insert a bubble
+      */
+
+      // If the factorization has failed, just insert a bubble
       catch(e) {
 
-        console.log('Pullback failed: ' + e);
+        console.log('Factorization failed: ' + e.stack);
         console.log('Inserting bubble instead');
 
         // Insert bubble
