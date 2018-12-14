@@ -380,8 +380,8 @@ export class Diagram {
     return depths;
   }
 
-  normalize() {
-    let r = this.normalizeRelative([]);
+  normalizeSingular() {
+    let r = this.normalizeSingularRecursive([]);
     return { diagram: r.diagram, embedding: r.embedding };
   }
 
@@ -392,7 +392,7 @@ export class Diagram {
    *  - factorizations, limits into the normalized diagram that factorize the originally-provided
    *      limits through the embedding.
    */
-  normalizeRelative(limits) {
+  normalizeSingularRecursive(limits) {
     for (let i = 0; i < limits.length; i++) {
       let limit = limits[i];
       if (_debug) _assert(limit instanceof Limit);
@@ -453,7 +453,7 @@ export class Diagram {
       level_limits.push(this.data[i].backward_limit);
 
       // Normalize this singular slice recursively
-      let recursive = slice.normalizeRelative(level_limits);
+      let recursive = slice.normalizeSingularRecursive(level_limits);
 
       // Store the new data for the normalized diagram at this level
       let new_content = new Content(this.n - 1, ArrayUtil.penultimate(recursive.factorizations), ArrayUtil.last(recursive.factorizations));
@@ -692,7 +692,12 @@ export class Diagram {
 
   }
 
+  normalizeRegular() {
+    return Limit.normalizeRegularRecursive({source: this, limits: []}).source;
+  }
+
   // Normalize the diagram in a way that also normalizes the boundaries
+  /*
   normalizeWithBoundaries() {
 
       // Arrange the source limits by their regular source level
@@ -737,6 +742,7 @@ export class Diagram {
       return normalized.diagram;
 
   }
+  */
 
   
   composeAtRegularLevel({ height, limit }) {
@@ -1028,7 +1034,7 @@ export class Diagram {
       }
       let forward_limit = this.getContractionLimit({location, tendency});
       let singular = forward_limit.rewrite_forward(this);
-      let normalization = singular.normalize();
+      let normalization = singular.normalizeSingular();
       let backward_limit = normalization.embedding;
       let content = new Content(this.n, forward_limit, backward_limit);
       if (!content.typecheck(this)) throw "This contraction doesn't typecheck";
@@ -1212,7 +1218,7 @@ export class Diagram {
         let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
         let limit = new Limit(this.n, [component], this.data.length);
         let preimage_diagram = limit.rewrite_backward(this);
-        let normalization = preimage_diagram.normalize();
+        let normalization = preimage_diagram.normalizeSingular();
         console.log("Performed pullback");
         return limit.compose(normalization.embedding);
 
@@ -1400,6 +1406,9 @@ export class Diagram {
       _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
 
     }
+
+    // Special case of an identity pushout
+    // ... should handle this as it occurs a lot ...    
 
     // Base case
     if (n == 0) {

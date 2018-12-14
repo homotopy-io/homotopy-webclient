@@ -156,11 +156,17 @@ export class Content {
     // Typecheck the target of this diagram
     if (!diagram.getTarget().typecheck()) return false;
 
-    // Normalize the diagram along with its boundary
-    let normalized = diagram.normalizeWithBoundaries();
+    // Normalize the diagram at its regular levels
+    //let normalized = diagram.normalizeWithBoundaries();
+    let regular_normalized = diagram.normalizeRegular();
+
+    // *** singular normalization ***
+    let singular_normalized = regular_normalized.normalizeSingular();
+
+    return singular_normalized.diagram.typecheckBaseCase();
 
     // Type check it as a diagram
-    return normalized.typecheckBaseCase();
+    //return normalized.typecheckBaseCase();
 
   }
 
@@ -1860,9 +1866,9 @@ export class Limit extends Array {
   }
 
   /* 
-    Find a limit 'first' which factorizes this as second o first.
+    Find a limit 'first' which factorizes 'this' as 'second o first'.
     We require that 'first' is either the identity or dimension-
-    increasing on types. We do not require that it type checks.
+    increasing on types. We do not require that it type-checks.
   */
 
  factorThrough(second) {
@@ -2399,7 +2405,7 @@ export class Limit extends Array {
   // Normalize the regular levels of the provided limits, both in the source and target.
   // They all have the common source provided.
   // Return value is the normalized limits with source and target regular levels normalized.
-  static normalizeRegular({source, limits}) {
+  static normalizeRegularRecursive({source, limits}) {
     if (_debug) _assert(source instanceof Diagram);
     if (_debug) _assert(limits instanceof Array);
 
@@ -2443,7 +2449,10 @@ export class Limit extends Array {
     let source_source;
     for (let i=0; i<=source.data.length; i++) {
       let slice = source.getSlice({height: i, regular: true});
-      let n = Limit.normalizeRegular({source: slice, limits: level_limits[i]});
+      let slice_r = Limit.normalizeRegularRecursive({source: slice, limits: level_limits[i]});
+      let slice_rs = slice_r.source.normalizeSingular();
+      let limits_fully_normalized = slice_r.limits.map(x => x.compose(slice_rs.embedding));
+      /*
       if (i == 0) source_source = n.source;
       if (i > 0) {
         source_limits.push(n.limits.shift());
@@ -2452,6 +2461,16 @@ export class Limit extends Array {
         source_limits.push(n.limits.shift());
       }
       target_limits.push(n.limits);
+      */
+     if (i == 0) source_source = slice_rs.diagram;
+     if (i > 0) {
+       source_limits.push(limits_fully_normalized.shift());
+     }
+     if (i < source.data.length) {
+       source_limits.push(limits_fully_normalized.shift());
+     }
+     target_limits.push(limits_fully_normalized);
+
     }
 
     // Build the new source diagram
@@ -2463,7 +2482,20 @@ export class Limit extends Array {
       let content = new Content(source.n - 1, forward_limit, backward_limit);
       data.push(content);
     }
-    
+
+    // Get the regular normalizations of the outgoing limits from the singular levels
+    let singular_outgoing_rn = []; // sing level, then limit
+    for (let i=0; i<source.data.length; i++) {
+      let original = [];
+      for (let j=0; j<limits.length; j++) {
+        let sublimit = limits[j].subLimit(i);
+        original.push(sublimit);
+      }
+      let s_slice = source.getSlice({height: i, regular: false});
+      let rn_slice = Limit.normalizeRegularRecursive({source: s_slice, limits: original});
+      singular_outgoing_rn.push(rn_slice.limits);
+    }
+
     // Update the limits
     let new_limits = [];
     for (let i=0; i<limits.length; i++) {
@@ -2476,7 +2508,11 @@ export class Limit extends Array {
         let backward_limit = target_limits[component.getLast()].shift();
         let target_data = new Content(source.n - 1, forward_limit, backward_limit);
         let first = component.first;
-        let sublimits = component.sublimits;
+        let sublimits = [];
+        for (let k=0; k<component.sublimits.length; k++) {
+          sublimits[k] = singular_outgoing_rn[k + component.first][i];
+        }
+        //let sublimits = component.sublimits;
         let new_component = new LimitComponent(source.n, {source_data, target_data, first, sublimits});
         new_components.push(new_component);
       }
@@ -2488,9 +2524,15 @@ export class Limit extends Array {
     let new_source = new Diagram(source.n, {source: source_source, data});
 
     // Verify the outgoing limits are compatible with the new source diagram
-    for (let i=0; i<new_limits.length; i++) {
-      new_limits[i].verifySource(new_source);
+    if (_debug) {
+      for (let i=0; i<new_limits.length; i++) {
+        new_limits[i].verifySource(new_source);
+      }
     }
+
+    return { source: new_source, limits: new_limits };
+
+    /*
     
     // Get its embedding into its singular normalization
     let source_normalized = new_source.normalize();
@@ -2504,12 +2546,16 @@ export class Limit extends Array {
     }
 
     // Verify the outgoing limits are compatible with the new source diagram
-    for (let i=0; i<new_new_limits.length; i++) {
-      new_new_limits[i].verifySource(source_normalized.diagram);
+    if (_debug) {
+      for (let i=0; i<new_new_limits.length; i++) {
+        new_new_limits[i].verifySource(source_normalized.diagram);
+      }
     }
     
     // Return the normalized source along with the composed limits
     return { source: source_normalized.diagram, limits: new_new_limits };
+
+    */
 
   }
 
