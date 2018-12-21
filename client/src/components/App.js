@@ -9,7 +9,7 @@ import AttachmentTool from "~/components/tools/Attachment";
 import LogoImg from '../logo.svg';
 
 export const App = () =>
-  <Container style={{userSelect: 'none'}}>
+  <Container>
     <SignatureBar>
       <Logo><LogoImage src={LogoImg}/></Logo>
       <Signature />

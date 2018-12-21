@@ -177,9 +177,11 @@ export class Diagram {
 
     if (pos.regular) {
       let singular = this.getSlice({ height: pos.height - 1, regular: false });
+      if (_debug) _assert(this.data[pos.height - 1]);
       return this.data[pos.height - 1].backward_limit.rewrite_backward(singular);
     } else {
       let regular = this.getSlice({ height: pos.height, regular: true });
+      if (_debug) _assert(this.data[pos.height]);
       return this.data[pos.height].forward_limit.rewrite_forward(regular);
     }
   }
@@ -198,7 +200,7 @@ export class Diagram {
 
     // Base case
     if (this.n == 0) {
-      if (this.type == goal.type) {
+      if (this.type.id == goal.type.id) {
         // Return a single trivial match
         return [[]]; 
       } else {
@@ -405,8 +407,8 @@ export class Diagram {
     return depths;
   }
 
-  normalize() {
-    let r = this.normalizeRelative([]);
+  normalizeSingular() {
+    let r = this.normalizeSingularRecursive([]);
     return { diagram: r.diagram, embedding: r.embedding };
   }
 
@@ -417,7 +419,7 @@ export class Diagram {
    *  - factorizations, limits into the normalized diagram that factorize the originally-provided
    *      limits through the embedding.
    */
-  normalizeRelative(limits) {
+  normalizeSingularRecursive(limits) {
     for (let i = 0; i < limits.length; i++) {
       let limit = limits[i];
       if (_debug) _assert(limit instanceof Limit);
@@ -478,7 +480,7 @@ export class Diagram {
       level_limits.push(this.data[i].backward_limit);
 
       // Normalize this singular slice recursively
-      let recursive = slice.normalizeRelative(level_limits);
+      let recursive = slice.normalizeSingularRecursive(level_limits);
 
       // Store the new data for the normalized diagram at this level
       let new_content = new Content(this.n - 1, ArrayUtil.penultimate(recursive.factorizations), ArrayUtil.last(recursive.factorizations));
@@ -717,7 +719,12 @@ export class Diagram {
 
   }
 
+  normalizeRegular() {
+    return Limit.normalizeRegularRecursive({source: this, limits: []}).source;
+  }
+
   // Normalize the diagram in a way that also normalizes the boundaries
+  /*
   normalizeWithBoundaries() {
 
       // Arrange the source limits by their regular source level
@@ -762,6 +769,7 @@ export class Diagram {
       return normalized.diagram;
 
   }
+  */
 
   
   composeAtRegularLevel({ height, limit }) {
@@ -1053,7 +1061,7 @@ export class Diagram {
       }
       let forward_limit = this.getContractionLimit({location, tendency});
       let singular = forward_limit.rewrite_forward(this);
-      let normalization = singular.normalize();
+      let normalization = singular.normalizeSingular();
       let backward_limit = normalization.embedding;
       let content = new Content(this.n, forward_limit, backward_limit);
       if (!content.typecheck(this)) throw "This contraction doesn't typecheck";
@@ -1211,6 +1219,40 @@ export class Diagram {
       let slice = this.getSlice(location[0]);
       let recursive = slice.getExpansionLimit({location: location.slice(1), direction});
 
+      // Try to factorize
+      try {
+
+        // Factorize on the left and right
+        let data = this.data[location[0].height];
+
+        // Forward factorization
+        let forward_factorization = data.forward_limit.factorThrough(recursive);
+        if (forward_factorization.error) {
+          throw Error("couldn't factorize forward limit\n" + forward_factorization.error);
+        }
+
+        // Backward factorization
+        let backward_factorization = data.backward_limit.factorThrough(recursive);
+        if (backward_factorization.error) {
+          throw Error("couldn't factorize backward limit\n" + backward_factorization.error);
+        }
+
+        // Construct expansion data
+        let first = location[0].height;
+        let target_data = this.data[first];
+        let source_data = [new Content(this.n - 1, forward_factorization, backward_factorization)];
+        let sublimits = [recursive];
+        let component = new LimitComponent(this.n, {first, sublimits, source_data, target_data});
+        let limit = new Limit(this.n, [component], this.data.length);
+        let preimage_diagram = limit.rewrite_backward(this);
+        let normalization = preimage_diagram.normalizeSingular();
+        console.log("Performed pullback");
+        return limit.compose(normalization.embedding);
+
+      }
+
+      /*
+
       // Try to do a pullback
       try {
 
@@ -1219,7 +1261,7 @@ export class Diagram {
         // Forward pullback
         let forward_pullback = data.forward_limit.pullback(recursive);
         if (!forward_pullback) {
-          throw "Can't pullback expansion with forward limit at depth " + location.length - 1;
+          throw new Error("Can't pullback expansion with forward limit at depth " + (location.length - 1));
         }
         let regular_slice_left = this.getSlice({regular: true, height: location[0].height});
         let p_left = forward_pullback.left.rewrite_backward(regular_slice_left);
@@ -1229,13 +1271,13 @@ export class Diagram {
           right: forward_pullback.right.compose(p_left_norm.embedding)
         };
         if (forward_pullback_norm.left.length > 0) {
-          throw "expansion on singular slice, forward pullback changes the regular level";
+          throw new Error("expansion on singular slice, forward pullback changes the regular level");
         }
 
         // Backward pullback
         let backward_pullback = recursive.pullback(data.backward_limit);
         if (!backward_pullback) {
-          throw "Can't pullback expansion with backward limit at depth " + location.length - 1;
+          throw new Error("Can't pullback expansion with backward limit at depth " + (location.length - 1));
         }
         let regular_slice_right = this.getSlice({regular: true, height: 1 + location[0].height});
         let p_right = backward_pullback.right.rewrite_backward(regular_slice_right);
@@ -1245,7 +1287,7 @@ export class Diagram {
           right: backward_pullback.right.compose(p_right_norm.embedding)
         };
         if (backward_pullback_norm.right.length > 0) {
-          throw "expansion on singular slice, backward pullback changes the regular level";
+          throw new Error("expansion on singular slice, backward pullback changes the regular level");
         }
 
         // Construct expansion data
@@ -1262,10 +1304,12 @@ export class Diagram {
 
       }
 
-      // If the pullback has failed, just insert a bubble
+      */
+
+      // If the factorization has failed, just insert a bubble
       catch(e) {
 
-        console.log('Pullback failed: ' + e);
+        console.log('Factorization failed: ' + e.stack);
         console.log('Inserting bubble instead');
 
         // Insert bubble
@@ -1389,6 +1433,9 @@ export class Diagram {
       _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
 
     }
+
+    // Special case of an identity pushout
+    // ... should handle this as it occurs a lot ...    
 
     // Base case
     if (n == 0) {
@@ -1783,7 +1830,10 @@ function sub_limit(limit, sublimit, offset) {
 function sub_limit_component(component, subcomponent, offset) {
   if (_debug) _assert(component.n == subcomponent.n);
   if (_debug) _assert(offset.length == component.n);
-  if (component.n == 0) return component.type == subcomponent.type;
+  if (component.n == 0) {
+    return ((component.source_type == subcomponent.source_type)
+      && (component.target_type == subcomponent.target_type));
+  }
   if (component.first != subcomponent.first + offset[0]) return false;
   if (component.getLast() != subcomponent.getLast() + offset[0]) return false;
   if (component.source_data.length != subcomponent.source_data.length) return false;
