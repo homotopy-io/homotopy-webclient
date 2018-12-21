@@ -173,7 +173,7 @@ export class Diagram {
 
     // Base case
     if (this.n == 0) {
-      if (this.type == goal.type) {
+      if (this.type.id == goal.type.id) {
         // Return a single trivial match
         return [[]]; 
       } else {
@@ -1803,7 +1803,10 @@ function sub_limit(limit, sublimit, offset) {
 function sub_limit_component(component, subcomponent, offset) {
   if (_debug) _assert(component.n == subcomponent.n);
   if (_debug) _assert(offset.length == component.n);
-  if (component.n == 0) return component.type == subcomponent.type;
+  if (component.n == 0) {
+    return ((component.source_type == subcomponent.source_type)
+      && (component.target_type == subcomponent.target_type));
+  }
   if (component.first != subcomponent.first + offset[0]) return false;
   if (component.getLast() != subcomponent.getLast() + offset[0]) return false;
   if (component.source_data.length != subcomponent.source_data.length) return false;
