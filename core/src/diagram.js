@@ -98,6 +98,7 @@ export class Diagram {
   }
 
   static fromJSON(val) {
+    if (val === null) return null;
     let n = val.n;
     if (n == 0) {
       let type = getGenerator(val.type);

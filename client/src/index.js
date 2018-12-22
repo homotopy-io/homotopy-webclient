@@ -25,8 +25,6 @@ import {
   setRenderer
 } from "~/state/actions/diagram";
 
-import { Diagram } from "../../core/src/diagram";
-
 const coreTransform = ReduxPersist.createTransform(
   (inboundState, key) => JSON.stringify(inboundState),
   (outboundState, key) => {
@@ -35,11 +33,10 @@ const coreTransform = ReduxPersist.createTransform(
         if (val.source == null && val.target == null) {
           return new Core.Generator(val.id, null, null);
         } else {
-          // TODO: reserialise diagrams
-          return new Core.Generator(val.id, Diagram.fromJSON(val.source), Diagram.fromJSON(val.target));
+          return new Core.Generator(val.id, val.source, val.target);
         }
       } else if (name == 'diagram') {
-        return Diagram.fromJSON(val);
+        return Core.Diagram.fromJSON(val);
       } else {
         return val;
       }
@@ -58,7 +55,9 @@ const store = Redux.createStore(
   ReduxPersist.persistReducer(persistConfig, reducer)
   , initialState);
 window.store = store;
-const persistor = ReduxPersist.persistStore(store);
+const persistor = ReduxPersist.persistStore(store, null, () => {
+  console.log("Rehydrated");
+});
 
 Rx.fromEvent(document, "keydown") 
   .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
