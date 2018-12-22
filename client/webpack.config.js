@@ -39,7 +39,8 @@ module.exports = {
   ],
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js"
+    filename: "bundle.js",
+    globalObject: "this"
   },
   devServer: {
     contentBase: "./assets",
