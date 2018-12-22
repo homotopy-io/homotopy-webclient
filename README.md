@@ -16,7 +16,8 @@ Subsequent times:
 
 Production:
 
-- in `client` and `core`, run `npm run build`.
+- first, run `npm run build` in the `core` directory.
+- then, run `npm run build` in the `client` directory.
 
 Development:
 
