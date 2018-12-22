@@ -8,16 +8,16 @@ This work is made available under the CC BY-NC 3.0, Attribution-NonCommercial 3.
 
 First time:
 
-	- `npm install -g yarn`
+- `npm install -g yarn`
 
 Subsequent times:
 
-	- in root directory, run `yarn` to install all dependencies and link the included packages together.
+- in root directory, run `yarn` to install all dependencies and link the included packages together.
 
 Production:
 
-	- in `client` and `core`, run `npm run build`.
+- in `client` and `core`, run `npm run build`.
 
 Development:
 
-	- in `client` and `core`, run `npm run dev`, which automatically rebuilds when the source changes. In `client`, this also starts a webserver.
+- in `client` and `core`, run `npm run dev`, which automatically rebuilds when the source changes. In `client`, this also starts a webserver.
