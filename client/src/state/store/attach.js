@@ -1,6 +1,6 @@
 import dotProp from "dot-prop-immutable";
 import createReducer from "~/util/create-reducer";
-import * as DiagramActions from "~/state/actions/diagram";
+import * as WorkspaceActions from "~/state/actions/workspace";
 import * as AttachActions from "~/state/actions/attach";
 import * as Core from "homotopy-core";
 import { _assert, _debug } from "../../../../core/src/util/debug";
@@ -52,7 +52,7 @@ export default createReducer({
 
   [AttachActions.SELECT_OPTION]: (state, { index }) => {
     let options = state.attach.options;
-    let diagram = state.diagram.diagram;
+    let diagram = state.workspace.diagram;
     let generators = state.signature.generators;
 
     if (options == null || !options[index]) {
@@ -60,20 +60,20 @@ export default createReducer({
     }
 
     let option = options[index];
-    let generator = generators[option.generator];
+    //let generator = generators[option.generator];
 
-    let { new_diagram, new_slice } = Core.attachGenerator(diagram, generator.generator, option.path, state.diagram.slice);
+    let { new_diagram, new_slice } = Core.attachGenerator(generators, diagram, option.generator, option.path, state.workspace.slice);
 
-    state = dotProp.set(state, "diagram.diagram", new_diagram);
+    state = dotProp.set(state, "workspace.diagram", new_diagram);
     state = dotProp.set(state, "attach.options", null);
     state = dotProp.set(state, "attach.highlight", null);
-    state = dotProp.set(state, "diagram.slice", new_slice);
+    state = dotProp.set(state, "workspace.slice", new_slice);
 
     return state;
   },
 
-  [DiagramActions.SELECT_CELL]: (state, { points }) => {
-    let { diagram, slice } = state.diagram;
+  [WorkspaceActions.SELECT_CELL]: (state, { points }) => {
+    let { diagram, slice } = state.workspace;
     let { generators } = state.signature;
 
     if (diagram == null) return;
@@ -113,8 +113,8 @@ export default createReducer({
 
     if (options.length == 1) {
       let [ option ] = options;
-      let {new_diagram, new_slice} = Core.attachGenerator(diagram, generators[option.generator].generator, option.path, slice);
-      state = dotProp.set(state, "diagram.diagram", new_diagram);
+      let {new_diagram, new_slice} = Core.attachGenerator(generators, diagram, option.generator, option.path, slice);
+      state = dotProp.set(state, "workspace.diagram", new_diagram);
       state = dotProp.set(state, "diagram.slice", new_slice);
       return state;
     } else if (options.length > 1) {
@@ -130,35 +130,35 @@ export default createReducer({
     return clearOptions(state);
   },
 
-  [DiagramActions.CLEAR_DIAGRAM]: (state) => {
+  [WorkspaceActions.CLEAR_DIAGRAM]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.TAKE_IDENTITY]: (state) => {
+  [WorkspaceActions.TAKE_IDENTITY]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.RESTRICT_DIAGRAM]: (state) => {
+  [WorkspaceActions.RESTRICT_DIAGRAM]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.MAKE_THEOREM]: (state) => {
+  [WorkspaceActions.MAKE_THEOREM]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_PROJECTION]: (state) => {
+  [WorkspaceActions.SET_PROJECTION]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_SLICE]: (state) => {
+  [WorkspaceActions.SET_SLICE]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_SOURCE]: (state) => {
+  [WorkspaceActions.SET_SOURCE]: (state) => {
     return clearOptions(state);
   },
 
-  [DiagramActions.SET_TARGET]: (state) => {
+  [WorkspaceActions.SET_TARGET]: (state) => {
     return clearOptions(state);
   }
 

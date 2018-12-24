@@ -1,14 +1,13 @@
-import diagram from "~/state/store/diagram";
+import workspace from "~/state/store/workspace";
 import signature from "~/state/store/signature";
 import attach from "~/state/store/attach";
 
 export const initialState = {
   signature: {
     generators: {},
-    edited: null,
-    id: 0
+    edited: null /* not sure what this does */
   },
-  diagram: {
+  workspace: {
     diagram: null,
     source: null,
     target: null,
@@ -23,7 +22,7 @@ export const initialState = {
 };
 
 export default (state, action) => {
-  state = diagram(state, action);
+  state = workspace(state, action);
   state = signature(state, action);
   state = attach(state, action);
   return state;

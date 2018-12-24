@@ -4,15 +4,19 @@ import { Diagram } from "~/diagram";
 import { LimitComponent, Limit, Content } from "~/limit";
 import * as Boundary from "~/boundary";
 
-export const attach = (diagram, build, path, slice) => {
-  if (_debug) _assert(diagram instanceof Diagram);
-  if (_debug) _assert(slice instanceof Array);
+export const attach = (generators, diagram, build, path, slice) => {
+  if (_debug) {
+    _assert(diagram instanceof Diagram);
+    _assert(slice instanceof Array);
+    _assert(generators);
+  }
+
 
   if (path.boundary == null) {
     let content = build(diagram, path.point, null);
     let new_slice = content.updateSlice(slice);
     let new_diagram = diagram.rewrite(content);
-    if (_debug) _assert(new_diagram.typecheck());
+    if (_debug) _assert(new_diagram.typecheck(generators));
     return { new_diagram, new_slice: new_slice }
   }
 
@@ -29,15 +33,15 @@ export const attach = (diagram, build, path, slice) => {
       //eff_slice[0] = diagram.source.data.length * 2 + 1; // move eff_sLice to source level
     }
 
-    let {new_diagram, new_slice} = attach(diagram.source, build, { ...path, depth: path.depth - 1}, eff_slice);
+    let {new_diagram, new_slice} = attach(generators, diagram.source, build, { ...path, depth: path.depth - 1}, eff_slice);
     let overall_slice = [...slice.slice(0, 2), ...new_slice.slice(1)];
     if (target_side && overall_slice.length > 1) {
       overall_slice[1] = eff_slice[0];
       overall_slice[1] += 2;
     }
 
-    let new_diagram_total = new Diagram(diagram.n, { source: new_diagram, data: padded_data /*diagram.data*/ });
-    if (_debug) _assert(new_diagram.typecheck());
+    let new_diagram_total = new Diagram({ n: diagram.n, source: new_diagram, data: padded_data /*diagram.data*/ });
+    if (_debug) _assert(new_diagram.typecheck(generators));
     return { new_diagram: new_diagram_total, new_slice: overall_slice };
   }
 
@@ -70,14 +74,15 @@ export const attach = (diagram, build, path, slice) => {
       new_slice = [new_first, ...new_rest];
     }
   }
-  let new_diagram = new Diagram(diagram.n, { source, data });
-  if (_debug) _assert(new_diagram.typecheck());
+  let new_diagram = new Diagram({ n: diagram.n, source, data });
+  if (_debug) _assert(new_diagram.typecheck(generators));
   return { new_diagram, new_slice };
 };
 
-export const attachGenerator = (diagram, generator, path, slice) => {
-  if (_debug) _assert(generator instanceof Generator);
-  return attach(diagram, buildAttachmentContent(generator), path, slice);
+export const attachGenerator = (generators, diagram, id, path, slice) => {
+  if (_debug) _assert(typeof id === 'string');
+  let type = generators[id];
+  return attach(generators, diagram, buildAttachmentContent(type), path, slice);
 };
 
 /**
@@ -86,24 +91,24 @@ export const attachGenerator = (diagram, generator, path, slice) => {
  * @param {number[]} point Attachment point in geometric coordinates.
  * @param {string|null} boundary
  */
-const buildAttachmentContent = generator => (diagram, point, boundary) => {
+const buildAttachmentContent = type => (diagram, point, boundary) => {
   point = point.map(x => x / 2);
 
   let inverse = boundary == "source";
-  let source = !inverse ? generator.source : generator.target;
-  let target = !inverse ? generator.target : generator.source;
+  let source = !inverse ? type.generator.source : type.generator.target;
+  let target = !inverse ? type.generator.target : type.generator.source;
 
   if (diagram.n == 0) {
-    let forwardComponent = new LimitComponent(0, { source_type: diagram.type, target_type: generator });
-    let backwardComponent = new LimitComponent(0, { source_type: target.type, target_type: generator });
-    let forwardLimit = new Limit(0, [forwardComponent]);
-    let backwardLimit = new Limit(0, [backwardComponent]);
-    return new Content(0, forwardLimit, backwardLimit);
+    let forwardComponent = new LimitComponent({ n: 0, source_id: diagram.id, target_id: type.generator.id });
+    let backwardComponent = new LimitComponent({ n: 0, source_id: target.id, target_id: type.generator.id });
+    let forward_limit = new Limit({ n: 0, components: [forwardComponent] });
+    let backward_limit = new Limit({ n: 0, components: [backwardComponent] });
+    return new Content({ n: 0, forward_limit, backward_limit });
   }
 
-  let forwardLimit = diagram.contractForwardLimit(generator, point, source);
-  let singularSlice = forwardLimit.rewrite_forward(diagram);
-  let backwardLimit = singularSlice.contractBackwardLimit(generator, point, target);
+  let forward_limit = diagram.contractForwardLimit(type.generator.id, point, source);
+  let singularSlice = forward_limit.rewrite_forward(diagram);
+  let backward_limit = singularSlice.contractBackwardLimit(type.id, point, target);
 
-  return new Content(diagram.n, forwardLimit, backwardLimit);
+  return new Content({ n: diagram.n, forward_limit, backward_limit });
 };

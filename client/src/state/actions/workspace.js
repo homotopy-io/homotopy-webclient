@@ -1,15 +1,16 @@
-export const SET_SOURCE = "diagram/set-source";
-export const SET_TARGET = "diagram/set-target";
-export const SET_PROJECTION = "diagram/set-projection";
-export const SET_SLICE = "diagram/set-slice";
-export const SET_RENDERER = "diagram/set-renderer";
-export const CLEAR_BOUNDARY = "diagram/clear-boundary";
-export const CLEAR_DIAGRAM = "diagram/clear-diagram";
-export const TAKE_IDENTITY = "diagram/take-identity";
-export const RESTRICT_DIAGRAM = "diagram/restrict-diagram";
-export const MAKE_THEOREM = "diagram/make-theorem";
-export const SELECT_CELL = "diagram/select-cell";
-export const HOMOTOPY = "diagram/homotopy";
+export const SET_SOURCE = "workspace/set-source";
+export const SET_TARGET = "workspace/set-target";
+export const SET_PROJECTION = "workspace/set-projection";
+export const SET_SLICE = "workspace/set-slice";
+export const SET_RENDERER = "workspace/set-renderer";
+export const CLEAR_BOUNDARY = "workspace/clear-boundary";
+export const CLEAR_DIAGRAM = "workspace/clear-diagram";
+export const TAKE_IDENTITY = "workspace/take-identity";
+export const RESTRICT_DIAGRAM = "workspace/restrict-diagram";
+export const MAKE_THEOREM = "workspace/make-theorem";
+export const SELECT_CELL = "workspace/select-cell";
+export const HOMOTOPY = "workspace/homotopy";
+export const POST_REHYDRATE = "workspace/post-rehydrate";
 
 export const setSource = () => ({
   type: SET_SOURCE
@@ -33,6 +34,12 @@ export const setRenderer = (renderer) => ({
   type: SET_RENDERER,
   payload: { renderer }
 });
+
+/*
+export const postRehydrate = () => ({
+  type: POST_REHYDRATE
+});
+*/
 
 export const clearBoundary = () => ({
   type: CLEAR_BOUNDARY

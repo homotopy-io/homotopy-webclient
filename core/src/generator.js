@@ -2,52 +2,69 @@ import { _assert, _debug, isNatural } from "~/util/debug";
 import { Diagram } from "~/diagram";
 import { Content } from "~/limit";
 
+function getType(id) {
+  return store.getState().signature.generators[id];
+}
+
 export class Generator {
 
-  constructor(id, source = null, target = null) {
-    if (_debug) _assert(id !== undefined);
-    if (_debug) _assert(source == null || source instanceof Diagram);
-    if (_debug) _assert(target == null || target instanceof Diagram);
+  constructor(args) {
+    if (_debug) {
+      _assert(args.id !== undefined);
+      _assert(args.source == null || args.source instanceof Diagram);
+      _assert(args.target == null || args.target instanceof Diagram);
+    }
 
-    this.n = source == null ? 0 : source.n + 1;
-    this.source = source;
-    this.target = target;
-    this.id = id;
+    this.n = args.source == null ? 0 : args.source.n + 1;
+    this.source = args.source;
+    this.target = args.target;
+    this.id = args.id;
+    this._t = 'Generator';
 
-    if (this.n > 1) {
-      if (_debug) _assert(source.source.equals(target.source));
-      if (_debug) _assert(source.getTarget().equals(target.getTarget()));
+    if (_debug) {
+      if (this.n > 1) {
+        _assert(this.source.source.equals(this.target.source));
+        _assert(this.source.getTarget().equals(this.target.getTarget()));
+      }
     }
 
     // Build content
     if (this.n > 0) {
-      let first_limit = this.source.contractForwardLimit(this, null, null);
+      let first_limit = this.source.contractForwardLimit(this.id, null, null);
       let singular_height = first_limit.rewrite_forward(this.source);
-      let second_limit_forwards = this.target.contractForwardLimit(this, null, null);
-      this.content = new Content(this.n - 1, first_limit, second_limit_forwards);
+      let second_limit_forwards = this.target.contractForwardLimit(this.id, null, null);
+      this.content = new Content({ n: this.n - 1, forward_limit: first_limit, backward_limit: second_limit_forwards });
     }
 
     // Build diagram
     if (this.n == 0) {
-      this.diagram = new Diagram(0, {
-        type: this
-      });
+      this.diagram = new Diagram({ n: 0, id: this.id });
     } else {
-      this.diagram = new Diagram(this.n, {
-        source: this.source,
-        data: [this.content]
-      });
+      this.diagram = new Diagram({ n: this.n, source: this.source, data: [this.content] });
     }
 
     Object.freeze(this);
   }
+
+  /*
+  static postRehydrate(generator, generators) {
+    if (generator.n == 0) {
+      return new Generator(generator.id, null, null);
+    } else {
+      let source = Diagram.postRehydrate(generator.source, generators);
+      let target = Diagram.postRehydrate(generator.target, generators);
+      return new Diagram(id, source, target);
+    }
+  }
+  */
 
   toJSON() {
     return {
       id: this.id,
       source: this.source,
       target: this.target,
-      n: this.n
+      n: this.n,
+      _t: 'Generator'
     };
   }
 

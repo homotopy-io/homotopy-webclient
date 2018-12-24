@@ -21,23 +21,43 @@ import {
   takeIdentity,
   clearDiagram,
   restrictDiagram,
-  makeTheorem,
-  setRenderer
-} from "~/state/actions/diagram";
+  makeTheorem
+} from "~/state/actions/workspace";
 
 const coreTransform = ReduxPersist.createTransform(
   (inboundState, key) => JSON.stringify(inboundState),
   (outboundState, key) => {
     return JSON.parse(outboundState, (name, val) => {
+      if (val === null) {
+        return null;
+      } else if (typeof val !== 'object') {
+        return val;
+      } else if (val._t === 'Diagram' ) {
+        return new Core.Diagram(val);
+      } else if (val._t === 'Generator' ) {
+        return new Core.Generator(val);
+      } else if (val._t === 'LimitComponent' ) {
+        return new Core.LimitComponent(val);
+      } else if (val._t === 'Limit') {
+        return new Core.Limit(val);
+      } else if (val._t === 'Content') {
+        return new Core.Content(val);
+      } else return val;
+
+      return val;
       if ( name == 'generator' ) {
         if (val.source == null && val.target == null) {
           return new Core.Generator(val.id, null, null);
         } else {
           return new Core.Generator(val.id, val.source, val.target);
         }
-      } else if (name == 'diagram') {
+      }
+      /*
+      else if (name == 'diagram') {
         return Core.Diagram.fromJSON(val);
-      } else {
+      }
+      */
+      else {
         return val;
       }
     });
@@ -56,6 +76,7 @@ const store = Redux.createStore(
   , initialState);
 window.store = store;
 const persistor = ReduxPersist.persistStore(store, null, () => {
+  //store.dispatch(postRehydrate());
   console.log("Rehydrated");
 });
 

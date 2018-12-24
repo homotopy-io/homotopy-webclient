@@ -1,6 +1,7 @@
 import dotProp from "dot-prop-immutable";
 import createReducer from "~/util/create-reducer";
-import * as Actions from "~/state/actions/signature";
+import * as WorkspaceActions from "~/state/actions/workspace";
+import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
 import { cellColors } from "~/style";
 
@@ -38,21 +39,56 @@ export const getGenerator = (state, id) => {
 };
 
 export const createGenerator = (state, source, target) => {
-  let id = state.signature.id;
-  let name = `Cell ${id + 1}`;
-  let color = cellColors[id % cellColors.length];
-  let generator = new Core.Generator(id, source, target);
 
-  state = dotProp.set(state, "signature.id", id + 1);
-  state = dotProp.set(state, `signature.generators.${id}`, {
-    name, generator, color
-  });
+  // Find a fresh id for the new generator
+  let id_num = 1;
+  while (state.signature.generators[id_num.toString()]) {
+    id_num ++;
+  }
+  let id = id_num.toString();
+
+  // Give it an appropriate name for the UI
+  let num_generators = Object.entries(state.signature.generators).length + 1;
+  let name = `Cell ${num_generators}`;
+
+  // Choose the colour
+  let color = cellColors[num_generators % cellColors.length];
+
+  // Construct the generator object
+  let generator = new Core.Generator({ id, source, target });
+
+  // Set the appropriate data
+  state = dotProp.set(state, `signature.generators.${id}`, { name, generator, color });
 
   return state;
 };
 
 export default createReducer({
-  [Actions.REMOVE_GENERATOR]: (state, { id }) => {
+
+  /*
+  [WorkspaceActions.POST_REHYDRATE]: (state) => {
+    // Ensure all the generators have source and target diagrams properly inserted
+    let { generators } = state.signature;
+    let new_generators = [];
+    for (let generator of Object.values(generators)) {
+      let new_generator = Core.Generator.postRehydrate(generator.generator, generators);
+      let id = generator.generator.id;
+      new_generators.push(new_generator);
+      //state = dotProp.set(state, `signature.generators.${id}`, new_generator);
+    }
+    // Add them to the state
+    for (let i=0; i<new_generators.length; i++) {
+      let new_generator = new_generators[i];
+      let id = new_generator.id;
+      state = dotProp.set(state, `signature.generators.${id}.generator`, new_generator);
+    }
+    //state = dotProp.set(state, "signature.generators", new_generators);
+
+    return state;
+  },
+  */
+
+  [SignatureActions.REMOVE_GENERATOR]: (state, { id }) => {
     let generators = state.signature.generators;
     let removedGenerator = generators[id].generator;
 
@@ -67,25 +103,25 @@ export default createReducer({
     state = dotProp.set(state, "signature.generators", keep);
 
     // Clear the current diagram if it uses the removed cell
-    let diagram = state.diagram.diagram;
+    let diagram = state.workspace.diagram;
     if (diagram != null && diagram.usesCell(removedGenerator)) {
-      state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "workspace.diagram", null);
     }
 
     return state;
   },
 
-  [Actions.RENAME_GENERATOR]: (state, { id, name }) => {
+  [SignatureActions.RENAME_GENERATOR]: (state, { id, name }) => {
     state = dotProp.set(state, `signature.generators.${id}.name`, name);
     return state;
   },
 
-  [Actions.RECOLOR_GENERATOR]: (state, { id, color }) => {
+  [SignatureActions.RECOLOR_GENERATOR]: (state, { id, color }) => {
     state = dotProp.set(state, `signature.generators.${id}.color`, color);
     return state;
   },
 
-  [Actions.CREATE_GENERATOR]: (state) => {
+  [SignatureActions.CREATE_GENERATOR]: (state) => {
     state = createGenerator(state, null, null);
     return state;
   },

@@ -4,9 +4,9 @@ import { connect } from "react-redux";
 import Diagram2D from "~/components/diagram/Diagram2D";
 import Diagram3D from "~/components/diagram/Diagram3D";
 
-import { getDiagram, getDisplayDimension, getSlice, getRenderer } from "~/state/store/diagram";
+import { getDiagram, getDisplayDimension, getSlice, getRenderer } from "~/state/store/workspace";
 import { getHighlight } from "~/state/store/attach";
-import { selectCell, homotopy } from "~/state/actions/diagram";
+import { selectCell, homotopy } from "~/state/actions/workspace";
 
 
 let prev = null;
@@ -49,7 +49,7 @@ export default connect(
     highlight: getHighlight(state),
     slice: getSlice(state),
     renderer: getRenderer(state),
-    test: state.diagram
+    test: state.workspace
   }),
   dispatch => ({
     onSelectCell: (points) => dispatch(selectCell(points)),
