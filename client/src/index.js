@@ -15,6 +15,11 @@ import reducer, { initialState } from "~/state/store";
 import * as Rx from "rxjs";
 import * as RxOps from "rxjs/operators";
 
+
+import createCompressor from 'redux-persist-transform-compress'
+
+
+
 import {
   setSource,
   setTarget,
@@ -65,8 +70,14 @@ const coreTransform = ReduxPersist.createTransform(
   { /* no options required */ }
 );
 
+
+const compressor = createCompressor()
+
+//persistStore(store, { transforms: [compressor] })
+
+
 const persistConfig = {
-  transforms: [coreTransform],
+  transforms: [coreTransform, compressor],
   key: 'root',
   storage,
 };
