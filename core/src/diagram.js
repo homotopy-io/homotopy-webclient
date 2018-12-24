@@ -731,7 +731,7 @@ export class Diagram {
 
   // Check if the specified id is used at all in this diagram
   usesCell(generator) {
-    if (this.n == 0) return this.type.id == generator.id;
+    if (this.n == 0) return this.id == generator.id;
     if (this.source && this.source.usesCell(generator)) return true;
     for (let content of this.data) {
       if (content.usesCell(generator)) return true;
