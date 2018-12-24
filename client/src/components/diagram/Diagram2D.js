@@ -144,9 +144,9 @@ export class Diagram2D extends React.Component {
   }
 
   getGenerator(point) {
-    //let type = Core.Geometry.typeAt(this.diagram, point);
-    let type = this.diagram.getActionType(point);
-    let id = type.id;
+    //let type = Core.Geometry.idAt(this.diagram, point);
+    let id = this.diagram.getActionId(point);
+    //let id = type.id;
     return this.props.generators[id];
   }
 
@@ -1095,7 +1095,7 @@ export class Diagram2D extends React.Component {
 
     let surfaces = [];
     for (let [a, b, v] of graph.edges()) {
-      //let aType = Core.Geometry.typeAt(diagram, a);
+      //let aType = Core.Geometry.idAt(diagram, a);
 
       for (let [c, w] of graph.edgesFrom(b)) {
         let x = graph.getEdge(a, c);

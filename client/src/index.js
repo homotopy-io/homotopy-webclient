@@ -2,6 +2,10 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as Redux from "redux";
 import * as ReactRedux from "react-redux";
+import * as ReduxPersist from "redux-persist";
+import storage from "redux-persist/lib/storage";
+import { PersistGate } from "redux-persist/integration/react";
+import * as Core from "homotopy-core";
 import "typeface-roboto";
 import "@icon/stroke-7/stroke-7.css";
 
@@ -17,12 +21,64 @@ import {
   takeIdentity,
   clearDiagram,
   restrictDiagram,
-  makeTheorem,
-  setRenderer
-} from "~/state/actions/diagram";
+  makeTheorem
+} from "~/state/actions/workspace";
 
-const store = Redux.createStore(reducer, initialState);
+const coreTransform = ReduxPersist.createTransform(
+  (inboundState, key) => JSON.stringify(inboundState),
+  (outboundState, key) => {
+    return JSON.parse(outboundState, (name, val) => {
+      if (val === null) {
+        return null;
+      } else if (typeof val !== 'object') {
+        return val;
+      } else if (val._t === 'Diagram' ) {
+        return new Core.Diagram(val);
+      } else if (val._t === 'Generator' ) {
+        return new Core.Generator(val);
+      } else if (val._t === 'LimitComponent' ) {
+        return new Core.LimitComponent(val);
+      } else if (val._t === 'Limit') {
+        return new Core.Limit(val);
+      } else if (val._t === 'Content') {
+        return new Core.Content(val);
+      } else return val;
+
+      return val;
+      if ( name == 'generator' ) {
+        if (val.source == null && val.target == null) {
+          return new Core.Generator(val.id, null, null);
+        } else {
+          return new Core.Generator(val.id, val.source, val.target);
+        }
+      }
+      /*
+      else if (name == 'diagram') {
+        return Core.Diagram.fromJSON(val);
+      }
+      */
+      else {
+        return val;
+      }
+    });
+  },
+  { /* no options required */ }
+);
+
+const persistConfig = {
+  transforms: [coreTransform],
+  key: 'root',
+  storage,
+};
+
+const store = Redux.createStore(
+  ReduxPersist.persistReducer(persistConfig, reducer)
+  , initialState);
 window.store = store;
+const persistor = ReduxPersist.persistStore(store, null, () => {
+  //store.dispatch(postRehydrate());
+  console.log("Rehydrated");
+});
 
 Rx.fromEvent(document, "keydown") 
   .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
@@ -43,7 +99,9 @@ Rx.fromEvent(document, "keydown")
 const render = () => {
   ReactDOM.render(
     <ReactRedux.Provider store={store}>
-      <App />
+      <PersistGate loading={null} persistor={persistor}>
+        <App />
+      </PersistGate>
     </ReactRedux.Provider>,
     document.getElementById("app")
   );

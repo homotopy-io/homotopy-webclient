@@ -1,12 +1,15 @@
 import * as React from "react";
 import styled from "styled-components";
+import downloadJSON from "~/util/export";
 
 export const Header = () =>
   <Actions style={{userSelect: 'none'}}>
-    <Action>Log In</Action>
+    {/*<Action>Log In</Action>
     <Action>Sign Up</Action>
     <Action>Gallery</Action>
-    <Action>Help</Action>
+    <Action>Help</Action>*/}
+    <Action onClick={() => downloadJSON(store.getState(), `homotopy.io - ${new Date()}`)}>Export</Action>
+    <Action onClick={() => alert("TODO: implement import")}>Import</Action>
   </Actions>;
 
 export default Header;

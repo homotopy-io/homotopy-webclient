@@ -2,17 +2,17 @@ import { _assert, _debug } from "../../../../core/src/util/debug"; // this is a 
 import dotProp from "dot-prop-immutable";
 import { createSelector } from "reselect";
 import createReducer from "~/util/create-reducer";
-import * as DiagramActions from "~/state/actions/diagram";
+import * as WorkspaceActions from "~/state/actions/workspace";
 import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
 import { createGenerator, getGenerator } from "~/state/store/signature";
 
 export const getDiagram = (state) => {
-  return state.diagram.diagram;
+  return state.workspace.diagram;
 };
 
 export const getDisplayDiagram = (state) => {
-  let { diagram, slice } = state.diagram;
+  let { diagram, slice } = state.workspace;
 
   if (diagram == null) {
     return null;
@@ -22,7 +22,7 @@ export const getDisplayDiagram = (state) => {
 };
 
 export const getDisplayDimension = (state) => {
-  let { diagram, projection, renderer } = state.diagram;
+  let { diagram, projection, renderer } = state.workspace;
 
   if (diagram == null) {
     return null;
@@ -32,7 +32,7 @@ export const getDisplayDimension = (state) => {
 };
 
 export const getSliceBounds = (state) => {
-  let { diagram, slice } = state.diagram;
+  let { diagram, slice } = state.workspace;
 
   if (diagram == null) {
     return [];
@@ -48,41 +48,39 @@ export const getSliceBounds = (state) => {
 };
 
 export const getSource = (state) => {
-  return state.diagram.source;
+  return state.workspace.source;
 };
 
 export const getTarget = (state) => {
-  return state.diagram.target;
+  return state.workspace.target;
 };
 
 export const getSlice = (state) => {
-  return state.diagram.slice;
+  return state.workspace.slice;
 };
 
 export const getRenderer = (state) => {
-  return state.diagram.renderer;
+  return state.workspace.renderer;
 };
 
 export const getProjection = (state) => {
-  return state.diagram.projection;
+  return state.workspace.projection;
 };
 
 export const setDiagram = (state, diagram) => {
-  let slice = Array(Math.max(0, diagram.n - state.diagram.renderer)).fill(0);
+  let slice = Array(Math.max(0, diagram.n - state.workspace.renderer)).fill(0);
 
-  state = dotProp.set(state, "diagram.diagram", diagram);
-  state = dotProp.set(state, "diagram.projection", 0);
-  state = dotProp.set(state, "diagram.slice", slice);
+  state = dotProp.set(state, "workspace.diagram", diagram);
+  state = dotProp.set(state, "workspace.projection", 0);
+  state = dotProp.set(state, "workspace.slice", slice);
   return state;
 };
 
-
-
 export const updateSlices = createSelector(
-  state => state.diagram.slice,
-  state => state.diagram.diagram,
-  state => state.diagram.projection,
-  state => state.diagram.renderer,
+  state => state.workspace.slice,
+  state => state.workspace.diagram,
+  state => state.workspace.projection,
+  state => state.workspace.renderer,
   (slice, diagram, projection, renderer) => {
 
     if (diagram == null) return [];
@@ -107,8 +105,33 @@ export const updateSlices = createSelector(
 
 export default createReducer({
 
-  [DiagramActions.SET_SOURCE]: (state) => {
-    let { target, diagram } = state.diagram;
+  /*
+  [WorkspaceActions.POST_REHYDRATE]: (state) => {
+
+    let { diagram, source, target } = state.workspace;
+    let { generators } = state.signature;
+
+    if (diagram) {
+      let diagram_rehydrated = Core.Diagram.postRehydrate(diagram, generators);
+      state = dotProp.set(state, "workspace.diagram", diagram_rehydrated);
+    }
+
+    if (source) {
+      let source_rehydrated = Core.Diagram.postRehydrate(source, generators);
+      state = dotProp.set(state, "workspace.source", source_rehydrated);
+    }
+
+    if (target) {
+      let target_rehydrated = Core.Diagram.postRehydrate(target, generators);
+      state = dotProp.set(state, "workspace.target", target_rehydrated);
+    }
+
+    return state;
+  },
+  */
+
+  [WorkspaceActions.SET_SOURCE]: (state) => {
+    let { target, diagram } = state.workspace;
     let source = diagram;
 
     if (diagram == null) return state;
@@ -130,21 +153,21 @@ export default createReducer({
       }
 
       state = createGenerator(state, source, target);
-      state = dotProp.set(state, "diagram.diagram", null);
-      state = dotProp.set(state, "diagram.target", null);
+      state = dotProp.set(state, "workspace.diagram", null);
+      state = dotProp.set(state, "workspace.target", null);
       return state;
     }
 
     // If there is not already a source, just store this target
     else {
-      state = dotProp.set(state, "diagram.source", source);
-      state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "workspace.source", source);
+      state = dotProp.set(state, "workspace.diagram", null);
       return state;
     }
   },
 
-  [DiagramActions.SET_TARGET]: (state) => {
-    let { source, diagram } = state.diagram;
+  [WorkspaceActions.SET_TARGET]: (state) => {
+    let { source, diagram } = state.workspace;
     let target = diagram;
 
     if (diagram == null) return state;
@@ -166,36 +189,37 @@ export default createReducer({
       }
 
       state = createGenerator(state, source, target);
-      state = dotProp.set(state, "diagram.diagram", null);
-      state = dotProp.set(state, "diagram.source", null);
+      state = dotProp.set(state, "workspace.diagram", null);
+      state = dotProp.set(state, "workspace.source", null);
       return state;
     }
 
     // If there is not already a source, just store this target
     else {
-      state = dotProp.set(state, "diagram.target", target);
-      state = dotProp.set(state, "diagram.diagram", null);
+      state = dotProp.set(state, "workspace.target", target);
+      state = dotProp.set(state, "workspace.diagram", null);
       return state;
     }
   },
 
-  [DiagramActions.MAKE_THEOREM]: (state) => {
-    let { diagram } = state.diagram;
+  [WorkspaceActions.MAKE_THEOREM]: (state) => {
+    let { diagram } = state.workspace;
     state = createGenerator(state, diagram.source, diagram.getTarget());
     let generator = getGenerator(state, state.signature.id - 1);
     state = createGenerator(state, generator.generator.diagram, diagram);
-    state = dotProp.set(state, "diagram.diagram", null);
+    state = dotProp.set(state, "workspace.diagram", null);
     return state;
   },
 
-  [DiagramActions.SET_RENDERER]: (state, { renderer }) => {
-    state = dotProp.set(state, "diagram.renderer", renderer);
-    state = dotProp.set(state, "diagram.slice", updateSlices(state));
+  [WorkspaceActions.SET_RENDERER]: (state, { renderer }) => {
+    state = dotProp.set(state, "workspace.renderer", renderer);
+    state = dotProp.set(state, "workspace.slice", updateSlices(state));
     return state;
   },
 
-  [DiagramActions.HOMOTOPY]: (state, { point, direction }) => {
-    let { diagram, slice } = state.diagram;
+  [WorkspaceActions.HOMOTOPY]: (state, { point, direction }) => {
+    let { diagram, slice } = state.workspace;
+    let { generators } = state.signature;
 
     if (diagram == null || point.length < 2) return state;
 
@@ -204,16 +228,17 @@ export default createReducer({
 
     try {
       let { new_diagram, new_slice } = Core.attach(
+        generators,
         diagram,
-        (boundary, point) => boundary.homotopy(point, direction),
+        (boundary, point) => boundary.homotopy(point, direction, generators),
         path,
         slice
       );
 
-      state = dotProp.set(state, "diagram.diagram", new_diagram);
-      state = dotProp.set(state, "diagram.slice", new_slice);
+      state = dotProp.set(state, "workspace.diagram", new_diagram);
+      state = dotProp.set(state, "workspace.slice", new_slice);
 
-      //state = dotProp.set(state, "diagram.slice", updateSlices(state));
+      //state = dotProp.set(state, "workspace.slice", updateSlices(state));
 
       return state;
     } catch(error) {
@@ -222,14 +247,13 @@ export default createReducer({
     }
   },
 
-  [DiagramActions.CLEAR_DIAGRAM]: (state) => {
-    state = dotProp.set(state, "diagram.diagram", null);
+  [WorkspaceActions.CLEAR_DIAGRAM]: (state) => {
+    state = dotProp.set(state, "workspace.diagram", null);
     return state;
   },
 
-  [DiagramActions.RESTRICT_DIAGRAM]: (state) => {
-    let diagram = state.diagram.diagram;
-    let slice = state.diagram.slice;
+  [WorkspaceActions.RESTRICT_DIAGRAM]: (state) => {
+    let { diagram, slice } = state.workspace;
     for (let i=0; i<slice.length; i++) {
       if (slice > 0 && slice < 2 * diagram.data.length) {
         if (slice % 2 == 1) {
@@ -238,41 +262,41 @@ export default createReducer({
         }
       }
     }
-    state = dotProp.set(state, "diagram.diagram", diagram.getSlice(...slice));
-    state = dotProp.set(state, "diagram.slice", []);
+    state = dotProp.set(state, "workspace.diagram", diagram.getSlice(...slice));
+    state = dotProp.set(state, "workspace.slice", []);
     return state;
   },
 
-  [DiagramActions.TAKE_IDENTITY]: (state) => {
-    state = dotProp.set(state, "diagram.diagram", diagram => diagram.boost());
-    let slice = state.diagram.slice.slice();
-    let diagram = state.diagram.diagram;
-    let sliceCount = diagram.n - state.diagram.renderer - state.diagram.projection;
+  [WorkspaceActions.TAKE_IDENTITY]: (state) => {
+    state = dotProp.set(state, "workspace.diagram", diagram => diagram.boost());
+    let slice = state.workspace.slice.slice();
+    let diagram = state.workspace.diagram;
+    let sliceCount = diagram.n - state.workspace.renderer - state.workspace.projection;
     if (sliceCount > slice.length) slice.push(1);
-    state = dotProp.set(state, "diagram.slice", slice);
+    state = dotProp.set(state, "workspace.slice", slice);
     return state;
   },
 
-  [DiagramActions.SET_PROJECTION]: (state, { projection }) => {
-    state = dotProp.set(state, "diagram.projection", projection);
-    state = dotProp.set(state, "diagram.slice", updateSlices(state));
+  [WorkspaceActions.SET_PROJECTION]: (state, { projection }) => {
+    state = dotProp.set(state, "workspace.projection", projection);
+    state = dotProp.set(state, "workspace.slice", updateSlices(state));
     return state;
   },
 
-  [DiagramActions.SET_SLICE]: (state, { index, height }) => {
-    state = dotProp.set(state, `diagram.slice.${index}`, height);
-    state = dotProp.set(state, "diagram.slice", updateSlices(state));
+  [WorkspaceActions.SET_SLICE]: (state, { index, height }) => {
+    state = dotProp.set(state, `workspace.slice.${index}`, height);
+    state = dotProp.set(state, "workspace.slice", updateSlices(state));
     return state;
   },
 
-  [DiagramActions.CLEAR_BOUNDARY]: (state) => {
-    state = dotProp.set(state, "diagram.source", null);
-    state = dotProp.set(state, "diagram.target", null);
+  [WorkspaceActions.CLEAR_BOUNDARY]: (state) => {
+    state = dotProp.set(state, "workspace.source", null);
+    state = dotProp.set(state, "workspace.target", null);
     return state;
   },
 
   [SignatureActions.SELECT_GENERATOR]: (state, { id }) => {
-    let { diagram } = state.diagram;
+    let { diagram } = state.workspace;
     let generator = state.signature.generators[id];
     if (diagram == null) {
       diagram = generator.generator.diagram;

@@ -1,8 +1,8 @@
 import * as React from "react";
 import { connect } from "react-redux";
 
-import { clearDiagram, setProjection, setSlice, setRenderer } from "~/state/actions/diagram";
-import { getDiagram, getSlice, getProjection, getSliceBounds, getRenderer } from "~/state/store/diagram";
+import { clearDiagram, setProjection, setSlice, setRenderer } from "~/state/actions/workspace";
+import { getDiagram, getSlice, getProjection, getSliceBounds, getRenderer } from "~/state/store/workspace";
 
 import Tool, { Control } from "~/components/Tool";
 import styled from "styled-components";

@@ -338,7 +338,7 @@ export class Diagram3D extends React.Component {
 
   getGenerator(point) {
     let diagram = this.diagram;
-    let id = Core.Geometry.typeAt(diagram, point).id;
+    let id = Core.Geometry.idAt(diagram, point).id;
     return this.props.generators[id];
   }
 

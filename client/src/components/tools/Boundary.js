@@ -2,8 +2,8 @@ import * as React from "react";
 import styled from "styled-components";
 import { connect } from "react-redux";
 
-import { clearBoundary } from "~/state/actions/diagram";
-import { getSource, getTarget } from "~/state/store/diagram";
+import { clearBoundary } from "~/state/actions/workspace";
+import { getSource, getTarget } from "~/state/store/workspace";
 
 import Tool from "~/components/Tool";
 import Diagram2D from "~/components/diagram/Diagram2D";

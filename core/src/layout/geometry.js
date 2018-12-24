@@ -1,7 +1,7 @@
 import { _assert, _debug, isNatural } from "~/util/debug";
 
 /*
-export const typeAt = (diagram, point) => {
+export const idAt = (diagram, point) => {
   if (point.length == 0) {
     let maxType = null;
 
@@ -31,13 +31,13 @@ export const typeAt = (diagram, point) => {
       regular: height % 2 == 0
     });
 
-    return typeAt(slice, rest);
+    return idAt(slice, rest);
   }
 };
 */
 
-export const typeAt = (diagram, point) => {
-  return diagram.getActionType(point);
+export const idAt = (diagram, point) => {
+  return diagram.getActionId(point);
   
 }
 
@@ -51,9 +51,9 @@ export const typesOf = function*(diagram) {
     yield* typesOf(diagram.source);
 
     for (let content of diagram.data) {
-      let type = content.forward_limit[0].target_type;
-      if (_debug) _assert(type);
-      yield type;
+      let id = content.forward_limit[0].target_id;
+      if (_debug) _assert(id);
+      yield id;
     }
   }
 };
