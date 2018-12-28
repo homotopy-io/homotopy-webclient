@@ -9,6 +9,7 @@ function getType(id) {
 export class Generator {
 
   constructor(args) {
+    if (args.bare) return this;
     if (_debug) {
       _assert(args.id !== undefined);
       _assert(args.source == null || args.source instanceof Diagram);

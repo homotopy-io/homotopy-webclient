@@ -46,9 +46,9 @@ export class SerializeCyclic {
       entries: this.entries,
       index_to_stored_array: [...this.index_to_stored].map(arr => {
         let index = arr[0];
-        let flattened = arr[1].flattened;
-        let array = arr[1].array;
-        return [ index , { f: flattened , a: array } ];
+        let f = arr[1].f;
+        let a = arr[1].a;
+        return [ index , { f , a } ];
       })
     };
   }
@@ -79,7 +79,7 @@ export class SerializeCyclic {
       let stored = index_to_stored.get(index);
       _assert(stored !== undefined);
 
-      let flattened = stored.flattened;
+      let flattened = stored.f;
       _assert(flattened);
       let object;
       if (flattened._t) {
@@ -94,7 +94,7 @@ export class SerializeCyclic {
         } else if (flattened._t === 'Generator') {
           object = new Generator({ bare: true });
         } else _assert(false);
-      } else if (stored.array) {
+      } else if (stored.a) {
         object = [];
       } else {
         object = {};
@@ -110,13 +110,13 @@ export class SerializeCyclic {
     for (let index of library_keys) {
       let stored = index_to_stored.get(index);
       let object = index_to_object.get(index);
-      let keys = Object.keys(stored.flattened);
+      let keys = Object.keys(stored.f);
       for (let i in keys) {
         let key = keys[i];
-        let value = stored.flattened[key];
+        let value = stored.f[key];
         let restored;
         //if (key === '_t') continue;
-        if (typeof value === 'object') {
+        if (value !== null && value !== undefined && typeof value === 'object') {
           _assert(value._l !== undefined);
           restored = index_to_object.get(value._l);
         } else {
@@ -124,7 +124,7 @@ export class SerializeCyclic {
         }
         object[key] = restored;
       }
-      if (stored.flattened._t) {
+      if (stored.f._t) {
         Object.freeze(object);
       }
     }
@@ -151,14 +151,14 @@ export class SerializeCyclic {
     if (stored.descendants) return stored.descendants;
     if (_debug) {
       _assert(stored);
-      _assert(stored.flattened);
+      _assert(stored.f);
     }
     let object = index_to_object.get(index);
     let keys = Object.keys(object);
     let multi_descendants = [];
     for (let i of keys) {
       let key = keys[i];
-      let value = stored.flattened[key];
+      let value = stored.f[key];
       if (value !== null && value !== undefined && typeof value === 'object') {
         let subindex = object_to_index.get({ value });
         multi_descendants.push([... SerializeCyclic.computeDescendants({ index: subindex }), subindex]);
@@ -243,10 +243,10 @@ export class SerializeCyclic {
 
   }
 
-  makeLibraryEntry(flattened, object, descendants) {
+  makeLibraryEntry(f, object, descendants) {
     //let serialization = JSON.stringify(flattened);
-    let array = Array.isArray(object);
-    return { flattened, descendants, array };
+    let a = Array.isArray(object);
+    return { f, descendants, a };
   }
 
   getLibraryReference(index) {

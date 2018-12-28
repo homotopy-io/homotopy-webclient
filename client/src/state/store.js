@@ -1,6 +1,7 @@
 import workspace from "~/state/store/workspace";
 import signature from "~/state/store/signature";
 import attach from "~/state/store/attach";
+import object_store from "~/state/store/object_store";
 import LZ from "lz-string";
 import * as Core from "homotopy-core";
 //import stringify from "json-stringify-safe";
@@ -28,35 +29,26 @@ export const initialState = {
 };
 
 export default (state, action) => {
+
+  if (action.type === 'persist/REHYDRATE') {
+    if (!action.payload) return state;
+    let sc_json = action.payload.object_store.serialize_cyclic;
+    if (sc_json === null) return state;
+    let head = sc_json.head;
+    let entries = sc_json.entries;
+    let index_to_stored_array = sc_json.index_to_stored_array;
+    let sc = Core.SerializeCyclic.fromJSON({ head, entries, index_to_stored_array });
+    let new_state = sc.getHead();
+    state = dotProp.set(state, `signature`, new_state.signature);
+    state = dotProp.set(state, `workspace`, new_state.workspace);
+    state = dotProp.set(state, `attach`, new_state.attach);
+    state = dotProp.set(state, `object_store.serialize_cyclic`, sc);
+    return state;
+  }
+
   state = workspace(state, action);
   state = signature(state, action);
   state = attach(state, action);
-  // send an action to the object store
-
-  if (action.type.indexOf('INIT') >= 0) return state;
-  if (action.type === 'persist/PERSIST') return state;
-  if (action.type === 'persist/REHYDRATE') return state;
-
-  // Update the object store
-  if (!state.object_store.serialize_cyclic) state.object_store.serialize_cyclic = new Core.SerializeCyclic();
-  let now = performance.now();
-  let state_for_storage = Object.assign({}, state);
-  delete state_for_storage['object_store'];
-  state.object_store.serialize_cyclic.update(state_for_storage);
-  let ms = performance.now() - now;
-  console.log('Updated object store in ' + ms + ' ms');
-
-  // Trick redux-persist into thinking the object store has changed
-  let old_store = state.object_store.serialize_cyclic;
-  state.object_store.serialize_cyclic = new Core.SerializeCyclic(old_store);
-
-  /*
-  let sc = new Core.SerializeCyclic();
-  sc.update(state);
-  let str = sc.stringify();
-  let compressed = LZ.compressToUTF16(str);
-  console.log('State ' + str.length + ' => ' + compressed.length + ', ratio ' + Math.floor(compressed.length*100/str.length) + '%');
-  */
-
+  state = object_store(state, action);
   return state;
 };

@@ -34,6 +34,7 @@ const coreTransform = ReduxPersist.createTransform(
   },
   (outboundState, key) => {
     return JSON.parse(outboundState, (name, val) => {
+      return val;
       if (val === null) {
         return null;
       } else if (typeof val !== 'object') {
@@ -138,6 +139,7 @@ const compressor = ReduxPersist.createTransform(
   const persistor = ReduxPersist.persistStore(store, null, () => {
     //store.dispatch(postRehydrate());
 
+    /*
     let state = store.getState();
     let sc_json = state.object_store.serialize_cyclic;
     if (sc_json === null) return;
@@ -148,6 +150,7 @@ const compressor = ReduxPersist.createTransform(
     let new_state = sc.getHead();
     Object.assign(state, new_state);
     state.object_store.serialize_cyclic = sc;
+    */
   });
 
   Rx.fromEvent(document, "keydown") 
