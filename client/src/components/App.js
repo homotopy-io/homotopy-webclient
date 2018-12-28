@@ -7,7 +7,46 @@ import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 import LogoImg from '../logo.svg';
+import * as Core from "homotopy-core";
 
+
+export class App extends React.Component {
+
+  constructor(props) {
+    super(props);
+  }
+
+  componentDidUpdate() {
+    let sc = new Core.SerializeCyclic();
+    sc.update(store.getState());
+    console.log('State length ' + sc.stringify().length);  
+  }
+
+  render() {
+    return (
+      <Container>
+        <SignatureBar>
+          <Logo><LogoImage src={LogoImg}/></Logo>
+          <Signature />
+        </SignatureBar>
+        <Content>
+          <Header />
+          <Workspace />
+        </Content>
+        <ToolBar>
+          <div>{localStorage['persist:root'].length}</div>
+          <DiagramTool />
+          <AttachmentTool />
+          <BoundaryTool />
+        </ToolBar>
+      </Container>
+    );
+  }
+}
+
+
+
+/*
 export const App = () =>
   <Container>
     <SignatureBar>
@@ -19,11 +58,13 @@ export const App = () =>
       <Workspace />
     </Content>
     <ToolBar>
+      <div>{localStorage['persist:root'].length}</div>
       <DiagramTool />
       <AttachmentTool />
       <BoundaryTool />
     </ToolBar>
   </Container>;
+*/
 
 export default App;
 

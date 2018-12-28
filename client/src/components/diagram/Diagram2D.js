@@ -58,6 +58,11 @@ export class Diagram2D extends React.Component {
       //this.panzoom.destroy();
       this.componentDidMount();
     }
+    /*
+    let sc = new Core.SerializeCyclic();
+    sc.update(store.getState());
+    console.log('State length ' + sc.stringify().length);
+    */
   }
 
   componentWillUnmount() {

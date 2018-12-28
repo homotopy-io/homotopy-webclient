@@ -5,6 +5,7 @@ export { Diagram } from "./diagram";
 export { Content, Limit, LimitComponent } from "./limit";
 export { Monotone } from "./monotone";
 export { attachGenerator, attach } from "./attach";
+export { SerializeCyclic } from "./serialize_flat";
 
 import * as Geometry from "./layout/geometry";
 export { Geometry };

@@ -5,10 +5,13 @@ import { Limit, Content, LimitComponent } from "~/limit";
 // blah
 import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
+import { SerializeCyclic } from "~/serialize_flat";
 
 export class Diagram {
 
   constructor(args) {
+
+    if (args.bare) return this;
 
     this["_t"] = "Diagram";
     if (_debug) _assert(isNatural(args.n));
@@ -82,6 +85,16 @@ export class Diagram {
     }
 
     Object.freeze(this);
+
+    /*
+    let sc = new SerializeCyclic();
+    sc.update(this);
+    let string = sc.stringify();
+    let re = SerializeCyclic.destringify(string);
+    let di = re.getHead();
+    _assert(this.equals(di));
+    //console.log('Diagram, n=' + this.n + ', length=' + string.length);
+    */
   }
 
   // Turn Javascript object into Diagram class, adding in generators by reference
@@ -104,37 +117,42 @@ export class Diagram {
   }
   */
 
+  static fromMinimal(args) {
+
+    if (args === null) return null;
+    if (args.n == 0) return new Diagram(args);
+    let data = [];
+    if (_debug) _assert(args.source instanceof Diagram);
+    let source = args.source;
+    let minimal_level = source;
+    for (let i=0; i<args.data.length; i++) {
+      let content = Content.fromMinimal(args.data[i], minimal_level);
+      data.push(content);
+      minimal_level = content.rewrite(minimal_level);
+    }
+    let n = args.n;
+    return new Diagram({ n, source, data });
+
+  }
+
   toJSON() {
+
     if (this.n == 0) {
       return {
         n: 0,
         id: this.id,
         _t: 'Diagram'
       }
-    } else {
-      return {
-        n: this.n,
-        source: this.source.toJSON(),
-        data: this.data.map(x => x.toJSON()),
-        _t: 'Diagram'
-      };
-    }
-  }
+    };
 
-  /*
-  static fromJSON(val) {
-    if (val === null) return null;
-    let n = val.n;
-    if (n == 0) {
-      let type = getGenerator(val.type);
-    } else {
-      let source = new Diagram({n, val.source});
-      let data = val.data.map(x => Content.fromJSON(x));
-      return new Diagram({ n, source, data });
-    }
+    return {
+      n: this.n,
+      source: this.source.toJSON(),
+      data: this.data.map(x => x.toMinimalJSON()),
+      _t: 'MinimalDiagram'
+    };
 
   }
-  */
 
   validate() {
     return true;

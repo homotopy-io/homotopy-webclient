@@ -61,11 +61,23 @@ export class Generator {
   toJSON() {
     return {
       id: this.id,
-      source: this.source,
-      target: this.target,
+      source: this.source ? this.source.toJSON() : null,
+      target: this.target ? this.target.toJSON() : null,
       n: this.n,
-      _t: 'Generator'
+      _t: 'MinimalGenerator'
     };
+  }
+
+  static fromMinimal(args) {
+    let id = args.id;
+    if (args.n > 0 && _debug) {
+      _assert(args.source instanceof Diagram);
+      _assert(args.target instanceof Diagram);
+    }
+    let source = args.source;
+    let target = args.target;
+    let n = this.n;
+    return new Generator({ n, id, source, target });
   }
 
   validate() {

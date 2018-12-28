@@ -32,7 +32,8 @@ import * as ArrayUtil from "~/util/array";
 
 export class Content {
 
-  constructor(args /*n, forward_limit, backward_limit*/) {
+  constructor(args) {
+    if (args.bare) return this;
     this.n = args.n;
     this.forward_limit = args.forward_limit;
     this.backward_limit = args.backward_limit;
@@ -62,6 +63,31 @@ export class Content {
       n: this.n,
       _t: 'Content'
     };
+  }
+
+  toMinimalJSON() {
+    return {
+      forward_limit: this.forward_limit.toMinimalJSON(true),
+      backward_limit: this.backward_limit.toMinimalJSON(false),
+      n: this.n,
+      _t: 'MinimalContent'
+    };
+  }
+
+  static fromMinimal(args, minimal_level) {
+    if (_debug) {      
+      _assert(args.forward_limit);
+      _assert(args.backward_limit);
+      _assert(isNatural(args.n));
+      _assert(minimal_level instanceof Diagram);
+    }
+
+    let forward_limit = Limit.fromMinimal(args.forward_limit, true, minimal_level);
+    let singular_level = forward_limit.rewrite_forward(minimal_level);
+    let backward_limit = Limit.fromMinimal(args.backward_limit, false, singular_level)
+    let n = args.n;
+
+    return new Content({ n, forward_limit, backward_limit });
   }
 
   validate() {
@@ -375,6 +401,7 @@ export class Content {
 export class LimitComponent {
 
   constructor(args) {
+    if (args.bare) return this;
     this.n = args.n;
     this._t = 'LimitComponent';
     if (_debug) _assert(isNatural(this.n));
@@ -396,6 +423,16 @@ export class LimitComponent {
     //_assert(args.last === undefined);
     if (_debug) _assert(isNatural(this.first));
     this.sublimits = args.sublimits;
+
+    // Reconstitute target data if necessary
+    if (args.target_data === null) {
+      _assert(args.sublimits.length > 0);
+      let forward_limit = this.sublimits[0].compose(this.source_data[0].forward_limit);
+      let l = this.sublimits.length;
+      let backward_limit = this.sublimits[l - 1].compose(this.source_data[l - 1].backward_limit);
+      this.target_data = new Content({ n: this.n - 1, forward_limit, backward_limit });
+    }
+
     Object.freeze(this);
     _validate(this);
   }
@@ -566,6 +603,7 @@ export class LimitComponent {
   */
 
   toJSON() {
+
     if (this.n == 0) {
       return {
         n: 0,
@@ -573,16 +611,58 @@ export class LimitComponent {
         target_id: this.target_id,
         _t: 'LimitComponent'
       }
-    } else {
-      return {
-        first: this.first,
-        sublimits: this.sublimits.map(x => x.toJSON()),
-        source_data: this.source_data.map(x => x.toJSON()),
-        target_data: this.target_data.toJSON(),
-        n: this.n,
-        _t: 'LimitComponent'
-      }
     }
+
+    return {
+      first: this.first,
+      sublimits: this.sublimits.map(x => x.toJSON()),
+      source_data: this.source_data.map(x => x.toJSON()),
+      target_data: this.sublimits.length == 0 ? this.target_data.toJSON() : null, // If sublimits exist we can reconstruct the target data
+      //target_data: this.target_data.toJSON(),
+      n: this.n,
+      _t: 'LimitComponent'
+    }
+
+  }
+
+  toMinimalJSON(forward) {
+
+    if (this.n == 0) return this.toJSON();
+    
+    return {
+      first: this.first,
+      sublimits: this.sublimits.map(x => x.toJSON()),
+      source_data: forward ? null : this.source_data.map(x => x.toJSON()),
+      target_data: forward ? (this.sublimits.length == 0 ? this.target_data.toJSON() : null) : null, // If sublimits exist we can reconstruct the target data
+      //target_data: this.target_data.toJSON(),
+      n: this.n,
+      _t: 'MinimalLimitComponent'
+    }
+
+  }
+
+  static fromMinimal(args, minimal_forward, minimal_target, minimal_level) {
+
+    if (_debug) {
+      _assert(minimal_level instanceof Diagram);
+      _assert(typeof minimal_forward === 'boolean');
+    }
+
+    let source_data;
+    let target_data;
+    if (minimal_forward) {
+      source_data = minimal_level.data.slice(args.first, args.first + args.sublimits.length);
+      target_data = args.target_data;
+    } else {
+      if (_debug) _assert(typeof minimal_target === 'number');
+      target_data = minimal_level.data[minimal_target];
+      source_data = args.source_data;
+    }
+    let first = args.first;
+    let sublimits = args.sublimits;
+    let n = args.n;
+
+    return new LimitComponent({ n, first, sublimits, source_data, target_data });
   }
 
   equals(b) {
@@ -694,12 +774,13 @@ export class LimitComponent {
 export class Limit extends Array {
 
   constructor(args) {
+    let components = args.components || [];
+    super(...components);
+    if (args.bare) return this;
     if (_debug) {
       _assert(isNatural(args.n));
       _propertylist(args, ["n"], ["components"]);
     }
-    let components = args.components || [];
-    super(...components);
     this.n = args.n;
     this._t = "Limit";
     if (this.n > 0 && components.length > 0) this.source_size = args.source_size;
@@ -754,6 +835,61 @@ export class Limit extends Array {
       n: this.n,
       _t: 'Limit'
     };
+  }
+
+  toMinimalJSON(forward /* boolean */) {
+    return {
+      components: [...this].map(x => x.toMinimalJSON(forward)),
+      source_size: this.source_size,
+      n: this.n,
+      _t: 'MinimalLimit'
+    };
+  }
+
+  static fromMinimal(args, minimal_forward, minimal_level) {
+
+    if (_debug) {
+      _assert(args);
+      _assert(typeof minimal_forward === 'boolean');
+      _assert(minimal_level instanceof Diagram);
+    }
+
+    if (args.components.length == 0) {
+      return new Limit(args);
+    }
+
+    if (args.n == 0) {
+      let c = args.components[0];
+      let n = 0;
+      let source_id = c.source_id;
+      let target_id = c.target_id;
+      let components = [new LimitComponent({ n, source_id, target_id })];
+      return new Limit({ n, components });
+    }
+
+    let component_targets = [];
+    let offset = 0;
+
+    /*
+    for (let component of this) {
+      component_targets.push(component.first - offset);
+      offset += component.getLast() - component.first - 1;
+    }
+    */
+
+
+   let components = [];
+   for (let i=0; i<args.components.length; i++) {
+      let component = args.components[i];
+      let minimal_target = component.first - offset;
+      let new_component = LimitComponent.fromMinimal(component, minimal_forward, minimal_target, minimal_level);
+      components.push(new_component);
+      offset += component.sublimits.length - 1;
+    }
+
+    let n = args.n;
+    let source_size = args.source_size;
+    return new Limit({ n, components, source_size });
   }
 
   usesCell(generator) {
