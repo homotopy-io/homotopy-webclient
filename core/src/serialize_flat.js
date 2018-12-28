@@ -132,7 +132,6 @@ export class SerializeCyclic {
     // Compute descendents
     library_keys = index_to_stored.keys();
     for (let index of library_keys) {
-      let stored = index_to_stored.get(index);
       this.computeDescendants({ index, index_to_object, object_to_index, index_to_stored });
     }
 
@@ -161,7 +160,12 @@ export class SerializeCyclic {
       let value = stored.f[key];
       if (value !== null && value !== undefined && typeof value === 'object') {
         let subindex = object_to_index.get({ value });
-        multi_descendants.push([... SerializeCyclic.computeDescendants({ index: subindex }), subindex]);
+        multi_descendants.push([... SerializeCyclic.computeDescendants({
+          index: subindex,
+          index_to_object,
+          object_to_index,
+          index_to_stored
+        }), subindex]);
       }
     }
     let descendants = [...new Set(multi_descendants.flat())]; // group and deduplicate

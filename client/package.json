@@ -34,8 +34,6 @@
     "react-redux": "^5.0.7",
     "react-spinkit": "^3.0.0",
     "redux": "^4.0.0",
-    "redux-persist": "^5.10.0",
-    "redux-persist-transform-compress": "^4.2.0",
     "resize-observer-polyfill": "^1.5.0",
     "rxjs": "^6.2.2",
     "styled-components": "^3.4.5",
