@@ -4,6 +4,7 @@ import attach from "~/state/store/attach";
 import object_store from "~/state/store/object_store";
 import LZ from "lz-string";
 import * as Core from "homotopy-core";
+import dotProp from "dot-prop-immutable";
 //import stringify from "json-stringify-safe";
 
 export const initialState = {
