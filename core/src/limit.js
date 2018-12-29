@@ -471,7 +471,7 @@ export class LimitComponent {
     _assert(this.target_data.n == this.n - 1);
     _validate(this.target_data);
 
-    _assert(LimitComponent.testViable(this.n, { source_data: this.source_data, target_data: this.target_data, sublimits: this.sublimits, first: this.first }));
+    _assert(LimitComponent.testViable({ n: this.n, source_data: this.source_data, target_data: this.target_data, sublimits: this.sublimits, first: this.first }));
 
     /* Check mutual consistency of source_data */
     if (this.n < 2) return;
@@ -567,6 +567,7 @@ export class LimitComponent {
     if (n == 0) return;
 
     // Expansive case
+    if (_debug) _assert(sublimits);
     if (sublimits.length == 0) return target_data.forward_limit.equals(target_data.backward_limit);
 
     // Contractive or 1-to-1 case
@@ -1522,7 +1523,7 @@ export class Limit /*extends Array*/ {
      If this is 'undefined', we take the empty subset at height n.
      If this is 'null', we take the full subset at height n. */
 
-  restrictToPreimage(subset /*{source, target, limit, subset}*/) {
+  restrictToPreimage(subset) {
 
     // Return everything
     if (subset === null) return this; //{ /*source, target, limit };
@@ -1579,7 +1580,7 @@ export class Limit /*extends Array*/ {
         sublimits.push(restrict_component);
 
         // If the new component will be the identity, we don't need to do anything
-        if (j == 0 && component.source_data.length == 1 && restrict_component.length == 0) {
+        if (j == 0 && component.source_data.length == 1 && restrict_component.components.length == 0) {
           trivial = true;
           break;
         }
@@ -2149,8 +2150,8 @@ export class Limit /*extends Array*/ {
       }
 
       // Extract the components and boost their start height
-      for (let i=0; i<factor_component.length; i++) {
-        let component = factor_component[i];
+      for (let i=0; i<factor_component.components.length; i++) {
+        let component = factor_component.components[i];
         let boosted = component.copy({ first: component.first + this_preimage.first });
         components.push(boosted);
       }
@@ -2275,7 +2276,7 @@ export class Limit /*extends Array*/ {
         let first = preimage.first;
 
         // If the component is trivial, ignore it
-        if (sublimits.length == 1 && sublimits[0].length == 0) continue;
+        if (sublimits.length == 1 && sublimits[0].components.length == 0) continue;
 
         // Test if this data would be viable
         if (!LimitComponent.testViable({ n: this.n, sublimits, source_data, target_data, first })) {
@@ -2295,6 +2296,13 @@ export class Limit /*extends Array*/ {
 
       // We've completed the factorization
       let limit = new Limit({ n: this.n, components, source_size: this_source_size });
+
+      // Test that this is a correct factorization
+      if (_debug) {
+        let composed = second.compose(limit);
+        _assert(this.equals(composed));
+      }
+
       return limit;
     }
 
