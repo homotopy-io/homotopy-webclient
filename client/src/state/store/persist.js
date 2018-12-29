@@ -8,6 +8,8 @@ export default (state, action) => {
 
   if (action.type === 'persist/newhash') {
 
+    if (state.serialization === action.payload) return state;
+
     try {
 
       let compressed = action.payload;

@@ -11,6 +11,8 @@ import persist from "~/state/store/persist";
 import * as Core from "homotopy-core";
 import LZ from "lz-string";
 
+let serializer = new Core.SerializeCyclic();
+
 export const initialState = {
   signature: {
     generators: {},
@@ -44,22 +46,32 @@ export default (state, action) => {
       && action.type != 'attach/set-highlight'
       && action.type != 'attach/clear-highlight') {
 
-    const serializer = new Core.SerializeCyclic();
+    /*
+    if (this.serializer === undefined) {
+      this.serializer = new Core.SerializeCyclic();
+    }
+    */
+
+    const t0 = performance.now();
 
     // We've been asked to serialize the state
     let state_modified = Object.assign({}, state);
     delete state_modified.serialization;
 
     // Update the serializer with the current state
-    const timeBefore = performance.now();
     serializer.update(state_modified);
-    const timeAfter = performance.now();
-    console.log(`Updated object store in ${Math.floor(timeAfter - timeBefore)}ms`);
+
+    const t1 = performance.now();
 
     // Stringify and compress the state
     let string = serializer.stringify();
+
+    const t2 = performance.now();
+
     let compressed = LZ.compressToBase64(string);
-    console.log(`Compressed length is ${compressed.length}`);
+
+    const t3 = performance.now();
+
     state.serialization = compressed;
 
     // Put the string into local storage
@@ -68,6 +80,10 @@ export default (state, action) => {
     // Put the string into the URL
     window.location.hash = compressed;
 
+    const timeAfter = performance.now();
+    console.log(`Stored (${Math.floor(t1-t0)} ms), `
+      + `serialized (${Math.floor(string.length/1024)} kb, ${Math.floor(t2-t1)} ms), `
+      + `compressed (${Math.floor(compressed.length/1024)} kb, ${Math.floor(t2-t1)} ms)`);
   }
 
   _assert(state.diagram === undefined);
