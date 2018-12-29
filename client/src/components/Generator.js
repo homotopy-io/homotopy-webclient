@@ -52,7 +52,7 @@ export default connect(
   (dispatch, { id }) => ({
     onSelect: () => dispatch({ type: "signature/select-generator", payload: { id } }),
     onRemove: () => dispatch({ type: "signature/remove-generator", payload: { id } }),
-    onRename: (name) => dispatch({ type: "signature/remove-generator", payload: { id, name } }),
+    onRename: (name) => dispatch({ type: "signature/rename-generator", payload: { id, name } }),
     onRecolor: (color) => dispatch({ type: "signature/recolor-generator", payload: { id, color } })
   })
 )(Generator);

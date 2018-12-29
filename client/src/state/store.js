@@ -1,3 +1,4 @@
+import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mess
 import workspace from "~/state/store/workspace";
 import signature from "~/state/store/signature";
 import attach from "~/state/store/attach";
@@ -31,6 +32,7 @@ export const initialState = {
 };
 
 export default (state, action) => {
+  _assert(state.diagram === undefined);
   state = persist(state, action);
   state = workspace(state, action);
   state = signature(state, action);
@@ -67,6 +69,8 @@ export default (state, action) => {
     window.location.hash = compressed;
 
   }
+
+  _assert(state.diagram === undefined);
 
   return state;
 };

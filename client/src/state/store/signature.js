@@ -1,3 +1,4 @@
+import { _assert, _debug } from "../../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
 import createReducer from "~/util/create-reducer";
 import * as WorkspaceActions from "~/state/actions/workspace";
@@ -7,6 +8,7 @@ import { cellColors } from "~/style";
 
 export const getDimensionGroups = (state) => {
   let { signature } = state;
+  _assert(signature);
   let { generators } = signature;
 
   let dimension = Math.max(0, ...Object.values(generators).map(g => g.generator.n));
@@ -38,16 +40,20 @@ export const getGenerator = (state, id) => {
   }
 };
 
-export const createGenerator = (state, source, target) => {
-
-  // Find a fresh id for the new generator
+// Find a fresh id for a new generator
+export const getFreshId = (state) => {
   let id_num = 1;
+  _assert(state);
   while (state.signature.generators[id_num.toString()]) {
     id_num ++;
   }
   let id = id_num.toString();
+  return id;
+}
 
-  // Give it an appropriate name for the UI
+export const createGenerator = (state, source, target, id) => {
+
+  // Choose an appropriate default name in the UI
   let num_generators = Object.entries(state.signature.generators).length + 1;
   let name = `Cell ${num_generators}`;
 
@@ -109,9 +115,10 @@ export default (state, action) => {
       state = dotProp.set(state, `signature.generators.${id}.color`, color);
       break;
 
-    } case 'signature/create-generator': {
+    } case 'signature/create-zero-cell': {
 
-      state = createGenerator(state, null, null);
+      let id = getFreshId(state);
+      state = createGenerator(state, null, null, id);
 
     }
   }

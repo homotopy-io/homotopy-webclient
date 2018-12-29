@@ -5,7 +5,7 @@ import createReducer from "~/util/create-reducer";
 import * as WorkspaceActions from "~/state/actions/workspace";
 import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
-import { createGenerator, getGenerator } from "~/state/store/signature";
+import { createGenerator, getGenerator, getFreshId } from "~/state/store/signature";
 
 export const getDiagram = (state) => {
   return state.workspace.diagram;
@@ -139,74 +139,79 @@ export default (state, action) => {
       let source = diagram;
       if (diagram == null) return state;
 
-      // If there is already a source, create a new generator
-      if (target != null) {
-
-        if (target.n != source.n) {
-          alert ('Source and target must have the same dimension');
-          break;
-        }
-
-        if (source.n > 1) {
-          if (!source.source.equals(target.source)
-            || !source.getTarget().equals(target.getTarget())) {
-              alert ('Source and target must have the same boundary');
-              break;
-          }
-        }
-
-        state = createGenerator(state, source, target);
-        state = dotProp.set(state, "workspace.diagram", null);
-        state = dotProp.set(state, "workspace.target", null);
-      }
-
-      // If there is not already a source, just store this target
-      else {
+      // If there's no target, just store this source
+      if (target == null) {
         state = dotProp.set(state, "workspace.source", source);
         state = dotProp.set(state, "workspace.diagram", null);
+        break;
       }
 
+      // Dimension test
+      if (target.n != source.n) {
+        alert ('Source and target must have the same dimension');
+        break;
+      }
+
+      // Globularity test
+      if (source.n > 1) {
+        if (!source.source.equals(target.source)
+          || !source.getTarget().equals(target.getTarget())) {
+            alert ('Source and target must have the same boundary');
+            break;
+        }
+      }
+
+      state = createGenerator(state, source, target, getFreshId(state));
+      state = dotProp.set(state, "workspace.diagram", null);
+      state = dotProp.set(state, "workspace.target", null);
       break;
 
     } case 'workspace/set-target': {
 
+      _assert(state);
       let { source, diagram } = state.workspace;
       let target = diagram;
       if (diagram == null) break;
-      
-      // If there is already a source, create a new generator
-      if (source != null) {
 
-        if (source.n != target.n) {
-          alert ('Source and target must have the same dimension');
-          break;
-        }
-
-        if (source.n >= 1) {
-          if (!source.source.equals(target.source)
-            || !source.getTarget().equals(target.getTarget())) {
-              alert ('Source and target must have the same boundary');
-              break;
-          }
-        }
-
-        state = createGenerator(state, source, target);
-        state = dotProp.set(state, "workspace.diagram", null);
-        state = dotProp.set(state, "workspace.source", null);
-      } else {
-        // If there is not already a source, just store this target
+      // If there is not already a source, just store this target
+      if (source == null) {
         state = dotProp.set(state, "workspace.target", target);
         state = dotProp.set(state, "workspace.diagram", null);
+        break;
       }
+      
+      // Dimension test
+      if (source.n != target.n) {
+        alert ('Source and target must have the same dimension');
+        break;
+      }
+
+      // Globularity test
+      if (source.n >= 1) {
+        if (!source.source.equals(target.source)
+          || !source.getTarget().equals(target.getTarget())) {
+            alert ('Source and target must have the same boundary');
+            break;
+        }
+      }
+
+      _assert(state);
+      _assert(source);
+      _assert(target);
+      state = createGenerator(state, source, target, getFreshId(state));
+      state = dotProp.set(state, "workspace.diagram", null);
+      state = dotProp.set(state, "workspace.source", null);
 
       break;
 
     } case 'workspace/make-theorem': {
 
-      let { diagram } = state.workspace;
-      state = createGenerator(state, diagram.source, diagram.getTarget());
-      let generator = getGenerator(state, state.signature.id - 1);
-      state = createGenerator(state, generator.generator.diagram, diagram);
+      let workspace = state.workspace;
+      let diagram = workspace.diagram;
+      let id = getFreshId(state);
+      state = createGenerator(state, diagram.source, diagram.getTarget(), id);
+      let generator = getGenerator(state, id);
+      state = createGenerator(state, generator.generator.diagram, diagram, getFreshId(state));
       state = dotProp.set(state, "workspace.diagram", null);
       break;
 
