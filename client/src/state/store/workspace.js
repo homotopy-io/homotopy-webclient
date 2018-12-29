@@ -103,7 +103,7 @@ export const updateSlices = createSelector(
   }
 );
 
-export default createReducer({
+//export default createReducer({
 
   /*
   [WorkspaceActions.POST_REHYDRATE]: (state) => {
@@ -129,182 +129,189 @@ export default createReducer({
     return state;
   },
   */
+export default (state, action) => {
 
-  [WorkspaceActions.SET_SOURCE]: (state) => {
-    let { target, diagram } = state.workspace;
-    let source = diagram;
+  switch (action.type) {
 
-    if (diagram == null) return state;
-    
-    // If there is already a source, create a new generator
-    if (target != null) {
+    case 'workspace/set-source': {
 
-      if (target.n != source.n) {
-        alert ('Source and target must have the same dimension');
-        return state;
+      let { target, diagram } = state.workspace;
+      let source = diagram;
+      if (diagram == null) return state;
+
+      // If there is already a source, create a new generator
+      if (target != null) {
+
+        if (target.n != source.n) {
+          alert ('Source and target must have the same dimension');
+          break;
+        }
+
+        if (source.n > 1) {
+          if (!source.source.equals(target.source)
+            || !source.getTarget().equals(target.getTarget())) {
+              alert ('Source and target must have the same boundary');
+              break;
+          }
+        }
+
+        state = createGenerator(state, source, target);
+        state = dotProp.set(state, "workspace.diagram", null);
+        state = dotProp.set(state, "workspace.target", null);
       }
 
-      if (source.n > 1) {
-        if (!source.source.equals(target.source)
-          || !source.getTarget().equals(target.getTarget())) {
-            alert ('Source and target must have the same boundary');
+      // If there is not already a source, just store this target
+      else {
+        state = dotProp.set(state, "workspace.source", source);
+        state = dotProp.set(state, "workspace.diagram", null);
+      }
+
+      break;
+
+    } case 'workspace/set-target': {
+
+      let { source, diagram } = state.workspace;
+      let target = diagram;
+      if (diagram == null) break;
+      
+      // If there is already a source, create a new generator
+      if (source != null) {
+
+        if (source.n != target.n) {
+          alert ('Source and target must have the same dimension');
+          break;
+        }
+
+        if (source.n >= 1) {
+          if (!source.source.equals(target.source)
+            || !source.getTarget().equals(target.getTarget())) {
+              alert ('Source and target must have the same boundary');
+              break;
+          }
+        }
+
+        state = createGenerator(state, source, target);
+        state = dotProp.set(state, "workspace.diagram", null);
+        state = dotProp.set(state, "workspace.source", null);
+      } else {
+        // If there is not already a source, just store this target
+        state = dotProp.set(state, "workspace.target", target);
+        state = dotProp.set(state, "workspace.diagram", null);
+      }
+
+      break;
+
+    } case 'workspace/make-theorem': {
+
+      let { diagram } = state.workspace;
+      state = createGenerator(state, diagram.source, diagram.getTarget());
+      let generator = getGenerator(state, state.signature.id - 1);
+      state = createGenerator(state, generator.generator.diagram, diagram);
+      state = dotProp.set(state, "workspace.diagram", null);
+      break;
+
+    } case 'workspace/set-renderer': {
+
+      state = dotProp.set(state, "workspace.renderer", renderer);
+      state = dotProp.set(state, "workspace.slice", updateSlices(state));
+      break;
+
+    } case 'workspace/homotopy': {
+
+      let { point, direction } = action.payload;
+      let { diagram, slice } = state.workspace;
+      let { generators } = state.signature;
+
+      if (diagram == null || point.length < 2) return state;
+
+      //point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
+      let path = Core.Boundary.getPath(diagram, [...slice, ...point]);
+
+      try {
+        let { new_diagram, new_slice } = Core.attach(
+          generators,
+          diagram,
+          (boundary, point) => boundary.homotopy(point, direction, generators),
+          path,
+          slice
+        );
+
+        state = dotProp.set(state, "workspace.diagram", new_diagram);
+        state = dotProp.set(state, "workspace.slice", new_slice);
+        //state = dotProp.set(state, "workspace.slice", updateSlices(state));
+
+      } catch(error) {
+        console.error(error);
+      }
+
+      break;
+
+    } case 'workspace/clear-diagram': {
+
+      state = dotProp.set(state, "workspace.diagram", null);
+      break;
+
+    } case 'workspace/restrict-diagram': {
+
+      let { diagram, slice } = state.workspace;
+      for (let i=0; i<slice.length; i++) {
+        if (slice > 0 && slice < 2 * diagram.data.length) {
+          if (slice % 2 == 1) {
+            alert('Cannot restrict diagram to singular slice');
             return state;
+          }
         }
       }
+      state = dotProp.set(state, "workspace.diagram", diagram.getSlice(...slice));
+      state = dotProp.set(state, "workspace.slice", []);
+      break;
 
-      state = createGenerator(state, source, target);
-      state = dotProp.set(state, "workspace.diagram", null);
-      state = dotProp.set(state, "workspace.target", null);
-      return state;
     }
 
-    // If there is not already a source, just store this target
-    else {
-      state = dotProp.set(state, "workspace.source", source);
-      state = dotProp.set(state, "workspace.diagram", null);
-      return state;
-    }
-  },
+    case 'workspace/take-identity': {
 
-  [WorkspaceActions.SET_TARGET]: (state) => {
-    let { source, diagram } = state.workspace;
-    let target = diagram;
+      state = dotProp.set(state, "workspace.diagram", diagram => diagram.boost());
+      let slice = state.workspace.slice.slice();
+      let diagram = state.workspace.diagram;
+      let sliceCount = diagram.n - state.workspace.renderer - state.workspace.projection;
+      if (sliceCount > slice.length) slice.push(1);
+      state = dotProp.set(state, "workspace.slice", slice);
+      break;
 
-    if (diagram == null) return state;
-    
-    // If there is already a source, create a new generator
-    if (source != null) {
+    } case 'workspace/set-projection': {
 
-      if (source.n != target.n) {
-        alert ('Source and target must have the same dimension');
-        return state;
-      }
+      let { projection } = action.payload;
+      state = dotProp.set(state, "workspace.projection", projection);
+      state = dotProp.set(state, "workspace.slice", updateSlices(state));
+      break;
 
-      if (source.n >= 1) {
-        if (!source.source.equals(target.source)
-          || !source.getTarget().equals(target.getTarget())) {
-            alert ('Source and target must have the same boundary');
-            return state;
-        }
-      }
+    } case 'workspace/set-slice': {
 
-      state = createGenerator(state, source, target);
-      state = dotProp.set(state, "workspace.diagram", null);
+      let { index, height } = action.payload;
+      state = dotProp.set(state, `workspace.slice.${index}`, height);
+      state = dotProp.set(state, "workspace.slice", updateSlices(state));
+      break;
+
+    } case 'workspace/clear-boundary': {
+
       state = dotProp.set(state, "workspace.source", null);
-      return state;
-    }
+      state = dotProp.set(state, "workspace.target", null);
+      break;
 
-    // If there is not already a source, just store this target
-    else {
-      state = dotProp.set(state, "workspace.target", target);
-      state = dotProp.set(state, "workspace.diagram", null);
-      return state;
-    }
-  },
-
-  [WorkspaceActions.MAKE_THEOREM]: (state) => {
-    let { diagram } = state.workspace;
-    state = createGenerator(state, diagram.source, diagram.getTarget());
-    let generator = getGenerator(state, state.signature.id - 1);
-    state = createGenerator(state, generator.generator.diagram, diagram);
-    state = dotProp.set(state, "workspace.diagram", null);
-    return state;
-  },
-
-  [WorkspaceActions.SET_RENDERER]: (state, { renderer }) => {
-    state = dotProp.set(state, "workspace.renderer", renderer);
-    state = dotProp.set(state, "workspace.slice", updateSlices(state));
-    return state;
-  },
-
-  [WorkspaceActions.HOMOTOPY]: (state, { point, direction }) => {
-    let { diagram, slice } = state.workspace;
-    let { generators } = state.signature;
-
-    if (diagram == null || point.length < 2) return state;
-
-    //point = Core.Geometry.unprojectPoint(diagram, [...slice, ...point]);
-    let path = Core.Boundary.getPath(diagram, [...slice, ...point]);
-
-    try {
-      let { new_diagram, new_slice } = Core.attach(
-        generators,
-        diagram,
-        (boundary, point) => boundary.homotopy(point, direction, generators),
-        path,
-        slice
-      );
-
-      state = dotProp.set(state, "workspace.diagram", new_diagram);
-      state = dotProp.set(state, "workspace.slice", new_slice);
-
-      //state = dotProp.set(state, "workspace.slice", updateSlices(state));
-
-      return state;
-    } catch(error) {
-      console.error(error);
-      return state;
-    }
-  },
-
-  [WorkspaceActions.CLEAR_DIAGRAM]: (state) => {
-    state = dotProp.set(state, "workspace.diagram", null);
-    return state;
-  },
-
-  [WorkspaceActions.RESTRICT_DIAGRAM]: (state) => {
-    let { diagram, slice } = state.workspace;
-    for (let i=0; i<slice.length; i++) {
-      if (slice > 0 && slice < 2 * diagram.data.length) {
-        if (slice % 2 == 1) {
-          alert('Cannot restrict diagram to singular slice');
-          return state;
-        }
+    } case 'signature/select-generator': {
+      
+      let { id } = action.payload;
+      let { diagram } = state.workspace;
+      let generator = state.signature.generators[id];
+      if (diagram == null) {
+        diagram = generator.generator.diagram;
+        state = setDiagram(state, diagram);
       }
+      break;
     }
-    state = dotProp.set(state, "workspace.diagram", diagram.getSlice(...slice));
-    state = dotProp.set(state, "workspace.slice", []);
-    return state;
-  },
 
-  [WorkspaceActions.TAKE_IDENTITY]: (state) => {
-    state = dotProp.set(state, "workspace.diagram", diagram => diagram.boost());
-    let slice = state.workspace.slice.slice();
-    let diagram = state.workspace.diagram;
-    let sliceCount = diagram.n - state.workspace.renderer - state.workspace.projection;
-    if (sliceCount > slice.length) slice.push(1);
-    state = dotProp.set(state, "workspace.slice", slice);
-    return state;
-  },
-
-  [WorkspaceActions.SET_PROJECTION]: (state, { projection }) => {
-    state = dotProp.set(state, "workspace.projection", projection);
-    state = dotProp.set(state, "workspace.slice", updateSlices(state));
-    return state;
-  },
-
-  [WorkspaceActions.SET_SLICE]: (state, { index, height }) => {
-    state = dotProp.set(state, `workspace.slice.${index}`, height);
-    state = dotProp.set(state, "workspace.slice", updateSlices(state));
-    return state;
-  },
-
-  [WorkspaceActions.CLEAR_BOUNDARY]: (state) => {
-    state = dotProp.set(state, "workspace.source", null);
-    state = dotProp.set(state, "workspace.target", null);
-    return state;
-  },
-
-  [SignatureActions.SELECT_GENERATOR]: (state, { id }) => {
-    let { diagram } = state.workspace;
-    let generator = state.signature.generators[id];
-    if (diagram == null) {
-      diagram = generator.generator.diagram;
-      state = setDiagram(state, diagram);
-      return state;
-    } else {
-      return state;
-    }
   }
 
-});
+  return state;
+
+}

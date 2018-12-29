@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { connect } from "react-redux";
 
 import { getOptions } from "~/state/store/attach";
-import { setHighlight, clearHighlight, selectOption } from "~/state/actions/attach";
+import { clearHighlight, selectOption } from "~/state/actions/attach";
 import Tool from "~/components/Tool";
 
 export const AttachmentTool = ({
@@ -38,9 +38,9 @@ export default connect(
     options: getOptions(state)
   }),
   dispatch => ({
-    onSelect: (index) => dispatch(selectOption(index)),
-    onSetHighlight: (index) => dispatch(setHighlight(index)),
-    onClearHighlight: () => dispatch(clearHighlight())
+    onSelect: (index) => dispatch({ type: "attach/select-option", payload: { index } }),
+    onSetHighlight: (index) => dispatch({ type: "attach/set-highlight", payload: { index } }),
+    onClearHighlight: () => dispatch({ type: "attach/clear-highlight" })
   })
 )(AttachmentTool);
 

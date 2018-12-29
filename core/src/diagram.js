@@ -34,14 +34,14 @@ export class Diagram {
           let id = this.source.id;
           for (let i=0; i<this.data.length; i++) {
             let f = this.data[i].forward_limit;
-            if (f.length > 0) {
-              if (_debug) _assert(f[0].source_id == id);
-              id = f[0].target_id;
+            if (f.components.length > 0) {
+              if (_debug) _assert(f.components[0].source_id == id);
+              id = f.components[0].target_id;
             }
             let b = this.data[i].backward_limit;
-            if (b.length > 0) {
-              if (_debug) _assert(b[0].target_id == id);
-              id = b[0].source_id;
+            if (b.components.length > 0) {
+              if (_debug) _assert(b.components[0].target_id == id);
+              id = b.components[0].source_id;
             }
           }
   
@@ -52,13 +52,13 @@ export class Diagram {
           for (let i=0; i<this.data.length; i++) {
             let data = this.data[i];
   
-            if (data.forward_limit.length > 0) {
+            if (data.forward_limit.components.length > 0) {
               if (_debug) _assert(data.forward_limit.source_size == slice_data.length);
             }
   
             // Check forward limit data
-            for (let j=data.forward_limit.length - 1; j>=0; j--) {
-              let component = data.forward_limit[j];
+            for (let j=data.forward_limit.components.length - 1; j>=0; j--) {
+              let component = data.forward_limit.components[j];
               for (let k=0; k<component.source_data.length; k++) {
                 if (_debug) _assert(slice_data[component.first + k].equals(component.source_data[k]));
               }
@@ -66,13 +66,13 @@ export class Diagram {
             }
   
   
-            if (data.backward_limit.length > 0) {
+            if (data.backward_limit.components.length > 0) {
   
               let targets = data.backward_limit.getComponentTargets();
   
               // Check backward limit data
-              for (let j=data.backward_limit.length - 1; j>=0; j--) {
-                let component = data.backward_limit[j];
+              for (let j=data.backward_limit.components.length - 1; j>=0; j--) {
+                let component = data.backward_limit.components[j];
                 if (_debug) _assert(slice_data[targets[j]].equals(component.target_data));
                 slice_data.splice(targets[j], 1, ...component.source_data);
               }
@@ -312,7 +312,7 @@ export class Diagram {
     let point;
     for (let i=this.data.length-1; i>=0; i--) {
       let content = this.data[i];
-      if (content.forward_limit.length == 0 && content.backward_limit.length == 0) {
+      if (content.forward_limit.components.length == 0 && content.backward_limit.components.length == 0) {
         continue;
       }
       let slice_point = this.getSlice({height: i, regular: false}).getLastPoint();
@@ -358,7 +358,7 @@ export class Diagram {
             let t = 0;
             let max_dim = -1;
             for (let i = 0; i < this.data.length; i++) {
-                let type = this.data[i].forward_limit[0].type;
+                let type = this.data[i].forward_limit.components[0].type;
                 if (type.n > max_dim) {
                     max_dim = type.n;
                     t = i;
@@ -449,7 +449,7 @@ export class Diagram {
     // If any incoming limits are the identity, the diagram doesn't change
     for (let i=0; i<limits.length; i++) {
       let limit = limits[i];
-      if (limit.length == 0) {
+      if (limit.components.length == 0) {
         let diagram = this;
         let embedding = new Limit({ n: this.n, components: [] });
         let factorizations = limits;
@@ -483,7 +483,7 @@ export class Diagram {
         let limit = limits[j];
         let index = limit.getTargetComponentIndex(i);
         limit_component_indices.push(index);
-        let sublimits = (index == null) ? [] : limit[index].sublimits;
+        let sublimits = (index == null) ? [] : limit.components[index].sublimits;
         level_limits = level_limits.concat(sublimits);
         level_sublimits.push(sublimits);
       }
@@ -498,11 +498,11 @@ export class Diagram {
       new_data.push(new_content);
 
       // Create the LimitComponent to embed this slice of the normalized diagram
-      if (recursive.embedding.length > 0) {
+      if (recursive.embedding.components.length > 0) {
         let component = new LimitComponent({ n: this.n,
           first: i,
           source_data: [ new_content /*this.data[i]*/ ],
-          sublimits: [recursive.embedding],
+          sublimits: [ recursive.embedding ],
           target_data: /*new_content*/ this.data[i] });
         embedding_components.push(component);
       }
@@ -513,7 +513,7 @@ export class Diagram {
         let index = limit_component_indices[j];
         if (index == null) continue; // this limit might not hit this singular level
         let limit = limits[j];
-        let orig = limit[index];
+        let orig = limit.components[index];
 
         let fac_sublimits = [];
         for (let k=0; k<orig.sublimits.length; k++) {
@@ -521,7 +521,7 @@ export class Diagram {
         }
         sublimit_index += orig.sublimits.length;
 
-        if (fac_sublimits.length == 1 && fac_sublimits[0].length == 0) {
+        if (fac_sublimits.length == 1 && fac_sublimits[0].components.length == 0) {
           // trivial!
         } else {
           let comp = new LimitComponent({ n: orig.n, first: orig.first, sublimits: fac_sublimits, source_data: orig.source_data, target_data: new_content});
@@ -545,15 +545,11 @@ export class Diagram {
       factorizations[i] = new Limit({ n: this.n, components: new_limit_components[i], source_size: limits[i].source_size }); // none of limits are the identity
     }
 
-    if (this.n == 2 && limits.length == 2) {
-      let x = 1;
-    }
-
     // Prepare a list of the factorization monotones
     let factorization_monotones = [];
     for (let i=0; i<factorizations.length; i++) {
       let fac = factorizations[i];
-      factorization_monotones.push(fac.length == 0 ? null : fac.getMonotone());
+      factorization_monotones.push(fac.components.length == 0 ? null : fac.getMonotone());
     }
 
     // Remove superfluous top-level bubbles in the normalized diagram
@@ -561,8 +557,8 @@ export class Diagram {
 
       // If there's something interesting happening here, we won't remove it
       let content = diagram.data[i];
-      if (content.forward_limit.length > 0) continue;
-      if (content.backward_limit.length > 0) continue;
+      if (content.forward_limit.components.length > 0) continue;
+      if (content.backward_limit.components.length > 0) continue;
 
       // This level is a vacuum bubble. Let's check if it's in the image of an incoming limit.
       let in_image = false;
@@ -595,7 +591,7 @@ export class Diagram {
       for (let j = 0; j < limits.length; j++) {
         factorizations[j] = factorizations[j].removeTargetLevel(i);
         let fac = factorizations[j];
-        if (fac.length == 0) {
+        if (fac.components.length == 0) {
           factorization_monotones[j] = null;
         } else {
           factorization_monotones[j] = fac.getMonotone();
@@ -636,11 +632,15 @@ export class Diagram {
     let regular = this.source;
     for (let i = 0; i < this.data.length; i++) {
       let data = this.data[i];
-      if (!data.typecheck(generators, regular)) return false;
+      if (!data.typecheck(generators, regular)) {
+        return false;
+      }
       let singular = data.forward_limit.rewrite_forward(regular);
       regular = data.backward_limit.rewrite_backward(singular);
     }
-    if (!this.source.typecheck(generators)) return false;
+    if (!this.source.typecheck(generators)) {
+      return false;
+    }
     return true;
   }
 
@@ -1015,11 +1015,12 @@ export class Diagram {
         let r1_height;
         let c;
 
-        // Forwards smoothing
+        // Forward smoothing
         if (direction > 0) {
+
           r1_height = location[0].height;
           c = this.data[r1_height];
-          if (c.forward_limit.length == 0 || c.backward_limit.length == 0) {
+          if (c.forward_limit.components.length == 0 || c.backward_limit.components.length == 0) {
             console.log("Can't smooth homotopy here, trivial limiting behaviour");
             throw 0;
           }
@@ -1029,14 +1030,15 @@ export class Diagram {
             console.log("Can't smooth homotopy here, chosen point flows to regular height");
             throw 0;
           }
+
         }
 
-        // Backwards smoothing
+        // Backward smoothing
         else {
 
           r1_height = location[0].height - 1;
           c = this.data[r1_height];
-          if (c.forward_limit.length == 0 || c.backward_limit.length == 0) {
+          if (c.forward_limit.components.length == 0 || c.backward_limit.components.length == 0) {
             console.log("Can't smooth homotopy here, trivial limiting behaviour");
             throw 0;
           }
@@ -1069,12 +1071,12 @@ export class Diagram {
           throw 0;
         }
         let new_forward_components = [];
-        for (let i=0; i<c.forward_limit.length; i++) {
+        for (let i=0; i<c.forward_limit.components.length; i++) {
           if (i == index_f) continue;
           new_forward_components.push(c.forward_limit[i]);
         }
         let new_backward_components = [];
-        for (let i=0; i<c.backward_limit.length; i++) {
+        for (let i=0; i<c.backward_limit.components.length; i++) {
           if (i == index_b) continue;
           new_backward_components.push(c.backward_limit[i]);
         }
@@ -1083,18 +1085,18 @@ export class Diagram {
         let new_content = new Content({ n: this.n - 1, forward_limit: new_forward, backward_limit: new_backward });
         let source_data = [new_content];
 
-        let offset_first = c.forward_limit[index_f].first;
+        let offset_first = c.forward_limit.components[index_f].first;
         for (let i=0; i<index_f; i++) {
-          let component = c.forward_limit[i];
+          let component = c.forward_limit.components[i];
           offset_first -= component.source_data.length - 1;
         }
-        let sublimit_component = c.forward_limit[index_f].copy({ first: offset_first });
+        let sublimit_component = c.forward_limit.components[index_f].copy({ first: offset_first });
         let r1 = this.getSlice({height: r1_height, regular: true});
         let new_singular = new_forward.rewrite_forward(r1);
         let sublimit = new Limit({ n: this.n - 1, components: [sublimit_component], source_size: new_singular.data.length });
 
         // Construct expansion limit
-        let collapse = c.forward_limit.length == 1 && c.backward_limit.length == 1;
+        let collapse = c.forward_limit.components.length == 1 && c.backward_limit.components.length == 1;
         let component;
         if (collapse) {
           component = new LimitComponent({ n: this.n, first: r1_height,
@@ -1284,7 +1286,7 @@ export class Diagram {
       let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: tendency }];
       */
 
-      let upper = [{diagram: D1, bias_left: tendency <= 0}, {diagram: D2, bias_left: tendency > 0}];
+      let upper = [{ diagram: D1, bias_left: tendency <= 0}, {diagram: D2, bias_left: tendency > 0 }];
       let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2 }];
 
       let contract_data = Diagram.multiUnify({ lower, upper, generators });
@@ -1563,7 +1565,7 @@ export class Diagram {
         let sublimit = recursive.limits[upper_slice_position[i][j - first]];
         sublimits.push(sublimit);
       }
-      if (sublimits.length == 1 && sublimits[0].length == 0) {
+      if (sublimits.length == 1 && sublimits[0].components.length == 0) {
         cocone_components[i] = null;
       } else {
         let source_data = upper_preimage[i].data.slice();
@@ -1655,8 +1657,8 @@ function sub_data(data, subdata, offset) {
 function sub_limit(limit, sublimit, offset) {
   if (_debug) _assert(limit.n == sublimit.n);
   if (limit.length != sublimit.length) return false; // number of components must be the same
-  for (let i = 0; i < limit.length; i++) {
-    if (!sub_limit_component(limit[i], sublimit[i], offset)) return false;
+  for (let i = 0; i < limit.components.length; i++) {
+    if (!sub_limit_component(limit.components[i], sublimit.components[i], offset)) return false;
   }
   return true;
 }
@@ -1684,6 +1686,7 @@ function sub_limit_component(component, subcomponent, offset) {
 }
 
 // Make a new copy of a limit
+/*
 function copy_limit(old_limit) {
   if (old_limit == null) return null;
   let new_limit = [];
@@ -1696,3 +1699,4 @@ function copy_limit(old_limit) {
     entry.data = copy_limit(o.data);
   }
 }
+*/

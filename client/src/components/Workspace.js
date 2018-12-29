@@ -6,7 +6,7 @@ import Diagram3D from "~/components/diagram/Diagram3D";
 
 import { getDiagram, getDisplayDimension, getSlice, getRenderer } from "~/state/store/workspace";
 import { getHighlight } from "~/state/store/attach";
-import { selectCell, homotopy } from "~/state/actions/workspace";
+//import { selectCell, homotopy } from "~/state/actions/workspace";
 
 
 let prev = null;
@@ -52,8 +52,8 @@ export default connect(
     test: state.workspace
   }),
   dispatch => ({
-    onSelectCell: (points) => dispatch(selectCell(points)),
-    onHomotopy: (point, direction) => dispatch(homotopy(point, direction))
+    onSelectCell: (points) => dispatch({ type: 'workspace/select-cell', payload: { points } }),
+    onHomotopy: (point, direction) => dispatch({ type: 'workspace/homotopy', payload: { point, direction } })
   })
 )(Workspace);
 

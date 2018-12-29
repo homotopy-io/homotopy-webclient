@@ -8,18 +8,26 @@ import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 import LogoImg from '../logo.svg';
 import * as Core from "homotopy-core";
+import { connect } from "react-redux";
 
+//import * as PersistActions from "~/state/persist";
 
 export class App extends React.Component {
 
   constructor(props) {
+    //this.props = props;
     super(props);
+    this.props = props;
+  }
+
+  componentDidMount() {
+    window.addEventListener("hashchange", () => {
+      let hash = window.location.hash.substr(1);
+      this.props.dispatch({ type: 'persist/newhash', payload: hash });
+    }, false);
   }
 
   componentDidUpdate() {
-    let sc = new Core.SerializeCyclic();
-    sc.update(store.getState());
-    console.log('State length ' + sc.stringify().length);  
   }
 
   render() {
@@ -34,7 +42,6 @@ export class App extends React.Component {
           <Workspace />
         </Content>
         <ToolBar>
-          <div>{localStorage['persist:root'].length}</div>
           <DiagramTool />
           <AttachmentTool />
           <BoundaryTool />
@@ -44,29 +51,10 @@ export class App extends React.Component {
   }
 }
 
+// This gives App access to dispatch
+export default connect()(App);
 
-
-/*
-export const App = () =>
-  <Container>
-    <SignatureBar>
-      <Logo><LogoImage src={LogoImg}/></Logo>
-      <Signature />
-    </SignatureBar>
-    <Content>
-      <Header />
-      <Workspace />
-    </Content>
-    <ToolBar>
-      <div>{localStorage['persist:root'].length}</div>
-      <DiagramTool />
-      <AttachmentTool />
-      <BoundaryTool />
-    </ToolBar>
-  </Container>;
-*/
-
-export default App;
+//export default App;
 
 const Container = styled.div`
   display: flex;

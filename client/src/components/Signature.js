@@ -36,7 +36,7 @@ export const Signature = ({
 
 export default connect(
   state => ({ groups: getDimensionGroups(state) }),
-  dispatch => ({ onAddGenerator: () => dispatch(createGenerator()) })
+  dispatch => ({ onAddGenerator: () => dispatch({ type: "signature/create-generator" }) })
 )(Signature);
 
 const Wrapper = styled.div``;

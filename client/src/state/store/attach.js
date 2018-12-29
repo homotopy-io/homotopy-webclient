@@ -40,17 +40,17 @@ export const clearOptions = (state) => {
 };
 
 export default createReducer({
-  [AttachActions.CLEAR_HIGHLIGHT]: (state) => {
+  ["attach/clear-highlight"]: (state) => {
     state = dotProp.set(state, "attach.highlight", null);
     return state;
   },
 
-  [AttachActions.SET_HIGHLIGHT]: (state, { index }) => {
+  ["attach/set-highlight"]: (state, { index }) => {
     state = dotProp.set(state, "attach.highlight", index);
     return state;
   },
 
-  [AttachActions.SELECT_OPTION]: (state, { index }) => {
+  ["attach/select-option"]: (state, { index }) => {
     let options = state.attach.options;
     let diagram = state.workspace.diagram;
     let generators = state.signature.generators;
@@ -72,7 +72,7 @@ export default createReducer({
     return state;
   },
 
-  [WorkspaceActions.SELECT_CELL]: (state, { points }) => {
+  ["workspace/select-cell"]: (state, { points }) => {
     let { diagram, slice } = state.workspace;
     let { generators } = state.signature;
 
@@ -115,7 +115,7 @@ export default createReducer({
       let [ option ] = options;
       let {new_diagram, new_slice} = Core.attachGenerator(generators, diagram, option.generator, option.path, slice);
       state = dotProp.set(state, "workspace.diagram", new_diagram);
-      state = dotProp.set(state, "diagram.slice", new_slice);
+      state = dotProp.set(state, "workspace.slice", new_slice);
       return state;
     } else if (options.length > 1) {
       state = dotProp.set(state, "attach.options", options);
@@ -126,39 +126,39 @@ export default createReducer({
     }
   },
 
-  [AttachActions.CLEAR_OPTIONS]: (state) => {
+  ["workspace/clear-options"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.CLEAR_DIAGRAM]: (state) => {
+  ["workspace/clear-diagram"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.TAKE_IDENTITY]: (state) => {
+  ["workspace/take-identity"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.RESTRICT_DIAGRAM]: (state) => {
+  ["workspace/restrict-diagram"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.MAKE_THEOREM]: (state) => {
+  ["workspace/make-theorem"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.SET_PROJECTION]: (state) => {
+  ["workspace/set-projection"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.SET_SLICE]: (state) => {
+  ["workspace/set-slice"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.SET_SOURCE]: (state) => {
+  ["workspace/set-source"]: (state) => {
     return clearOptions(state);
   },
 
-  [WorkspaceActions.SET_TARGET]: (state) => {
+  ["workspace/set-target"]: (state) => {
     return clearOptions(state);
   }
 

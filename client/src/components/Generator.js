@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { connect } from "react-redux";
 
 import { getGenerator } from "~/state/store/signature";
-import { selectGenerator, removeGenerator, renameGenerator, recolorGenerator } from "~/state/actions/signature";
+//import { selectGenerator, removeGenerator, renameGenerator, recolorGenerator } from "~/state/actions/signature";
 import { cellColors } from "~/style";
 
 import IconButton from "~/components/misc/IconButton";
@@ -50,10 +50,10 @@ export const Generator = ({
 export default connect(
   (state, { id }) => getGenerator(state, id),
   (dispatch, { id }) => ({
-    onSelect: () => dispatch(selectGenerator(id)),
-    onRemove: () => dispatch(removeGenerator(id)),
-    onRename: (name) => dispatch(renameGenerator(id, name)),
-    onRecolor: (color) => dispatch(recolorGenerator(id, color))
+    onSelect: () => dispatch({ type: "signature/select-generator", payload: { id } }),
+    onRemove: () => dispatch({ type: "signature/remove-generator", payload: { id } }),
+    onRename: (name) => dispatch({ type: "signature/remove-generator", payload: { id, name } }),
+    onRecolor: (color) => dispatch({ type: "signature/recolor-generator", payload: { id, color } })
   })
 )(Generator);
 

@@ -51,7 +51,7 @@ export const typesOf = function*(diagram) {
     yield* typesOf(diagram.source);
 
     for (let content of diagram.data) {
-      let id = content.forward_limit[0].target_id;
+      let id = content.forward_limit.components[0].target_id;
       if (_debug) _assert(id);
       yield id;
     }
@@ -124,7 +124,7 @@ export const lastPoint = (diagram) => {
 
   let k = diagram.data.length - 1;
 
-  while (k > 0 && diagram.data[k].forward_limit.length + diagram.data[k].backward_limit.length == 0) {
+  while (k > 0 && diagram.data[k].forward_limit.components.length + diagram.data[k].backward_limit.components.length == 0) {
     k--;
   }
 
@@ -211,7 +211,7 @@ export const edgesOf = function*(diagram, dimension) {
 
 const limitAction = (limit, point) => {
   // Special case: the identity limit preserves all points.
-  if (!limit || limit.length == 0) {
+  if (!limit || limit.components.length == 0) {
     return [point];
   }
 
@@ -227,7 +227,7 @@ const limitAction = (limit, point) => {
 
   // Before the first component
   let cumulative = [];
-  if (height <= limit[0].first * 2) {
+  if (height <= limit.components[0].first * 2) {
     cumulative.push(point);
     //return [point];
   }
@@ -246,9 +246,9 @@ const limitAction = (limit, point) => {
   }
 
   // After the last component
-  if (height >= limit[limit.length - 1].getLast() * 2) {
+  if (height >= limit.components[limit.components.length - 1].getLast() * 2) {
     let offset = 0;
-    for (let component of limit) {
+    for (let component of limit.components) {
       offset += component.getLast() * 2 - component.first * 2 - 2;
     }
     if (_debug) _assert(height - offset >= -1);
@@ -260,7 +260,7 @@ const limitAction = (limit, point) => {
   let offset = 0;
   let targets = new Map();
 
-  for (let component of limit) {
+  for (let component of limit.components) {
     let first = component.first * 2;
     let last = component.getLast() * 2;
 

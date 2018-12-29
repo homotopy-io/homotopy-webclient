@@ -45,10 +45,10 @@ export default connect(
     renderer: getRenderer(state)
   }),
   dispatch => ({
-    onClearDiagram: () => dispatch(clearDiagram()),
-    onSetProjection: (projection) => dispatch(setProjection(projection)),
-    onSetSlice: (index, height) => dispatch(setSlice(index, height)),
-    onSetRenderer: (renderer) => dispatch(setRenderer(renderer))
+    onClearDiagram: () => dispatch({ type: 'workspace/clear-diagram' }),
+    onSetProjection: (projection) => dispatch({ type: 'workspace/set-projection', payload: { projection } }),
+    onSetSlice: (index, height) => dispatch({ type: 'workspace/set-slice', payload: { index, height } }),
+    onSetRenderer: (renderer) => dispatch({ type: 'workspace/set-renderer', payload: { renderer } })
   })
 )(DiagramTool);
 

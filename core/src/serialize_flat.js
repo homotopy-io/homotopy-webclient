@@ -57,7 +57,7 @@ export class SerializeCyclic {
     let now = performance.now();
     let json = this.toJSON();
     let string = JSON.stringify(json);
-    console.log('Stringified state in ' + (performance.now() - now) + ' ms');
+    console.log('Stringified state in ' + Math.floor(performance.now() - now) + 'ms');
     return string;
   }
 
@@ -147,6 +147,7 @@ export class SerializeCyclic {
 
   static computeDescendants({ index, index_to_object, object_to_index, index_to_stored }) {
     let stored = index_to_stored.get(index);
+    _assert(stored);
     if (stored.descendants) return stored.descendants;
     if (_debug) {
       _assert(stored);
@@ -159,13 +160,17 @@ export class SerializeCyclic {
       let key = keys[i];
       let value = stored.f[key];
       if (value !== null && value !== undefined && typeof value === 'object') {
-        let subindex = object_to_index.get({ value });
-        multi_descendants.push([... SerializeCyclic.computeDescendants({
+        //let subindex = object_to_index.get({ value });
+        //let subindex = index_to_object.get({ value });
+        let subindex = value._l;
+        let sub_descendants = SerializeCyclic.computeDescendants({
           index: subindex,
           index_to_object,
           object_to_index,
           index_to_stored
-        }), subindex]);
+        });
+        multi_descendants.push(sub_descendants);
+        multi_descendants.push([subindex]);
       }
     }
     let descendants = [...new Set(multi_descendants.flat())]; // group and deduplicate
@@ -249,7 +254,7 @@ export class SerializeCyclic {
 
   makeLibraryEntry(f, object, descendants) {
     //let serialization = JSON.stringify(flattened);
-    let a = Array.isArray(object);
+    let a = !object._t && Array.isArray(object);
     return { f, descendants, a };
   }
 

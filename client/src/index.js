@@ -8,7 +8,7 @@ import "@icon/stroke-7/stroke-7.css";
 
 import App from "~/components/App";
 import reducer, { initialState } from "~/state/store";
-import persistStore from "~/state/persist";
+import { connectStore } from "~/state/persist";
 
 import * as Rx from "rxjs";
 import * as RxOps from "rxjs/operators";
@@ -16,6 +16,7 @@ import * as RxOps from "rxjs/operators";
 //import LZ from "lz-string";
 //import stringify from "json-stringify-safe";
 
+/*
 import {
   setSource,
   setTarget,
@@ -24,6 +25,7 @@ import {
   restrictDiagram,
   makeTheorem
 } from "~/state/actions/workspace";
+*/
 
 /*const compressor = ReduxPersist.createTransform(
   (state) => {
@@ -55,20 +57,28 @@ import {
 
 const store = Redux.createStore(reducer, initialState);
 
-persistStore(store);
+connectStore(store);
 
 Rx.fromEvent(document, "keydown") 
   .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
   .pipe(RxOps.map(event => event.key))
   .subscribe(key => {
     switch (key) {
+      /*
     case "s": return store.dispatch(setSource());
     case "t": return store.dispatch(setTarget());
     case "i": return store.dispatch(takeIdentity());
     case "c": return store.dispatch(clearDiagram());
     case "r": return store.dispatch(restrictDiagram());
     case "h": return store.dispatch(makeTheorem());
-    //case "r": return store.dispatch(setRenderer(2));
+    */
+   case "s": return store.dispatch({ type: 'workspace/set-source' });
+   case "t": return store.dispatch({ type: 'workspace/set-target' });
+   case "i": return store.dispatch({ type: 'workspace/take-identity' });
+   case "c": return store.dispatch({ type: 'workspace/clear-diagram' });
+   case "r": return store.dispatch({ type: 'workspace/restrict-diagram' });
+   case "h": return store.dispatch({ type: 'workspace/make-theorem' });
+   //case "r": return store.dispatch(setRenderer(2));
     //case "R": return store.dispatch(setRenderer(3));
     }
   });

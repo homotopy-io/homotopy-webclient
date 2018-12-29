@@ -39,7 +39,7 @@ export default connect(
     target: getTarget(state)
   }),
   dispatch => ({
-    onClearBoundary: () => dispatch(clearBoundary())
+    onClearBoundary: () => dispatch({ type: 'workspace/clear-boundary' })
   })
 )(BoundaryTool);
 

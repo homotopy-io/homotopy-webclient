@@ -1,3 +1,4 @@
+/*
 export const SET_SOURCE = "workspace/set-source";
 export const SET_TARGET = "workspace/set-target";
 export const SET_PROJECTION = "workspace/set-projection";
@@ -35,12 +36,6 @@ export const setRenderer = (renderer) => ({
   payload: { renderer }
 });
 
-/*
-export const postRehydrate = () => ({
-  type: POST_REHYDRATE
-});
-*/
-
 export const clearBoundary = () => ({
   type: CLEAR_BOUNDARY
 });
@@ -71,3 +66,4 @@ export const homotopy = (point, direction) => ({
   type: HOMOTOPY,
   payload: { point, direction }
 });
+*/

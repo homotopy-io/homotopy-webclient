@@ -63,66 +63,58 @@ export const createGenerator = (state, source, target) => {
   return state;
 };
 
-export default createReducer({
+export default (state, action) => {
 
-  /*
-  [WorkspaceActions.POST_REHYDRATE]: (state) => {
-    // Ensure all the generators have source and target diagrams properly inserted
-    let { generators } = state.signature;
-    let new_generators = [];
-    for (let generator of Object.values(generators)) {
-      let new_generator = Core.Generator.postRehydrate(generator.generator, generators);
-      let id = generator.generator.id;
-      new_generators.push(new_generator);
-      //state = dotProp.set(state, `signature.generators.${id}`, new_generator);
-    }
-    // Add them to the state
-    for (let i=0; i<new_generators.length; i++) {
-      let new_generator = new_generators[i];
-      let id = new_generator.id;
-      state = dotProp.set(state, `signature.generators.${id}.generator`, new_generator);
-    }
-    //state = dotProp.set(state, "signature.generators", new_generators);
+  switch (action.type) {
 
-    return state;
-  },
-  */
+    case 'signature/remove-generator': {
 
-  [SignatureActions.REMOVE_GENERATOR]: (state, { id }) => {
-    let generators = state.signature.generators;
-    let removedGenerator = generators[id].generator;
+      let { id } = action.payload;
+      let generators = state.signature.generators;
+      let removedGenerator = generators[id].generator;
 
-    // Remove all generators that use this generator.
-    generators = {...generators};
-    let keep = {};
-    for (let generator of Object.values(generators)) {
-      if (!generator.generator.usesCell(removedGenerator)) {
-        keep[generator.generator.id] = generator;
+      // Remove all generators that use this generator.
+      generators = {...generators};
+      let keep = {};
+      for (let generator of Object.values(generators)) {
+        if (!generator.generator.usesCell(removedGenerator)) {
+          keep[generator.generator.id] = generator;
+        }
       }
+      state = dotProp.set(state, "signature.generators", keep);
+
+      // Clear main diagram and source/target previews if necessary
+      let w = state.workspace;
+      if (w.diagram && w.diagram.usesCell(removedGenerator)) {
+        state = dotProp.set(state, "workspace.diagram", null);
+      }
+      if (w.source && w.source.usesCell(removedGenerator)) {
+        state = dotProp.set(state, "workspace.source", null);
+      }
+      if (w.target && w.target.usesCell(removedGenerator)) {
+        state = dotProp.set(state, "workspace.target", null);
+      }
+
+      break;
+
+    } case 'signature/rename-generator': {
+
+      let { id, name } = action.payload;
+      state = dotProp.set(state, `signature.generators.${id}.name`, name);
+      break;
+
+    } case 'signature/recolor-generator': {
+
+      let { id, color } = action.payload;
+      state = dotProp.set(state, `signature.generators.${id}.color`, color);
+      break;
+
+    } case 'signature/create-generator': {
+
+      state = createGenerator(state, null, null);
+
     }
-    state = dotProp.set(state, "signature.generators", keep);
+  }
 
-    // Clear the current diagram if it uses the removed cell
-    let diagram = state.workspace.diagram;
-    if (diagram != null && diagram.usesCell(removedGenerator)) {
-      state = dotProp.set(state, "workspace.diagram", null);
-    }
-
-    return state;
-  },
-
-  [SignatureActions.RENAME_GENERATOR]: (state, { id, name }) => {
-    state = dotProp.set(state, `signature.generators.${id}.name`, name);
-    return state;
-  },
-
-  [SignatureActions.RECOLOR_GENERATOR]: (state, { id, color }) => {
-    state = dotProp.set(state, `signature.generators.${id}.color`, color);
-    return state;
-  },
-
-  [SignatureActions.CREATE_GENERATOR]: (state) => {
-    state = createGenerator(state, null, null);
-    return state;
-  },
-});
+  return state;
+}
