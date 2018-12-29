@@ -2098,7 +2098,7 @@ export class Limit /*extends Array*/ {
       let second_source_id = second.components[0].source_id;
       let this_source_type = generators[this_source_id];
       let second_source_type = generators[second_source_id];
-      if (this_source_type.n > second_source_type.n) return { error: "Can't factorize if dimensions are increasing" };
+      if (this_source_type.generator.n > second_source_type.generator.n) return { error: "Can't factorize if dimensions are increasing" };
 
       // Construct the factorization
       let source_id = this_source_id;
