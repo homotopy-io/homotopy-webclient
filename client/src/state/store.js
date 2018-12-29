@@ -81,9 +81,9 @@ export default (state, action) => {
     window.location.hash = compressed;
 
     const timeAfter = performance.now();
-    console.log(`Stored (${Math.floor(t1-t0)} ms), `
+    console.log(`State flattened (${Math.floor(t1-t0)} ms), `
       + `serialized (${Math.floor(string.length/1024)} kb, ${Math.floor(t2-t1)} ms), `
-      + `compressed (${Math.floor(compressed.length/1024)} kb, ${Math.floor(t2-t1)} ms)`);
+      + `compressed (${Math.floor(compressed.length/1024)} kb, ${Math.floor(t3-t2)} ms)`);
   }
 
   _assert(state.diagram === undefined);
