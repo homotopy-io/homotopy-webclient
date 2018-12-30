@@ -427,7 +427,7 @@ export class LimitComponent {
     this.sublimits = args.sublimits;
 
     // Reconstitute target data if necessary
-    if (args.target_data === null) {
+    if (args.target_data == null) {
       _assert(args.sublimits.length > 0);
       let forward_limit = this.sublimits[0].compose(this.source_data[0].forward_limit);
       let l = this.sublimits.length;

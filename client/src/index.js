@@ -30,6 +30,8 @@ Rx.fromEvent(document, "keydown")
       case "c": return store.dispatch({ type: 'workspace/clear-diagram' });
       case "r": return store.dispatch({ type: 'workspace/restrict-diagram' });
       case "h": return store.dispatch({ type: 'workspace/make-theorem' });
+      case "d": return store.dispatch({ type: 'workspace/behead' });
+      case "o": return store.dispatch({ type: 'workspace/contract' });
     }
   });
 

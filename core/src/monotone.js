@@ -147,7 +147,7 @@ export class Monotone extends Array {
           if (left_done == left_delta - 1) preference = +1;
           else if (right_done == right_delta - 1) preference = -1;
           else preference = right;// ? 1 : -1;
-        } else throw "no monotone unification at depth " + n + ", cannot unify head-to-head monotones without a bias";
+        } else return { error: "no monotone unification at depth " + n + ", cannot unify head-to-head monotones without a bias" };
 
         if (preference < 0) {
           injections.first.grow();
@@ -181,11 +181,13 @@ export class Monotone extends Array {
       */
 
     } else if (left_delta == 0 || right_delta == 0) {
+
       let t = injections.first.target_size;
       while (injections.first.length <= first[n - 1]) injections.first.push(t - 1);
       while (injections.second.length <= second[n - 1]) injections.second.push(t - 1);
-      // target not changing so no need to update J1M, J2M?
+
     } else { // deltas (1,>1) or (>1,1)
+
       // fibre analysis at 2018-2-ANC-30
       for (let i = 0; i < left_delta - 1; i++) {
         injections.first.grow();
@@ -201,15 +203,23 @@ export class Monotone extends Array {
         injections.first.target_size = t;
         injections.second.target_size = t;
       }
-    }
-    if (n == first.length + 1) {
 
-      // Perform final consistency checks
-      if (_debug) _assert(injections.first.length == first.target_size);
-      if (_debug) _assert(injections.second.length == second.target_size);
-      if (_debug) _assert(injections.first.target_size == injections.second.target_size);
-      if (_debug) _assert(injections.first.compose(first).equals(injections.second.compose(second)));
     }
+
+    if (_debug) {
+
+      if (n == first.length + 1) {
+
+        // Perform final consistency checks
+        _assert(injections.first.length == first.target_size);
+        _assert(injections.second.length == second.target_size);
+        _assert(injections.first.target_size == injections.second.target_size);
+        _assert(injections.first.compose(first).equals(injections.second.compose(second)));
+
+      }
+
+    }
+
     return injections;
   }
 
@@ -335,42 +345,6 @@ export class Monotone extends Array {
       upper: [2, 2]
     });
     if (_debug) _assert(result2[0].equals(new Monotone(1, [0, 0])) && result2[1].equals(new Monotone(1, [0, 0])));
-  }
-
-  // Simultaneously unify an entire diagram of monotones
-  static multiUnify_OLD({ lower, upper }) {
-    for (let i of upper) {
-      if (_debug) _assert(isNatural(i));
-    }
-
-    for (let i = 0; i < lower.length; i++) {
-      _propertylist(lower[i], ["left", "right"], ["bias"]);
-      _propertylist(lower[i].left, ["target", "monotone"]);
-      _propertylist(lower[i].right, ["target", "monotone"]);
-      //_assert(lower[i].left.monotone instanceof Monotone && lower[i].right.monotone instanceof Monotone);
-      if (_debug) _assert(lower[i].left.monotone.length == lower[i].right.monotone.length);
-      if (_debug) _assert(lower[i].left.target < upper.length && lower[i].right.target < upper.length);
-      if (_debug) _assert(lower[i].left.monotone.target_size == upper[lower[i].left.target]);
-      if (_debug) _assert(lower[i].right.monotone.target_size == upper[lower[i].right.target]);
-      if (_debug) _assert(lower[i].left.length == lower[i].right.length);
-    }
-
-    let upper_included = Array(upper.length).fill(false);
-    let lower_included = Array(lower.length).fill(false);
-
-    // Build the first part of the cocone
-    let cocone = [Monotone.getIdentity(upper[0])];
-    upper_included[0] = true;
-
-    // Pass through repeatedly until no further unifications can be made
-    while (Monotone.multiUnify_singlePass({ lower_included, upper_included, lower, upper, cocone })) {}
-
-    // Check that all levels have been included
-    for (let i = 0; i < lower.length; i++) _assert(lower_included[i] || lower[i].left.monotone.length == 0);
-    for (let i = 0; i < upper.length; i++) _assert(upper_included[i]);
-
-    // Return the cocone data that has been computed
-    return cocone;
   }
 
   static multiUnify_singlePass({ lower_included, upper_included, lower, upper, cocone }) {
@@ -501,7 +475,7 @@ export class Monotone extends Array {
     return new Monotone(this.length + 1, regular);
   }
 
-  static multiUnify({lower, upper}) {
+  static multiUnify({ lower, upper }) {
 
     // Build a graph from unions of the upper monotones
     let g = new DirectedQuotientGraph();

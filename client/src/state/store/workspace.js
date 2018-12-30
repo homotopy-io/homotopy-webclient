@@ -245,9 +245,25 @@ export default (state, action) => {
       state = dotProp.set(state, "workspace.slice", []);
       break;
 
-    }
+    } case 'workspace/behead': {
 
-    case 'workspace/take-identity': {
+      let { diagram } = state.workspace;
+
+      // We can't decapitate an identity diagram
+      if (diagram.data.length == 0) break;
+
+      // Build the new diagram
+      let new_diagram = diagram.copy({ data: diagram.data.slice(0, diagram.data.length - 1) });
+
+      // Set it in the state
+      state = dotProp.set(state, "workspace.diagram", new_diagram);
+
+      // Update the slices so they are still valid
+      state = dotProp.set(state, "workspace.slice", updateSlices(state));
+
+      break;
+
+    } case 'workspace/take-identity': {
 
       state = dotProp.set(state, "workspace.diagram", diagram => diagram.boost());
       let slice = state.workspace.slice.slice();
@@ -277,6 +293,20 @@ export default (state, action) => {
       state = dotProp.set(state, "workspace.target", null);
       break;
 
+    } case 'workspace/contract': {
+
+      let { diagram } = state.workspace;
+      let { generators } = state.signature;
+      let contract = diagram.contract(generators);
+      let new_diagram = contract.rewrite_forward(diagram);
+      if (_debug) _assert(new_diagram.typecheck(generators));
+      state = dotProp.set(state, "workspace.diagram", new_diagram);
+
+      // Update the slices so they are still valid
+      state = dotProp.set(state, "workspace.slice", updateSlices(state));
+
+      break;
+
     } case 'signature/select-generator': {
       
       let { id } = action.payload;
@@ -287,6 +317,7 @@ export default (state, action) => {
         state = setDiagram(state, diagram);
       }
       break;
+
     }
 
   }

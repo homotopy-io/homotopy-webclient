@@ -117,6 +117,11 @@ export class Diagram {
   }
   */
 
+ copy({id = this.id, source = this.source, data = this.data, n = this.n} = this) {
+  return new Diagram({ n, id, source, data });
+}
+
+
   static fromMinimal(args) {
 
     if (args === null) return null;
@@ -988,14 +993,90 @@ export class Diagram {
         location[location.length - 1].height --;
       }
       let forward_limit = this.getContractionLimit({location, tendency, generators});
+      if (forward_limit.error) throw Error(forward_limit.error);
       let singular = forward_limit.rewrite_forward(this);
       let normalization = singular.normalizeSingular();
       let backward_limit = normalization.embedding;
       let content = new Content({ n: this.n, forward_limit, backward_limit });
-      if (!content.typecheck(generators, this)) throw "This contraction doesn't typecheck";
+      if (!content.typecheck(generators, this)) throw Error("This contraction doesn't typecheck");
       return content;  
 
     }
+
+  }
+
+  // Find the largest single contraction that type-checks, returning the contracting limit.
+  // If no contractions are possible, return the identity.
+  contract(generators, initial_height) {
+
+    let n = this.n;
+
+    if (initial_height === undefined) initial_height = 0;
+
+    for (let start = initial_height; start < this.data.length - 1; start ++) {
+
+      let valid_finish = null;
+      let valid_contraction = null;
+
+      for (let finish = start + 1; finish < this.data.length; finish ++) {
+
+        // Try to contract from start to finish
+        let singular = this.getSlice({ height: start, regular: false });
+        let upper = [{ diagram: singular, bias_left: false }];
+        let lower = [];
+        for (let i=start; i<finish; i++) {
+          let backward_limit = this.data[i].backward_limit;
+          let forward_limit = this.data[i+1].forward_limit;
+          let regular = backward_limit.rewrite_backward(singular);
+          lower.push({ diagram: regular,
+            left_index:  i - start,     left_limit:  backward_limit,
+            right_index: i + 1 - start, right_limit: forward_limit
+          });
+          singular = forward_limit.rewrite_forward(regular);
+          upper.push({ diagram: singular, bias_left: false });
+        }
+        let contraction = Diagram.multiUnify({ lower, upper, generators });
+
+        // If the contraction was not good, break out
+        if (contraction.error) break;
+
+        // The contraction seems good so far. Build the contracting limit.
+        let source_data = this.data.slice(start, finish + 1);
+        let sublimits = contraction.limits.slice();
+        let first = start;
+        let components = [new LimitComponent({ n, first, source_data, sublimits })];
+        let source_size = this.data.length;
+        let limit = new Limit({ n, components, source_size });
+
+        // See if this contraction type checks
+        let id = new Limit({ n });
+        let content = new Content({ n, forward_limit: limit, backward_limit: id });
+        if (!content.typecheck(generators, this)) break;
+
+        // The contraction type checks, so remember it
+        valid_finish = finish;
+        valid_contraction = limit;
+
+      }
+
+      // We broke out, so this contraction wasn't valid.
+      
+      // If we never found a good one at this starting height, go to the next starting height
+      if (!valid_contraction) continue;
+
+      // Build the result of the contraction
+      let target = valid_contraction.rewrite_forward(this);
+
+      // Contract recursively
+      let recursive = target.contract(generators, start + 1);
+
+      // Return the final contraction as a composite
+      return recursive.compose(valid_contraction);
+
+    }
+
+    // If we fell through to here, we never found a good contraction, so just return the identity
+    return new Limit({ n });
 
   }
 
@@ -1181,61 +1262,6 @@ export class Diagram {
 
       }
 
-      /*
-
-      // Try to do a pullback
-      try {
-
-        let data = this.data[location[0].height];
-
-        // Forward pullback
-        let forward_pullback = data.forward_limit.pullback(recursive);
-        if (!forward_pullback) {
-          throw new Error("Can't pullback expansion with forward limit at depth " + (location.length - 1));
-        }
-        let regular_slice_left = this.getSlice({regular: true, height: location[0].height});
-        let p_left = forward_pullback.left.rewrite_backward(regular_slice_left);
-        let p_left_norm = p_left.normalize();
-        let forward_pullback_norm = {
-          left: forward_pullback.left.compose(p_left_norm.embedding),
-          right: forward_pullback.right.compose(p_left_norm.embedding)
-        };
-        if (forward_pullback_norm.left.length > 0) {
-          throw new Error("expansion on singular slice, forward pullback changes the regular level");
-        }
-
-        // Backward pullback
-        let backward_pullback = recursive.pullback(data.backward_limit);
-        if (!backward_pullback) {
-          throw new Error("Can't pullback expansion with backward limit at depth " + (location.length - 1));
-        }
-        let regular_slice_right = this.getSlice({regular: true, height: 1 + location[0].height});
-        let p_right = backward_pullback.right.rewrite_backward(regular_slice_right);
-        let p_right_norm = p_right.normalize();
-        let backward_pullback_norm = {
-          left: backward_pullback.left.compose(p_right_norm.embedding),
-          right: backward_pullback.right.compose(p_right_norm.embedding)
-        };
-        if (backward_pullback_norm.right.length > 0) {
-          throw new Error("expansion on singular slice, backward pullback changes the regular level");
-        }
-
-        // Construct expansion data
-        let first = location[0].height;
-        let target_data = this.data[first];
-        let source_data = [new Content({ n: this.n - 1, forward_limit: forward_pullback_norm.right, backward_limit: backward_pullback_norm.left })];
-        let sublimits = [recursive];
-        let component = new LimitComponent({ n: this.n, first, sublimits, source_data, target_data});
-        let limit = new Limit({ n: this.n, components: [component], source_size: this.data.length });
-        let preimage_diagram = limit.rewrite_backward(this);
-        let normalization = preimage_diagram.normalize();
-        console.log("Performed pullback");
-        return limit.compose(normalization.embedding);
-
-      }
-
-      */
-
       // If the factorization has failed, just insert a bubble
       catch(e) {
 
@@ -1290,6 +1316,7 @@ export class Diagram {
       let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2 }];
 
       let contract_data = Diagram.multiUnify({ lower, upper, generators });
+      if (contract_data.error) return contract_data;
 
       // Build the limit to the contracted diagram
       let first = location[0].height;
@@ -1377,14 +1404,20 @@ export class Diagram {
 
       // If there's more than one top-dimensional type, throw an error
       if (_debug) _assert(top_types.length > 0);
-      if (top_types.length > 1) throw "no unification, multiple top types in base case";
+      if (top_types.length > 1) return { error: "no unification, multiple top types in base case" };
       let target_id = top_types[0].generator.id;
 
       // Build the cocone maps
       let limits = [];
       for (let i = 0; i < upper.length; i++) {
         let source_id = upper[i].diagram.id;
-        limits.push(new Limit({ n: 0, components: source_id == target_id ? [] : [new LimitComponent({ n: 0, source_id, target_id })] }));
+        limits.push(new Limit({ n: 0,
+          components:
+            source_id == target_id
+            ? []
+            : [new LimitComponent({ n: 0, source_id, target_id })] 
+          })
+        );
       }
 
       // Return the final data
@@ -1408,6 +1441,7 @@ export class Diagram {
       m_lower.push({ left, right });
     }
     let m_unif = Monotone.multiUnify({ lower: m_lower, upper: m_upper });
+    if (m_unif.error) return m_unif;
 
     // Find size of unification set
     let target_size = m_unif[0].target_size;
@@ -1418,6 +1452,7 @@ export class Diagram {
     let target_content = [];
     for (let i = 0; i < target_size; i++) {
       let component = Diagram.multiUnifyComponent({ upper, lower }, m_unif, m_lower, i, generators);
+      if (component.error) return component;
       target_content.push(component.target_content);
       for (let j = 0; j < upper.length; j++) {
         if (!component.cocone_components[j]) continue;
@@ -1545,6 +1580,7 @@ export class Diagram {
 
     // Recursively unify
     let recursive = Diagram.multiUnify(exploded);
+    if (recursive.error) return recursive;
 
     // Get the content for the main diagram
     let nu = upper[nonempty_upper].diagram;
