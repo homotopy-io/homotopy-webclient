@@ -9,7 +9,7 @@ import attach from "~/state/store/attach";
 //import stringify from "json-stringify-safe";
 import persist from "~/state/store/persist";
 import * as Core from "homotopy-core";
-import LZ from "lz-string";
+import * as Compression from "../util/compression";
 
 let serializer = new Core.SerializeCyclic();
 
@@ -40,17 +40,12 @@ export default (state, action) => {
   state = signature(state, action);
   state = attach(state, action);
 
+  // Persist the state
   if (action.type.indexOf('INIT') == -1
       && action.type != 'persist/newhash'
       && action.type != 'persist/loaded'
       && action.type != 'attach/set-highlight'
       && action.type != 'attach/clear-highlight') {
-
-    /*
-    if (this.serializer === undefined) {
-      this.serializer = new Core.SerializeCyclic();
-    }
-    */
 
     const t0 = performance.now();
 
@@ -68,22 +63,21 @@ export default (state, action) => {
 
     const t2 = performance.now();
 
-    let compressed = LZ.compressToBase64(string);
+    //let compressed = LZ.compressToBase64(string);
+    let compressed = Compression.compress(string);
 
     const t3 = performance.now();
 
     state.serialization = compressed;
 
-    // Put the string into local storage
-    //window.localStorage.setItem("homotopy_io_state", compressed);
-
     // Put the string into the URL
     window.location.hash = compressed;
 
-    const timeAfter = performance.now();
+    const t4 = performance.now();
     console.log(`State flattened (${Math.floor(t1-t0)} ms), `
       + `serialized (${Math.floor(string.length/1024)} kb, ${Math.floor(t2-t1)} ms), `
       + `compressed (${Math.floor(compressed.length/1024)} kb, ${Math.floor(t3-t2)} ms)`);
+
   }
 
   _assert(state.diagram === undefined);

@@ -1,6 +1,5 @@
-import * as PersistActions from "../actions/persist";
 import * as Core from "homotopy-core";
-import LZ from "lz-string";
+import * as Compression from "../../util/compression";
 
 export default (state, action) => {
 
@@ -13,12 +12,11 @@ export default (state, action) => {
     try {
 
       let compressed = action.payload;
-      let decompressed = LZ.decompressFromBase64(compressed);
+      let decompressed = Compression.decompress(compressed);
       let deserializer = Core.SerializeCyclic.destringify(decompressed);
       let new_state = deserializer.getHead();
       new_state.serialization = compressed;
       state = { ...state, ...new_state };
-      //store.dispatch(PersistActions.loaded(state));
 
     } catch (err) {
       console.log('Rehydration error');
@@ -33,6 +31,7 @@ export default (state, action) => {
 
   }
 
+  /*
   else if (action.type === 'persist/serialize') {
 
     // We've been asked to serialize the state
@@ -58,8 +57,10 @@ export default (state, action) => {
 
     // Put the string into the URL
     window.location.hash = compressed;
+  }
 
-  } else {
+  */
+  else {
 
     // We've changed the state, so serialize it
     //dispatch(PersistActions.serialize(state));

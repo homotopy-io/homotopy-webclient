@@ -28,6 +28,7 @@
     "homotopy-core": "0.1.0",
     "hsluv": "^0.0.3",
     "mda": "^1.1.1",
+    "pako": "^1.0.7",
     "react": "16.4.2",
     "react-color": "^2.14.1",
     "react-dom": "16.4.2",
