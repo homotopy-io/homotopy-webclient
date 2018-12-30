@@ -50,8 +50,11 @@ export default (state, action) => {
     const t0 = performance.now();
 
     // We've been asked to serialize the state
-    let state_modified = Object.assign({}, state);
-    delete state_modified.serialization;
+    let state_modified = {
+      workspace: Object.assign({}, state.workspace),
+      signature: Object.assign({}, state.signature),
+      attach: Object.assign({}, state.attach)
+    }
 
     // Update the serializer with the current state
     serializer.update(state_modified);
@@ -63,7 +66,6 @@ export default (state, action) => {
 
     const t2 = performance.now();
 
-    //let compressed = LZ.compressToBase64(string);
     let compressed = Compression.compress(string);
 
     const t3 = performance.now();
