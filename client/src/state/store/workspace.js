@@ -249,6 +249,9 @@ export default (state, action) => {
 
       let { diagram } = state.workspace;
 
+      // Can't behead an empty diagram
+      if (!diagram) break;
+
       // We can't decapitate an identity diagram
       if (diagram.data.length == 0) break;
 
@@ -297,6 +300,7 @@ export default (state, action) => {
 
       let { diagram } = state.workspace;
       let { generators } = state.signature;
+      if (!diagram) break;
       let contract = diagram.contract(generators);
       let new_diagram = contract.rewrite_forward(diagram);
       if (_debug) _assert(new_diagram.typecheck(generators));

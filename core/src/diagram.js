@@ -697,11 +697,11 @@ export class Diagram {
 
     // Otherwise, it must be exactly the defining diagram of a generator
     if (!type.source.equals(this.source)) {
-      console.log("Source boundary error");
+      console.log("Typecheck failed, source boundary error");
       return false;
     }
     if (!type.target.equals(this.getTarget())) {
-      console.log("Target boundary error");
+      console.log("Typecheck failed, target boundary error");
       return false;
     }
     return true;

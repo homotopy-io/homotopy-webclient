@@ -11,6 +11,7 @@ import persist from "~/state/store/persist";
 import * as Core from "homotopy-core";
 import * as Compression from "../util/compression";
 
+// Persistent serializer
 let serializer = new Core.SerializeCyclic();
 
 export const initialState = {
@@ -49,15 +50,12 @@ export default (state, action) => {
 
     const t0 = performance.now();
 
-    // We've been asked to serialize the state
-    let state_modified = {
-      workspace: Object.assign({}, state.workspace),
-      signature: Object.assign({}, state.signature),
-      attach: Object.assign({}, state.attach)
-    }
+    // Prepare part of the state ready to be serialized
+    let { workspace, signature, attach } = state;
+    let state_to_serialize = { workspace, signature, attach };
 
     // Update the serializer with the current state
-    serializer.update(state_modified);
+    serializer.update(state_to_serialize);
 
     const t1 = performance.now();
 
@@ -82,6 +80,7 @@ export default (state, action) => {
 
   }
 
+  // Monitoring for the recurrence of an old bug
   _assert(state.diagram === undefined);
 
   return state;
