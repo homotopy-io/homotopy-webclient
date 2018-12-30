@@ -103,32 +103,6 @@ export const updateSlices = createSelector(
   }
 );
 
-//export default createReducer({
-
-  /*
-  [WorkspaceActions.POST_REHYDRATE]: (state) => {
-
-    let { diagram, source, target } = state.workspace;
-    let { generators } = state.signature;
-
-    if (diagram) {
-      let diagram_rehydrated = Core.Diagram.postRehydrate(diagram, generators);
-      state = dotProp.set(state, "workspace.diagram", diagram_rehydrated);
-    }
-
-    if (source) {
-      let source_rehydrated = Core.Diagram.postRehydrate(source, generators);
-      state = dotProp.set(state, "workspace.source", source_rehydrated);
-    }
-
-    if (target) {
-      let target_rehydrated = Core.Diagram.postRehydrate(target, generators);
-      state = dotProp.set(state, "workspace.target", target_rehydrated);
-    }
-
-    return state;
-  },
-  */
 export default (state, action) => {
 
   switch (action.type) {
