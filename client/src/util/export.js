@@ -1,6 +1,6 @@
-export default (exportObj, exportName) => {
-  const blob = new Blob([JSON.stringify(exportObj)], {
-    type: 'text/json'
+export default (exportStr, exportName) => {
+  const blob = new Blob([exportStr], {
+    type: 'application/json'
   });
   const url = URL.createObjectURL(blob);
   const downloadAnchorNode = document.createElement('a');
