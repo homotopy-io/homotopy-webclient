@@ -1,5 +1,5 @@
-export default (exportStr, exportName) => {
-  const blob = new Blob([exportStr], {
+export default (exportObj, exportName) => {
+  const blob = new Blob([JSON.stringify(exportObj)], {
     type: 'application/json'
   });
   const url = URL.createObjectURL(blob);
