@@ -8,6 +8,7 @@ import attach from "~/state/store/attach";
 import dotProp from "dot-prop-immutable";
 //import stringify from "json-stringify-safe";
 import persist from "~/state/store/persist";
+import { reducer as formReducer } from 'redux-form'
 import * as Core from "homotopy-core";
 import * as Compression from "../util/compression";
 
@@ -98,6 +99,9 @@ export default (state, action) => {
   }
 
   console.log(`Handled action \"${action.type}" in ${Math.floor(performance.now() - action_t0)} ms`);
+
+  // collect the metadata
+  state = dotProp.set(state, 'form', formReducer(state.form, action))
 
   return state;
 };
