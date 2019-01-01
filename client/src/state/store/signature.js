@@ -6,6 +6,11 @@ import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
 import { cellColors } from "~/style";
 
+export const initialSignature = {
+  generators: {},
+  edited: null /* not sure what this does */
+}
+
 export const getDimensionGroups = (state) => {
   let { signature } = state;
   _assert(signature);
@@ -70,7 +75,7 @@ export const createGenerator = (state, source, target, id) => {
   return state;
 };
 
-export default (state, action) => {
+export default (state = initialSignature, action) => {
 
   switch (action.type) {
 

@@ -7,7 +7,7 @@ import "typeface-roboto";
 import "@icon/stroke-7/stroke-7.css";
 
 import App from "~/components/App";
-import reducer, { initialState } from "~/state/store";
+import createStore from "~/state/store";
 import { connectStore } from "~/state/persist";
 
 import * as Rx from "rxjs";
@@ -15,7 +15,7 @@ import * as RxOps from "rxjs/operators";
 
 //import stringify from "json-stringify-safe";
 
-const store = Redux.createStore(reducer, initialState);
+const store = createStore()
 
 connectStore(store);
 

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { connect } from "react-redux";
 import styled from "styled-components";
 import Header from "~/components/Header";
 import Signature from "~/components/Signature";
@@ -7,8 +8,6 @@ import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 import LogoImg from '../logo.svg';
-import * as Core from "homotopy-core";
-import { connect } from "react-redux";
 
 //import * as PersistActions from "~/state/persist";
 
@@ -63,17 +62,7 @@ export class App extends React.Component {
   }
 }
 
-function mapStateToProps(state) {
-  return {
-    hash: state.hash,
-    serialization: state.serialization
-  }
-}
-
-// This gives App access to dispatch
-export default connect(mapStateToProps)(App);
-
-//export default App;
+export default connect(({ hash, serialization }) => ({ hash, serialization }))(App);
 
 const Container = styled.div`
   display: flex;

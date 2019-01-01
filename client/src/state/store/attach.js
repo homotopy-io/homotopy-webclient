@@ -5,6 +5,11 @@ import * as AttachActions from "~/state/actions/attach";
 import * as Core from "homotopy-core";
 import { _assert, _debug } from "../../../../core/src/util/debug";
 
+export const initialAttach = {
+  options: null,
+  highlight: null
+}
+
 export const getOptions = (state) => {
   // TODO: Memoized selector
   let options = state.attach.options;
@@ -39,7 +44,7 @@ export const clearOptions = (state) => {
   return state;
 };
 
-export default createReducer({
+export default createReducer(initialAttach, {
   ["attach/clear-highlight"]: (state) => {
     state = dotProp.set(state, "attach.highlight", null);
     return state;

@@ -7,6 +7,15 @@ import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
 import { createGenerator, getGenerator, getFreshId } from "~/state/store/signature";
 
+export const initialWorkspace = {
+  diagram: null,
+  source: null,
+  target: null,
+  slice: null,
+  projection: null,
+  renderer: 2
+}
+
 export const getDiagram = (state) => {
   return state.workspace.diagram;
 };
@@ -103,7 +112,7 @@ export const updateSlices = createSelector(
   }
 );
 
-export default (state, action) => {
+export default (state = initialWorkspace, action) => {
 
   switch (action.type) {
 
@@ -312,7 +321,7 @@ export default (state, action) => {
       break;
 
     } case 'signature/select-generator': {
-      
+
       let { id } = action.payload;
       let { diagram } = state.workspace;
       let generator = state.signature.generators[id];
