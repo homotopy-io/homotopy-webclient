@@ -2,6 +2,7 @@ import * as React from "react";
 import { connect } from "react-redux";
 import styled from "styled-components";
 import Header from "~/components/Header";
+import Login from "~/components/Login";
 import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
 import DiagramTool from "~/components/tools/Diagram";
@@ -55,6 +56,7 @@ export class App extends React.Component {
           <AttachmentTool />
           <BoundaryTool />
         </ToolBar>
+        <Login />
       </Container>
     );
   }

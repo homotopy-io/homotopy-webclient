@@ -5,7 +5,16 @@ import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
 import attachReducer, { initialAttach } from '~/state/store/attach'
 import persistReducer, { initialPersist } from '~/state/store/persist'
+import userReducer, { initialUser } from '~/state/store/user'
 import { reducer as formReducer } from 'redux-form'
+
+import { reactReduxFirebase, firebaseReducer } from 'react-redux-firebase'
+import { reduxFirestore, firestoreReducer } from 'redux-firestore'
+import firebase from 'firebase/app'
+import 'firebase/auth'
+import 'firebase/firestore'
+import firebaseConfig from '~/../config/firebaseConfig.js'
+
 import * as Core from "homotopy-core";
 import * as Compression from "../util/compression";
 
@@ -19,7 +28,8 @@ export const initialState = {
     attach: initialAttach,
     serialization: initialPersist,
     hash: null
-  }
+  },
+  user: initialUser
 }
 
 
@@ -92,12 +102,29 @@ const proofReducer = (state = initialState, action) => {
 
 const rootReducer = combineReducers({
   proof: proofReducer,
-  form: formReducer
+  form: formReducer,
+  user: userReducer,
+  firebase: firebaseReducer,
+  firestore: firestoreReducer
 })
 
+const reactReduxFirebaseConfig = {
+  userProfile: 'users',
+  useFirestoreForProfile: true,
+  enableLogging: true
+}
+
 export default () => {
+  firebase.initializeApp(firebaseConfig)
+  const firestore = firebase.firestore()
+  firestore.settings({timestampsInSnapshots: true})
+
   return createStore(
     rootReducer,
-    initialState
+    initialState,
+    compose(
+      reduxFirestore(firebase),
+      reactReduxFirebase(firebase, reactReduxFirebaseConfig)
+    )
   )
 }
