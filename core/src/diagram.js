@@ -150,7 +150,10 @@ export class Diagram {
     //if (a.n != b.n) return a.n - b.n;
 
     // In dimension 0, sort lexicographically by id
-    if (a.n == 0) return a.id < b.id ? -1 : +1;
+    if (a.n == 0) {
+      if (a.id == b.id) return 0
+      return a.id < b.id ? -1 : +1;
+    }
 
     // Sort by data length
     if (a.data.length != b.data.length) return a.data.length - b.data.length;
@@ -165,8 +168,9 @@ export class Diagram {
     for (let i=0; i<a.data.length; i++) {
       let a_content = a.data[i];
       let b_content = b.data[i];
-      let a_content_index = positions.get(substitutions.get(a.content));
-      let b_content_index = positions.get(substitutions.get(b.content));
+      let a_content_index = positions.get(substitutions.get(a_content));
+      let b_content_index = positions.get(substitutions.get(b_content));
+      _assert(isNatural(a_content_index) && isNatural(b_content_index));
       if (a_content_index != b_content_index) return a_content_index - b_content_index;
     }
 
@@ -1728,7 +1732,7 @@ function sub_data(data, subdata, offset) {
 // Check if a forward limit contains all the content of another
 function sub_limit(limit, sublimit, offset) {
   if (_debug) _assert(limit.n == sublimit.n);
-  if (limit.length != sublimit.length) return false; // number of components must be the same
+  if (limit.components.length != sublimit.components.length) return false; // number of components must be the same
   for (let i = 0; i < limit.components.length; i++) {
     if (!sub_limit_component(limit.components[i], sublimit.components[i], offset)) return false;
   }

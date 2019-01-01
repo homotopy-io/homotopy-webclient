@@ -273,8 +273,8 @@ export class SerializeCyclic {
         let subindex = this.add(value);
         flattened[key] = this.getLibraryReference(subindex);
         let subentry = this.index_to_stored.get(subindex);
-        _assert(subentry);
-        _assert(subentry.descendants);
+        //_assert(subentry);
+        //_assert(subentry.descendants);
         multi_descendants.push([...subentry.descendants, subindex]);
       } else {
         flattened[key] = value;
@@ -319,7 +319,8 @@ export class SerializeCyclic {
     let original = array[0];
     for (let i=1; i<array.length; i++) {
       if (array[i].lexicographicSort(original, positions, substitutions) == 0) {
-        substitutions.set(array[i], original)
+        //_assert(array[i].equals(original));
+        substitutions.set(array[i], original);
       } else {
         original = array[i];
       }
@@ -327,6 +328,7 @@ export class SerializeCyclic {
   }
 
   static arrayLexicographicSort(a, b, positions, substitutions) {
+    /*
     if (_debug) {
       _assert(Array.isArray(a));
       _assert(Array.isArray(b));
@@ -337,6 +339,7 @@ export class SerializeCyclic {
       _assert(a._t === b._t);
       _assert(a.n === b.n);
     }
+    */
     if (a.length != b.length) return a.length - b.length;
     for (let i=0; i<a.length; i++) {
       let value = a[i].lexicographicSort(b[i], positions, substitutions);
@@ -361,6 +364,15 @@ export class SerializeCyclic {
     let original = array[0];
     for (let i=1; i<array.length; i++) {
       if (SerializeCyclic.arrayLexicographicSort(array[i], original, positions, substitutions) == 0) {
+        /*
+        if (_debug) {
+          _assert(array[i].length == original.length);
+          for (let j=0; j<array[i].length; j++) {
+            _assert(array[i][j].equals);
+            _assert(array[i][j].equals(original[j]));
+          }
+        }
+        */
         substitutions.set(array[i], original)
       } else {
         original = array[i];
@@ -401,7 +413,7 @@ export class SerializeCyclic {
         }
       } else {
         if (o._t && o._t != 'G') { // no need to sort generators
-          _assert(object_reference[o._t]);
+          //_assert(object_reference[o._t]);
           object_reference[o._t][o.n].push(o);
         } else {
           object_reference.other.push(o);
@@ -441,16 +453,13 @@ export class SerializeCyclic {
         continue;
       }
 
-      if (object instanceof Content) {
-        let x = 0;
-      }
-
       // Surgically modify this object to only keep the chosen children.
       // For this reason we cannot work with frozen objects.
       for (let key of Object.keys(object)) {
         let value = object[key];
         if (typeof value !== 'object' || value === null || value === undefined) continue;
         let new_value = substitutions.get(value);
+        //_assert(new_value.equals ? new_value.equals(value) : true); // DEBUG
         object[key] = new_value;
       }
 
@@ -487,9 +496,9 @@ export class SerializeCyclic {
       for (let key of Object.keys(old_stored.f)) {
         let value = old_stored.f[key];
         if (typeof value === 'object' && value !== null && value !== undefined) {
-          _assert(isNatural(value._l));
+          //_assert(isNatural(value._l));
           let _l = new_object_to_index.get(substitutions.get(this.index_to_object.get(value._l)));
-          _assert(isNatural(_l));
+          //_assert(isNatural(_l));
           f[key] = { _l };
         } else {
           f[key] = value;

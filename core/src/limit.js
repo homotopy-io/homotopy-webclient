@@ -19,7 +19,7 @@ import * as ArrayUtil from "~/util/array";
         - source :: Diagram(n-1)
         - data :: Array(Content(n-1))
     - n == 0:
-        - type :: String // Makes no sense to have an array here
+        - id :: String // Makes no sense to have an array here
 - Content(n) comprises:
     - for all n:
         - forward_limit :: Limit(n)
@@ -35,7 +35,8 @@ import * as ArrayUtil from "~/util/array";
         - sublimits :: Array(Limit(n-1))
         - first :: Natural, the first regular position that this affects
     - for n == 0:
-        - type :: Generator
+        - source_id
+        - target_id
 */
 
 export class Content {
@@ -85,8 +86,8 @@ export class Content {
  lexicographicSort(b, positions, substitutions) {
     
   let a = this;
-  _assert(b instanceof Content);
-  _assert(a.n == b.n);
+  //_assert(b instanceof Content);
+  //_assert(a.n == b.n);
 
   // Sort by dimension
   //if (a.n != b.n) return a.n - b.n;
@@ -94,13 +95,13 @@ export class Content {
   // Sort by forward_limit
   let a_f_index = positions.get(substitutions.get(a.forward_limit));
   let b_f_index = positions.get(substitutions.get(b.forward_limit));
-  _assert(isNatural(a_f_index) && isNatural(b_f_index));
+  //_assert(isNatural(a_f_index) && isNatural(b_f_index));
   if (a_f_index != b_f_index) return a_f_index - b_f_index;
 
   // Sort by backward_limit
   let a_b_index = positions.get(substitutions.get(a.backward_limit));
   let b_b_index = positions.get(substitutions.get(b.backward_limit));
-  _assert(isNatural(a_b_index) && isNatural(b_b_index));
+  //_assert(isNatural(a_b_index) && isNatural(b_b_index));
   if (a_b_index != b_b_index) return a_b_index - b_b_index;
 
   // They are equal
@@ -658,8 +659,8 @@ export class LimitComponent {
   lexicographicSort(b, positions, substitutions) {
       
     let a = this;
-    _assert(b instanceof LimitComponent);
-    _assert(a.n == b.n);
+    //_assert(b instanceof LimitComponent);
+    //_assert(a.n == b.n);
 
     // Sort by dimension
     //if (a.n != b.n) return a.n - b.n;
@@ -683,13 +684,13 @@ export class LimitComponent {
       // Sublimit
       let a_sublimit_index = positions.get(substitutions.get(a.sublimits[i]));
       let b_sublimit_index = positions.get(substitutions.get(b.sublimits[i]));
-      _assert(isNatural(a_sublimit_index) && isNatural(b_sublimit_index));
+      //_assert(isNatural(a_sublimit_index) && isNatural(b_sublimit_index));
       if (a_sublimit_index != b_sublimit_index) return a_sublimit_index - b_sublimit_index;
 
       // Source data
       let a_source_data_index = positions.get(substitutions.get(a.source_data[i]));
       let b_source_data_index = positions.get(substitutions.get(b.source_data[i]));
-      _assert(isNatural(a_source_data_index) && isNatural(b_source_data_index));
+      //_assert(isNatural(a_source_data_index) && isNatural(b_source_data_index));
       if (a_source_data_index != b_source_data_index) return a_source_data_index - b_source_data_index;
 
     }
@@ -697,9 +698,9 @@ export class LimitComponent {
     // Sort by target data, but this is only necessary if source size is zero
     if (a.sublimits.length == 0) {
 
-      let a_target_data_index = positions.get(substitution.get(a.target_data));
-      let b_target_data_index = positions.get(substitution.get(b.target_data));
-      _assert(isNatural(a_target_data_index) && isNatural(b_target_data_index));
+      let a_target_data_index = positions.get(substitutions.get(a.target_data));
+      let b_target_data_index = positions.get(substitutions.get(b.target_data));
+      //_assert(isNatural(a_target_data_index) && isNatural(b_target_data_index));
       if (a_target_data_index != b_target_data_index) return a_target_data_index - b_target_data_index;
 
     }
@@ -946,8 +947,8 @@ export class Limit /*extends Array*/ {
   lexicographicSort(b, positions, substitutions) {
     
     let a = this;
-    _assert(b instanceof Limit);
-    _assert(a.n == b.n);
+    //_assert(b instanceof Limit);
+    //_assert(a.n == b.n);
 
     // Sort by dimension
     //if (a.n != b.n) return a.n - b.n;
@@ -965,7 +966,7 @@ export class Limit /*extends Array*/ {
 
       let a_component_index = positions.get(substitutions.get(a.components[i]));
       let b_component_index = positions.get(substitutions.get(b.components[i]));
-      _assert(isNatural(a_component_index) && isNatural(b_component_index));
+      //_assert(isNatural(a_component_index) && isNatural(b_component_index));
       if (a_component_index != b_component_index) return a_component_index - b_component_index;
 
     }
