@@ -5,6 +5,14 @@ import { Monotone } from "~/monotone";
 import * as ArrayUtil from "~/util/array";
 
 /*
+  _t codes: D  Diagram
+                C  Content
+                L  Limit
+                I  LimitComponent
+                G  Generator
+*/
+
+/*
 - Diagram(n) comprises:
     - t :: Number, the dimension of the signature over which it is defined
     - n > 0:
@@ -37,15 +45,33 @@ export class Content {
     this.n = args.n;
     this.forward_limit = args.forward_limit;
     this.backward_limit = args.backward_limit;
-    this._t = 'Content';
+    this._t = 'C';
     if (_debug) _assert(isNatural(this.n));
     if (_debug) _assert(this.n >= 0);
     if (_debug) _assert(this.forward_limit instanceof Limit);
     if (_debug) _assert(this.backward_limit instanceof Limit);
     if (_debug) _assert(this.forward_limit.n == this.n);
     if (_debug) _assert(this.backward_limit.n == this.n);
-    Object.freeze(this);
+    //Object.freeze(this);
     _validate(this);
+  }
+
+  static makeContentArray(array, n) {
+    if (_debug) {
+      _assert(Array.isArray(array));
+      _assert(isNatural(n));
+    }
+    if (array._t) {
+      if (_debug) {
+        _assert(array._t === 'C');
+        _assert(array.n === n);
+      }
+      return array;
+    }
+    let new_array = array.slice();
+    new_array._t = 'C';
+    new_array.n = n;
+    return new_array;
   }
 
   /*
@@ -56,7 +82,33 @@ export class Content {
   }
   */
 
-  toJSON() {
+ lexicographicSort(b, positions, substitutions) {
+    
+  let a = this;
+  _assert(b instanceof Content);
+  _assert(a.n == b.n);
+
+  // Sort by dimension
+  //if (a.n != b.n) return a.n - b.n;
+
+  // Sort by forward_limit
+  let a_f_index = positions.get(substitutions.get(a.forward_limit));
+  let b_f_index = positions.get(substitutions.get(b.forward_limit));
+  _assert(isNatural(a_f_index) && isNatural(b_f_index));
+  if (a_f_index != b_f_index) return a_f_index - b_f_index;
+
+  // Sort by backward_limit
+  let a_b_index = positions.get(substitutions.get(a.backward_limit));
+  let b_b_index = positions.get(substitutions.get(b.backward_limit));
+  _assert(isNatural(a_b_index) && isNatural(b_b_index));
+  if (a_b_index != b_b_index) return a_b_index - b_b_index;
+
+  // They are equal
+  return 0;
+
+}
+
+toJSON() {
     return {
       forward_limit: this.forward_limit.toJSON(),
       backward_limit: this.backward_limit.toJSON(),
@@ -405,7 +457,7 @@ export class LimitComponent {
   constructor(args) {
     if (args.bare) return this;
     this.n = args.n;
-    this._t = 'LimitComponent';
+    this._t = 'I';
     if (_debug) _assert(isNatural(this.n));
     if (_debug) _assert(this.n >= 0);
     if (this.n == 0) {
@@ -419,12 +471,12 @@ export class LimitComponent {
       }
       return this;
     }
-    this.source_data = args.source_data;
+    this.source_data = Content.makeContentArray(args.source_data, this.n);
     this.target_data = args.target_data;
     this.first = args.first;
     //_assert(args.last === undefined);
     if (_debug) _assert(isNatural(this.first));
-    this.sublimits = args.sublimits;
+    this.sublimits = Limit.makeLimitArray(args.sublimits, this.n);
 
     // Reconstitute target data if necessary
     if (args.target_data == null) {
@@ -435,8 +487,26 @@ export class LimitComponent {
       this.target_data = new Content({ n: this.n - 1, forward_limit, backward_limit });
     }
 
-    Object.freeze(this);
+    //Object.freeze(this);
     _validate(this);
+  }
+
+  static makeLimitComponentArray(array, n) {
+    if (_debug) {
+      _assert(Array.isArray(array));
+      _assert(isNatural(n));
+    }
+    if (array._t) {
+      if (_debug) {
+        _assert(array._t === 'I');
+        _assert(array.n === n);
+      }
+      return array;
+    }
+    let new_array = array.slice();
+    new_array._t = 'I';
+    new_array.n = n;
+    return new_array;
   }
 
   validate() {
@@ -585,26 +655,59 @@ export class LimitComponent {
     return true;
   }
 
-  /*
-  static postRehydrate(component, generators) {
-    _assert(component);
-    _assert(generators);
-    if (component.n == 0) {
-      let source_id = generators[component.source_id];
-      let target_id = generators[component.target_id];
-      return new LimitComponent({ n: component.n, source_id, target_id });
+  lexicographicSort(b, positions, substitutions) {
+      
+    let a = this;
+    _assert(b instanceof LimitComponent);
+    _assert(a.n == b.n);
+
+    // Sort by dimension
+    //if (a.n != b.n) return a.n - b.n;
+
+    // Handle base case
+    if (a.n == 0) {
+      if (a.source_id != b.source_id) return a.source_id < b.source_id ? -1 : +1;
+      if (a.target_id != b.target_id) return a.target_id < b.target_id ? -1 : +1;
+      return 0;
     }
-    let first = component.first;
-    let sublimits = [];
-    let source_data = [];
-    for (let i=0; i<component.sublimits.length; i++) {
-      sublimits.push(Limit.postRehydrate(component.sublimits[i], generators));
-      source_data.push(Content.postRehydrate(components.source_data[i], generators));
+
+    // Sort by first
+    if (a.first != b.first) return a.first - b.first;
+
+    // Sort by size of source
+    if (a.sublimits.length != b.sublimits.length) return a.sublimits.length - b.sublimits.length;
+
+    // Sort recursively
+    for (let i=0; i<a.sublimits.length; i++) {
+
+      // Sublimit
+      let a_sublimit_index = positions.get(substitutions.get(a.sublimits[i]));
+      let b_sublimit_index = positions.get(substitutions.get(b.sublimits[i]));
+      _assert(isNatural(a_sublimit_index) && isNatural(b_sublimit_index));
+      if (a_sublimit_index != b_sublimit_index) return a_sublimit_index - b_sublimit_index;
+
+      // Source data
+      let a_source_data_index = positions.get(substitutions.get(a.source_data[i]));
+      let b_source_data_index = positions.get(substitutions.get(b.source_data[i]));
+      _assert(isNatural(a_source_data_index) && isNatural(b_source_data_index));
+      if (a_source_data_index != b_source_data_index) return a_source_data_index - b_source_data_index;
+
     }
-    let target_data = Content.postRehydrate(component.target_data, generators);
-    return new LimitComponent({ n: component.n, first, sublimits, source_data, target_data });
+
+    // Sort by target data, but this is only necessary if source size is zero
+    if (a.sublimits.length == 0) {
+
+      let a_target_data_index = positions.get(substitution.get(a.target_data));
+      let b_target_data_index = positions.get(substitution.get(b.target_data));
+      _assert(isNatural(a_target_data_index) && isNatural(b_target_data_index));
+      if (a_target_data_index != b_target_data_index) return a_target_data_index - b_target_data_index;
+
+    }
+
+    // They are equal
+    return 0;
+
   }
-  */
 
   toJSON() {
 
@@ -786,12 +889,30 @@ export class Limit /*extends Array*/ {
       _propertylist(args, ["n"], ["components"]);
     }
     this.n = args.n;
-    this.components = components;
-    this._t = "Limit";
+    this.components = LimitComponent.makeLimitComponentArray(components, this.n);
+    this._t = "L";
     if (this.n > 0 && components.length > 0) this.source_size = args.source_size;
-    Object.freeze(this);
-    Object.freeze(this.components);
+    //Object.freeze(this);
+    //Object.freeze(this.components);
     this.validate();
+  }
+
+  static makeLimitArray(array, n) {
+    if (_debug) {
+      _assert(Array.isArray(array));
+      _assert(isNatural(n));
+    }
+    if (array._t) {
+      if (_debug) {
+        _assert(array._t === 'L');
+        _assert(array.n === n);
+      }
+      return array;
+    }
+    let new_array = array.slice();
+    new_array._t = 'L';
+    new_array.n = n;
+    return new_array;
   }
 
   validate() {
@@ -822,19 +943,38 @@ export class Limit /*extends Array*/ {
     }
   }
 
-  /*
-  static postRehydrate(limit, generators) {
-    _assert(limit);
-    _assert(generators);
-    let components = [];
-    for (let i=0; i<limit.components.length; i++) {
-      components.push(LimitComponent.postRehydrate(limit.components[i], generators));
-    }
-    let source_size = limit.source_size;
-    return new Limit({ n: limit.n, components, source_size });
-  }
-  */
+  lexicographicSort(b, positions, substitutions) {
+    
+    let a = this;
+    _assert(b instanceof Limit);
+    _assert(a.n == b.n);
 
+    // Sort by dimension
+    //if (a.n != b.n) return a.n - b.n;
+
+    // Sort by number of components
+    if (a.components.length != b.components.length) return a.components.length - b.components.length;
+
+    // When there are components, sort by source size
+    if (a.components.length > 0) {
+      if (a.source_size != b.source_size) return a.source_size - b.source_size;
+    }
+
+    // Sort by the components themselves
+    for (let i=0; i<a.components.length; i++) {
+
+      let a_component_index = positions.get(substitutions.get(a.components[i]));
+      let b_component_index = positions.get(substitutions.get(b.components[i]));
+      _assert(isNatural(a_component_index) && isNatural(b_component_index));
+      if (a_component_index != b_component_index) return a_component_index - b_component_index;
+
+    }
+
+    // They are the same
+    return 0;
+  
+  }
+  
   toJSON() {
     return {
       components: [...this].map(x => x.toJSON()),

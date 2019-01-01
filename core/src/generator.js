@@ -20,7 +20,7 @@ export class Generator {
     this.source = args.source;
     this.target = args.target;
     this.id = args.id;
-    this._t = 'Generator';
+    this._t = 'G';
 
     if (_debug) {
       if (this.n > 1) {
@@ -44,7 +44,7 @@ export class Generator {
       this.diagram = new Diagram({ n: this.n, source: this.source, data: [this.content] });
     }
 
-    Object.freeze(this);
+    //Object.freeze(this);
   }
 
   /*
@@ -99,7 +99,7 @@ export class Generator {
   }
 
   getType() {
-    return "Generator";
+    return "G";
   }
 
   getBoundingBox() {

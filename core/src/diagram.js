@@ -13,7 +13,7 @@ export class Diagram {
 
     if (args.bare) return this;
 
-    this["_t"] = "Diagram";
+    this._t = "D";
     if (_debug) _assert(isNatural(args.n));
     this.n = args.n;
     if (this.n == 0) {
@@ -24,8 +24,8 @@ export class Diagram {
       if (_debug) _assert(args.source && (args.source.n + 1 == this.n));
       if (_debug) _assert(args.data instanceof Array);
       this.source = args.source;
-      this.data = args.data;
-      Object.freeze(this.data);
+      this.data = Content.makeContentArray(args.data, this.n);
+      //Object.freeze(this.data);
 
       if (_debug) {
 
@@ -84,7 +84,7 @@ export class Diagram {
       }
     }
 
-    Object.freeze(this);
+    //Object.freeze(this);
 
     /*
     let sc = new SerializeCyclic();
@@ -117,9 +117,9 @@ export class Diagram {
   }
   */
 
- copy({id = this.id, source = this.source, data = this.data, n = this.n} = this) {
-  return new Diagram({ n, id, source, data });
-}
+  copy({id = this.id, source = this.source, data = this.data, n = this.n} = this) {
+    return new Diagram({ n, id, source, data });
+  }
 
 
   static fromMinimal(args) {
@@ -140,13 +140,49 @@ export class Diagram {
 
   }
 
+  lexicographicSort(b, positions, substitutions) {
+
+    let a = this;
+    _assert(b instanceof Diagram);
+    _assert(a.n == b.n);
+
+    // Sort by dimension
+    //if (a.n != b.n) return a.n - b.n;
+
+    // In dimension 0, sort lexicographically by id
+    if (a.n == 0) return a.id < b.id ? -1 : +1;
+
+    // Sort by data length
+    if (a.data.length != b.data.length) return a.data.length - b.data.length;
+
+    // Sort by source. These have a lower dimension and have already been sorted.
+    let a_source_index = positions.get(substitutions.get(a.source));
+    let b_source_index = positions.get(substitutions.get(b.source));
+    _assert(isNatural(a_source_index) && isNatural(b_source_index));
+    if (a_source_index != b_source_index) return a_source_index - b_source_index;
+
+    // Finally, sort by data
+    for (let i=0; i<a.data.length; i++) {
+      let a_content = a.data[i];
+      let b_content = b.data[i];
+      let a_content_index = positions.get(substitutions.get(a.content));
+      let b_content_index = positions.get(substitutions.get(b.content));
+      if (a_content_index != b_content_index) return a_content_index - b_content_index;
+    }
+
+    // They are equal
+    return 0;
+  }
+
+
+
   toJSON() {
 
     if (this.n == 0) {
       return {
         n: 0,
         id: this.id,
-        _t: 'Diagram'
+        _t: 'D'
       }
     };
 
@@ -165,7 +201,7 @@ export class Diagram {
 
   // The type of the object
   getType() {
-    return "Diagram";
+    return "D";
   }
 
   // Check if the diagram has any non-identity data up to the given height

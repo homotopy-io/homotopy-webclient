@@ -15,6 +15,7 @@ export function connectStore(store) {
 
 const loadState = (store) => {
   let stored = window.location.hash.substr(1);
+  console.log('Hash value: ' + stored);
 
   try {
     let decompressed = Compression.decompress(stored);

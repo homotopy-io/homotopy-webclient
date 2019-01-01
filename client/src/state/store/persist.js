@@ -1,5 +1,6 @@
 import * as Core from "homotopy-core";
 import * as Compression from "../../util/compression";
+import dotProp from "dot-prop-immutable";
 
 export default (state, action) => {
 
@@ -7,11 +8,17 @@ export default (state, action) => {
 
   if (action.type === 'persist/newhash') {
 
-    if (state.serialization === action.payload) return state;
+    //dotProp.set(state, 'hash', action.payload);
+    return { ...state, 'hash': action.payload };
+    //state.hash = action.payload;
+
+  } else if (action.type === 'persist/deserialize') {
+
+    if (state.serialization === state.hash) return state;
 
     try {
 
-      let compressed = action.payload;
+      let compressed = state.hash;
       let decompressed = Compression.decompress(compressed);
       let deserializer = Core.SerializeCyclic.destringify(decompressed);
       let new_state = deserializer.getHead();
@@ -19,7 +26,9 @@ export default (state, action) => {
       state = { ...state, ...new_state };
 
     } catch (err) {
+
       console.log('Rehydration error');
+
     }
 
   }

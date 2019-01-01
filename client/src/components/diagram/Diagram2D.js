@@ -900,6 +900,8 @@ export class Diagram2D extends React.Component {
 
   render() {
 
+    let t0 = performance.now();
+
     if (this.props.highlight) {
       //debugger;
     }
@@ -977,7 +979,7 @@ export class Diagram2D extends React.Component {
     let dx = max_x - min_x;
     let dy = max_y - min_y;
 
-    return (
+    let r = (
       <DiagramSVG
         width={this.props.width}
         height={this.props.height}
@@ -995,6 +997,11 @@ export class Diagram2D extends React.Component {
         </g>
       </DiagramSVG>
     );
+
+    let t1 = performance.now();
+    console.log(`Rendered 2d diagram in ${Math.floor(t1-t0)} ms`);
+
+    return r;
   }
 
   renderMask(mask, index, min_x, min_y, dx, dy) {

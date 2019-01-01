@@ -249,8 +249,8 @@ export default (state, action) => {
 
       let { diagram } = state.workspace;
 
-      // Can't behead an empty diagram
-      if (!diagram) break;
+      // Can't behead an empty diagram or a 0-dimensional diagram
+      if (!diagram || diagram.n == 0) break;
 
       // We can't decapitate an identity diagram
       if (diagram.data.length == 0) break;

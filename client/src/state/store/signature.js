@@ -19,6 +19,7 @@ export const getDimensionGroups = (state) => {
   }
 
   for (let [id, generator] of Object.entries(generators)) {
+    if (_debug) _assert(groups[generator.generator.n]);
     groups[generator.generator.n].push(id);
   }
 

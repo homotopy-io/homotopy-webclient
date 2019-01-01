@@ -17,7 +17,8 @@ export class App extends React.Component {
   constructor(props) {
     //this.props = props;
     super(props);
-    this.props = props;
+    //this.props = props;
+    this.state = { hash: null, serialization: null };
   }
 
   componentDidMount() {
@@ -27,7 +28,18 @@ export class App extends React.Component {
     }, false);
   }
 
-  componentDidUpdate() {
+  shouldComponentUpdate(nextProps, nextState) {
+    
+    return nextProps.hash != this.props.hash;
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    if (this.props.hash != this.props.serialization) {
+      //console.log('NEED TO DESERIALIZE HASH');
+      this.props.dispatch({ type: 'persist/deserialize' });
+    } else {
+      //console.log('NOT DESERIALIZING HASH');
+    }
   }
 
   render() {
@@ -51,8 +63,15 @@ export class App extends React.Component {
   }
 }
 
+function mapStateToProps(state) {
+  return {
+    hash: state.hash,
+    serialization: state.serialization
+  }
+}
+
 // This gives App access to dispatch
-export default connect()(App);
+export default connect(mapStateToProps)(App);
 
 //export default App;
 
