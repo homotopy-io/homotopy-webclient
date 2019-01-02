@@ -6,7 +6,7 @@ import createReducer from "~/util/create-reducer";
 
 export const initialProject = { id: undefined }
 
-export const getProjectID = (state) => state.project.id
+export const getProjectID = (state) => state.id
 
 // returns an array of metadata-setting Cmd actions, one for each field
 const setMetadata = (metadata) =>
@@ -14,7 +14,7 @@ const setMetadata = (metadata) =>
 
 export default createReducer(initialProject, {
   [ProjectActions.SET_PROJECT]: (state, { project }) => loop(
-    dotProp.set(state, "project.id", project.id),
+    dotProp.set(state, "id", project.id),
     Cmd.list(
       setMetadata(project.metadata) // set metadata
       .concat(Cmd.list([
@@ -26,5 +26,5 @@ export default createReducer(initialProject, {
     )
   ),
   [ProjectActions.SET_PROJECT_ID]: (state, { id }) =>
-    dotProp.set(state, "project.id", id)
+    dotProp.set(state, "id", id)
 })

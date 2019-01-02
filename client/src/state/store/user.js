@@ -18,14 +18,14 @@ export const getError = (state) => state.user.loginForm.error
 
 export default createReducer(initialUser, {
   [UserActions.OPEN_MODAL]: (state, { index }) =>
-    dotProp.set(state, "user.loginForm.showModal", true)
+    dotProp.set(state, "loginForm.showModal", true)
   ,
   [UserActions.CLOSE_MODAL]: (state) =>
-    dotProp.set(state, "user.loginForm.showModal", false)
+    dotProp.set(state, "loginForm.showModal", false)
   ,
   [UserActions.SET_INITIAL_TAB]: (state, { index }) =>
-    dotProp.set(state, "user.loginForm.initialTab", index)
+    dotProp.set(state, "loginForm.initialTab", index)
   ,
   [UserActions.SET_ERROR]: (state, { error }) =>
-    dotProp.set(state, "user.loginForm.error", error)
+    dotProp.set(state, "loginForm.error", error)
 });
