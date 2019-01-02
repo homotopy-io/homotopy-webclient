@@ -120,6 +120,9 @@ export class Diagram2D extends React.Component {
     minBounds = [...Array(2 - point.length).fill(0), ...minBounds];
     maxBounds = [...Array(2 - point.length).fill(0), ...maxBounds];
 
+    let index = point.join(":");
+    let value = positions.get(index);
+    _assert(value);
     let position = [...Array(2 - point.length).fill(0), ...positions.get(point.join(":"))];
     position[1] += (maxBounds[1] - minBounds[1]) / 2;
     position[0] += (maxBounds[0] - minBounds[0]) / 2;

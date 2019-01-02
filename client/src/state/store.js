@@ -41,7 +41,8 @@ const proofReducer = (state = initialState, action) => {
   state = attachReducer(state, action)
 
   // Persist the state
-  if (action.type.indexOf('INIT') == -1 && persist_blacklist.indexOf(action.type) == -1) {
+  if (action.type.indexOf('@@redux') == -1
+      && persist_blacklist.indexOf(action.type) == -1) {
 
     const t0 = performance.now();
 

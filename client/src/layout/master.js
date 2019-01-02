@@ -1,4 +1,4 @@
-import { computeLayout0d, computeLayout1d, computeLayout2d, computeLayout3d, Geometry } from "homotopy-core";
+import { computeLayout0d, computeLayout2d, computeLayout, Geometry } from "homotopy-core";
 import * as Rx from "rxjs";
 import Worker from "worker-loader!./worker.js";
 
@@ -58,14 +58,15 @@ export default (diagram, dimension) => {
 
   let job;
   if (dimension == 0) {
+    // Use trivial 0d layout engine
     job = computeLayout0d(dimension, points, edges);
-  } else if (dimension == 1) {
-    job = computeLayout3d(dimension, points, edges);
   } else if (dimension == 2) {
-    job = computeLayout3d(dimension, points, edges);
-  } else if (dimension == 3) {
-    job = computeLayout3d(dimension, points, edges);
-  } else throw Error("Invalid dimension for layout engine");
+    // Use specialized 2d layout engine
+    job = computeLayout2d(dimension, points, edges, diagram);
+  } else  {
+    // Use generic layout engine
+    job = computeLayout(dimension, points, edges);
+  }
   let result;
   while (true) {
     let step = job.next();

@@ -2194,15 +2194,6 @@ export class Limit /*extends Array*/ {
         for (const val of Limit.monotoneWords(length - 1, alphabet - i)) {
           yield [i, ...val.map(x => x + i)];
         }
-        /*
-        let tail_words = Limit.monotoneWords(length - 1, alphabet - i);
-        while (true) {
-          tail_words.next();
-          yield [i, ...tail_words.value.map(x => x + i)];
-          if (tail_words.done()) break;
-          //tail_words.next();
-        }
-        */
       }
     }
   }
