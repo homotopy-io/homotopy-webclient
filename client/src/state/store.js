@@ -1,12 +1,15 @@
 import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
-import { createStore, compose, combineReducers } from 'redux'
+import { createStore, compose } from 'redux'
+import { install, combineReducers } from 'redux-loop'
 import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
 import attachReducer, { initialAttach } from '~/state/store/attach'
 import persistReducer, { initialPersist } from '~/state/store/persist'
 import userReducer, { initialUser } from '~/state/store/user'
+import projectReducer, { initialProject } from '~/state/store/project'
 import { reducer as formReducer } from 'redux-form'
+import { reducer as projectListingReducer } from 'redux-modal'
 
 import { reactReduxFirebase, firebaseReducer } from 'react-redux-firebase'
 import { reduxFirestore, firestoreReducer } from 'redux-firestore'
@@ -29,7 +32,8 @@ export const initialState = {
     serialization: initialPersist,
     hash: null
   },
-  user: initialUser
+  user: initialUser,
+  project: initialProject
 }
 
 
@@ -102,8 +106,10 @@ const proofReducer = (state = initialState, action) => {
 
 const rootReducer = combineReducers({
   proof: proofReducer,
+  project: projectReducer,
   form: formReducer,
   user: userReducer,
+  modal: projectListingReducer,
   firebase: firebaseReducer,
   firestore: firestoreReducer
 })
@@ -124,7 +130,8 @@ export default () => {
     initialState,
     compose(
       reduxFirestore(firebase),
-      reactReduxFirebase(firebase, reactReduxFirebaseConfig)
+      reactReduxFirebase(firebase, reactReduxFirebaseConfig),
+      install()
     )
   )
 }

@@ -1,12 +1,14 @@
 import * as React from "react";
 import PropTypes from 'prop-types'
-import { compose } from 'redux'
+import { compose, bindActionCreators } from 'redux'
 import { connect } from "react-redux";
 import ReactFileReader from 'react-file-reader'
+import { show } from 'redux-modal'
 import { change } from 'redux-form'
 
 import { firebaseConnect, firestoreConnect, isLoaded, isEmpty } from 'react-redux-firebase'
 import { openModal, setInitialTab } from "~/state/actions/user";
+import { setProject, setProjectID } from '~/state/actions/project'
 
 import styled from "styled-components";
 import * as Compression from '~/util/compression'
@@ -14,7 +16,9 @@ import downloadJSON from '~/util/export'
 
 export const Header = ({
   serialization,
-  metadata, setMetadata,
+  metadata,
+  setProject, setProjectID, project,
+  showModal,
   openModal, setInitialTab,
   firebase, firestore, auth
 }) =>
@@ -29,8 +33,15 @@ export const Header = ({
           <Action onClick={ () => {setInitialTab('register'); setTimeout(() => openModal(), 0)} }>Sign Up</Action>
           </React.Fragment>
         : <React.Fragment>
-          <Action onClick={() => firebase.logout()}>Log out</Action>
-          <Action>Save</Action>
+          <Action onClick={() => alert('TODO: implement email/password changing')}>{auth.email}</Action>
+          <Action onClick={() => firebase.logout().then(() => setProjectID(undefined))}>Log out</Action>
+          <Action onClick={() => save(firestore, {
+            uid: auth.uid,
+            docid: project.id,
+            metadata,
+            proof: serialization
+          }, setProjectID)}>Save</Action>
+          <Action onClick={() => showModal('projectListing')}>My projects</Action>
           </React.Fragment>
     }
     {/*<Action>Gallery</Action>
@@ -39,7 +50,7 @@ export const Header = ({
       metadata,
       proof: serialization
     }, `homotopy.io - ${new Date()}`)}>Export</Action>
-    <ReactFileReader fileTypes={'application/json'} handleFiles={files => handleUpload(files, setMetadata)}>
+    <ReactFileReader fileTypes={'application/json'} handleFiles={files => handleUpload(files, setProject)}>
       <Action>Import</Action>
     </ReactFileReader>
   </Actions>;
@@ -57,32 +68,53 @@ export default compose(
   firebaseConnect(),
   firestoreConnect(),
   connect(
-    ({ firebase: { auth }, proof: { serialization }, form }) => ({
+    ({ firebase: { auth }, proof: { serialization }, form, project }) => ({
       auth,
       metadata: form.metadata.values,
-      serialization
+      serialization, project
     }),
     dispatch => ({
       setInitialTab: (index) => dispatch(setInitialTab(index)),
       openModal: () => dispatch(openModal()),
-      setMetadata: (metadata) => {
-        for (const k in metadata) {
-          dispatch(change('metadata', k, metadata[k]))
-        }
-      }
+      setProject: (project) => dispatch(setProject(project)),
+      setProjectID: id => dispatch(setProjectID(id)),
+      showModal: bindActionCreators(show, dispatch)
     })
   ),
 )(Header)
 
-const handleUpload = (files, setMetadata) => {
+const handleUpload = (files, setProject) => {
   const fr = new FileReader()
   fr.onload = (event) => {
     // onload triggers on successful read
     const project = JSON.parse(fr.result)
-    setMetadata(project.metadata)
-    window.location.hash = project.proof
+    setProject(project)
   }
   fr.readAsText(files.item(0)) // TODO: input validation
+}
+
+const save = (firestore, { uid, docid, metadata, proof }, callback) => {
+  // build saveable object
+  const project = {
+    date: Date.now(), // last modified date
+    owners: [uid], // list of owners
+    versions: [{
+      version: 0, // version number
+      metadata, // title, author, abstract
+      proof // hash string
+    }]
+  }
+  console.log(project)
+  console.log(docid)
+  if (!docid)
+    // create object and update docid
+    // TODO: handle add errors
+    firestore.add({ collection: 'projects' }, project)
+      .then(result => callback(result.id))
+  else
+    // update existing doc
+    // TODO: handle update errors
+    firestore.update({ collection: 'projects', doc: docid }, project)
 }
 
 const Actions = styled.div`

@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import styled from "styled-components";
 import Header from "~/components/Header";
 import Login from "~/components/Login";
+import ProjectListing from "~/components/ProjectListing";
 import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
 import DiagramTool from "~/components/tools/Diagram";
@@ -57,6 +58,7 @@ export class App extends React.Component {
           <BoundaryTool />
         </ToolBar>
         <Login />
+      <ProjectListing />
       </Container>
     );
   }
