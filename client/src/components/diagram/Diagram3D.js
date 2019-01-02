@@ -75,6 +75,14 @@ export class Diagram3D extends React.Component {
     this.startLoop();
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    let old_diagram = this.props.diagram;
+    let new_diagram = nextProps.diagram;
+    if (old_diagram && !new_diagram) return true;
+    if (!old_diagram && new_diagram) return true;
+    return (!this.props.diagram.equals(nextProps.diagram));
+  }
+
   componentDidUpdate(oldProps) {
     // Dimensions changed
     let { width, height } = this.props;

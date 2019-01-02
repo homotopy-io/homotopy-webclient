@@ -52,6 +52,26 @@ export class Diagram2D extends React.Component {
     */
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    let old_diagram = this.props.diagram;
+    let new_diagram = nextProps.diagram;
+    if (old_diagram && !new_diagram) return true;
+    if (!old_diagram && new_diagram) return true;
+    if (!this.props.diagram.equals(nextProps.diagram)) return true;
+    if (this.props.slice.length != nextProps.slice.length) return true;
+    for (let i=0; i<this.props.slice.length; i++) {
+      if (this.props.slice[i] != nextProps.slice[i]) return true;
+    }
+    // Check for each generator used in the diagram if its parameters have changed
+    for (let id of Object.keys(this.props.generators)) {
+      if (!this.props.diagram.usesId(id)) continue;
+      let g_old = this.props.generators[id];
+      let g_new = nextProps.generators[id];
+      if (g_old.name != g_new.name) return true;
+      if (g_old.color != g_new.color) return true;
+    }
+    return false;
+  }
 
   componentDidUpdate(props) {
     if (this.props.layout != props.layout) {

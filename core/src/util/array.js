@@ -15,3 +15,12 @@ export const reverse = (array) => {
 export const penultimate = (array) => {
   return array[array.length - 2];
 };
+
+export const mean = (array) => {
+  //return (array[0] + array[array.length - 1])/2;
+  let total = 0;
+  for (let i=0; i<array.length; i++) {
+    total += array[i];
+  }
+  return total / array.length;
+}

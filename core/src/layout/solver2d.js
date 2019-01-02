@@ -1,6 +1,7 @@
-import { _assert, _debug } from '../util/debug'
+import { _assert, _debug } from '../util/debug';
 import * as Kiwi from "kiwi.js";
 import UnionFind from "union-find";
+import * as ArrayUtil from "../util/array";
 
 export default function*(dimension, arg_points, arg_edges, diagram) {
 
@@ -134,69 +135,195 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
 
   const x_spacing = 2;
 
+  /* Let's try to do it using Kiwi */
+
+  /*
+  // Declare Kiwi engine
+  let solver = new Kiwi.Solver();
+
+  // Create a variable for each edge
+  let kiwi0 = new Kiwi.Expression(0);
+  for (let i=0; i<edges.length; i++) {
+    let edge = edges[i];
+    edge.variable = new Kiwi.Variable();
+    edge.spaceConstraintEdges = new Set();
+  }
+
+  // Add the constraint for edges appearing at the same height
+  for (let i=0; i<regular_levels.length; i++) {
+    //let edges = regular_levels[i];
+    for (let j=0; j<regular_levels[i].length - 1; j++) {
+      let edge1 = regular_levels[i][j];
+      let edge2 = regular_levels[i][j+1];
+      if (edge1.spaceConstraintEdges.has(edge2)) continue; // don't add the same constraint twice
+      let expression = new Kiwi.Expression([-1, edge1.variable], edge2.variable, new Kiwi.Expression(-x_spacing));
+      let constraint = new Kiwi.Constraint(expression, Kiwi.Operator.Ge, 0, Kiwi.Strength.Strong);
+      solver.addConstraint(constraint);
+      edge1.spaceConstraintEdges.add(edge2);
+    }
+  }
+
+  // Add a constraint for each edge
+  for (let i=0; i<edges.length; i++) {
+    let edge = edges[i];
+    // Weakly constrain to zero
+    solver.addConstraint(new Kiwi.Constraint(new Kiwi.Expression(edge.variable), Kiwi.Operator.Eq, 0, Kiwi.Strength.Weak));
+  }
+
+  solver.updateVariables();
+
+  for (let i=0; i<edges.length; i++) {
+    let edge = edges[i];
+    edge.x = edge.variable.value();
+  }
+  */
+
+  for (let i=0; i<edges.length; i++) {
+    edges[i].x_left = 0;
+    edges[i].x_right = 0;
+  }
+  for (let i=0; i<vertices.length; i++) {
+    vertices[i].x_left = 0;
+    vertices[i].x_right = 0;
+  }
+
+  /* LEFT ALIGN */
+  let left_iterations = 0;
   while (true) {
-      let problem = false;
-
-      // Make sure there's enough space between elements
-      for (let i = 0; i < regular_levels.length; i++) {
-          let level = regular_levels[i];
-          for (let j = 0; j < level.length - 1; j++) {
-              if (level[j + 1].x < level[j].x + x_spacing) {
-                  problem = true;
-                  level[j + 1].x = level[j].x + x_spacing;
-              }
-          }
+    left_iterations ++;
+    let problem = false;
+    for (let i = 0; i < regular_levels.length; i++) {
+      let level = regular_levels[i];
+      for (let j = 0; j < level.length - 1; j++) {
+        let delta = level[j + 1].x_left - level[j].x_left;
+        if (delta < x_spacing - 0.001) {
+          problem = true;
+          level[j + 1].x_left += x_spacing - delta;
+        }
       }
-      for (let i = 0; i < singular_levels.length; i++) {
-          let level = singular_levels[i];
-          for (let j = 0; j < level.length - 1; j++) {
-              if (level[j + 1].x < level[j].x + x_spacing) {
-                  problem = true;
-                  level[j + 1].x = level[j].x + x_spacing;
-              }
-          }
+    }
+    for (let i = 0; i < singular_levels.length; i++) {
+      let level = singular_levels[i];
+      for (let j = 0; j < level.length - 1; j++) {
+        let delta = level[j + 1].x_left - level[j].x_left;
+        if (delta < x_spacing - 0.001) {
+          problem = true;
+          level[j + 1].x_left += x_spacing - delta;
+        }
       }
-
-      //} while (problem);
-
-      // Even up inputs and outputs for vertices
-      for (var i = 0; i < vertices.length; i++) {
-          var vertex = vertices[i];
-          /*
-          if (vertex.source_edges.length == 0) continue;
-          if (vertex.target_edges.length == 0) continue;
-          */
-          if (vertex.source_edges.length + vertex.target_edges.length == 0) continue;
-          let source_mean = vertex.source_edges.length == 0 ? null : (vertex.source_edges[0].x + vertex.source_edges[vertex.source_edges.length - 1].x) / 2;
-          let target_mean = vertex.target_edges.length == 0 ? null : (vertex.target_edges[0].x + vertex.target_edges[vertex.target_edges.length - 1].x) / 2;
-          let shift_source = 0;
-          let shift_target = 0;
-          let shift_vertex = 0;
-          if (source_mean == null) {
-              if (vertex.x > target_mean) {
-                  shift_target = vertex.x - target_mean;
-              } else if (target_mean > vertex.x) {
-                  shift_vertex = target_mean - vertex.x;
-              }
-          } else if (target_mean == null) {
-              if (vertex.x > source_mean) {
-                  shift_source = vertex.x - source_mean;
-              } else if (source_mean > vertex.x) {
-                  shift_vertex = source_mean - vertex.x;
-              }
-          } else {
-              let mean = Math.max(vertex.x, target_mean, source_mean);
-              shift_source = mean > source_mean ? mean - source_mean : 0;
-              shift_target = mean > target_mean ? mean - target_mean : 0;
-              shift_vertex = mean > vertex.x ? mean - vertex.x : 0;
-          }
-          for (let i = 0; i < vertex.source_edges.length; i++) vertex.source_edges[i].x += shift_source;
-          for (let i = 0; i < vertex.target_edges.length; i++) vertex.target_edges[i].x += shift_target;
-          vertex.x += shift_vertex;
-          if (shift_source > 0 || shift_target > 0 || shift_vertex > 0) problem = true;
-
+    }
+    // Even up inputs and outputs for vertices
+    for (var i = 0; i < vertices.length; i++) {
+      var vertex = vertices[i];
+      let s = vertex.source_edges;
+      let t = vertex.target_edges;
+      if (vertex.source_edges.length + vertex.target_edges.length == 0) continue;
+      let source_mean = s.length == 0 ? null : ArrayUtil.mean(s.map(elt => elt.x_left));
+      let target_mean = t.length == 0 ? null : ArrayUtil.mean(t.map(elt => elt.x_left));
+      let shift_source = 0;
+      let shift_target = 0;
+      let shift_vertex = 0;
+      if (source_mean == null) {
+        if (vertex.x_left > target_mean) {
+          shift_target = vertex.x_left - target_mean;
+        } else if (target_mean > vertex.x_left) {
+          shift_vertex = target_mean - vertex.x_left;
+        }
+      } else if (target_mean == null) {
+        if (vertex.x_left > source_mean) {
+          shift_source = vertex.x_left - source_mean;
+        } else if (source_mean > vertex.x_left) {
+          shift_vertex = source_mean - vertex.x_left;
+        }
+      } else {
+        let mean = Math.max(vertex.x_left, target_mean, source_mean);
+        shift_source = mean > source_mean ? mean - source_mean : 0;
+        shift_target = mean > target_mean ? mean - target_mean : 0;
+        shift_vertex = mean > vertex.x_left ? mean - vertex.x_left : 0;
       }
-      if (!problem) break;
+      if (shift_source > 0.001 || shift_target > 0.001 || shift_vertex > 0.001) {
+        problem = true;
+        for (let i = 0; i < s.length; i++) s[i].x_left += shift_source;
+        for (let i = 0; i < t.length; i++) t[i].x_left += shift_target;
+        vertex.x_left += shift_vertex;
+      }
+    }
+
+    if (!problem) break;
+  }
+
+  /* RIGHT ALIGN */
+  let right_iterations = 0;
+  while (true) {
+    right_iterations ++;
+    let problem = false;
+    for (let i = 0; i < regular_levels.length; i++) {
+      let level = regular_levels[i];
+      for (let j = 0; j < level.length - 1; j++) {
+        let delta = level[j + 1].x_right - level[j].x_right;
+        if (delta < x_spacing - 0.001) {
+          problem = true;
+          level[j].x_right -= x_spacing - delta;
+        }
+      }
+    }
+    for (let i = 0; i < singular_levels.length; i++) {
+      let level = singular_levels[i];
+      for (let j = 0; j < level.length - 1; j++) {
+        let delta = level[j + 1].x_right - level[j].x_right;
+        if (delta < x_spacing - 0.001) {
+          problem = true;
+          level[j].x_right -= x_spacing - delta;
+        }
+      }
+    }
+    // Even up inputs and outputs for vertices
+    for (var i = 0; i < vertices.length; i++) {
+      var vertex = vertices[i];
+      let s = vertex.source_edges;
+      let t = vertex.target_edges;
+      if (vertex.source_edges.length + vertex.target_edges.length == 0) continue;
+      let source_mean = s.length == 0 ? null : ArrayUtil.mean(s.map(elt => elt.x_right));
+      let target_mean = t.length == 0 ? null : ArrayUtil.mean(t.map(elt => elt.x_right));
+      let shift_source = 0;
+      let shift_target = 0;
+      let shift_vertex = 0;
+      if (source_mean == null) {
+        if (vertex.x_right < target_mean) {
+          shift_target = vertex.x_right - target_mean;
+        } else if (target_mean < vertex.x_right) {
+          shift_vertex = target_mean - vertex.x_right;
+        }
+      } else if (target_mean == null) {
+        if (vertex.x_right < source_mean) {
+          shift_source = vertex.x_right - source_mean;
+        } else if (source_mean < vertex.x_right) {
+          shift_vertex = source_mean - vertex.x_right;
+        }
+      } else {
+        let mean = Math.min(vertex.x_right, target_mean, source_mean);
+        shift_source = mean < source_mean ? mean - source_mean : 0;
+        shift_target = mean < target_mean ? mean - target_mean : 0;
+        shift_vertex = mean < vertex.x_right ? mean - vertex.x_right : 0;
+      }
+      if (shift_source < -0.001 || shift_target < -0.001 || shift_vertex < -.001) {
+        problem = true;
+        for (let i = 0; i < s.length; i++) s[i].x_right += shift_source;
+        for (let i = 0; i < t.length; i++) t[i].x_right += shift_target;
+        vertex.x_right += shift_vertex;
+      }
+    }
+    if (!problem) break;
+  }
+
+  // Set actual coordinates
+  for (let i=0; i<edges.length; i++) {
+    //edges[i].x = edges[i].x_left;
+    edges[i].x = (edges[i].x_left + edges[i].x_right) / 2;
+  }
+  for (let i=0; i<vertices.length; i++) {
+    //vertices[i].x = vertices[i].x_left;
+    vertices[i].x = (vertices[i].x_left + vertices[i].x_right) / 2;
   }
 
   // Find maximum and minimum x-coordinates
@@ -217,6 +344,47 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
     }
   }
 
+/*
+    // Even up inputs and outputs for vertices
+    for (var i = 0; i < vertices.length; i++) {
+      var vertex = vertices[i];
+      //if (vertex.source_edges.length == 0) continue;
+      //if (vertex.target_edges.length == 0) continue;
+      if (vertex.source_edges.length + vertex.target_edges.length == 0) continue;
+      //let source_mean = vertex.source_edges.length == 0 ? null : (vertex.source_edges[0].x + vertex.source_edges[vertex.source_edges.length - 1].x) / 2;
+      //let target_mean = vertex.target_edges.length == 0 ? null : (vertex.target_edges[0].x + vertex.target_edges[vertex.target_edges.length - 1].x) / 2;
+      let source_mean = vertex.source_edges.length == 0 ? null : ArrayUtil.mean(vertex.source_edges);
+      let target_mean = vertex.target_edges.length == 0 ? null : ArrayUtil.mean(vertex.target_edges);
+      let shift_source = 0;
+      let shift_target = 0;
+      let shift_vertex = 0;
+      if (source_mean == null) {
+        if (vertex.x > target_mean) {
+          shift_target = vertex.x - target_mean;
+        } else if (target_mean > vertex.x) {
+          shift_vertex = target_mean - vertex.x;
+        }
+      } else if (target_mean == null) {
+        if (vertex.x > source_mean) {
+          shift_source = vertex.x - source_mean;
+        } else if (source_mean > vertex.x) {
+          shift_vertex = source_mean - vertex.x;
+        }
+      } else {
+        let mean = Math.max(vertex.x, target_mean, source_mean);
+        shift_source = mean > source_mean ? mean - source_mean : 0;
+        shift_target = mean > target_mean ? mean - target_mean : 0;
+        shift_vertex = mean > vertex.x ? mean - vertex.x : 0;
+      }
+      for (let i = 0; i < vertex.source_edges.length; i++) vertex.source_edges[i].x += shift_source;
+      for (let i = 0; i < vertex.target_edges.length; i++) vertex.target_edges[i].x += shift_target;
+      vertex.x += shift_vertex;
+      if (shift_source > 0 || shift_target > 0 || shift_vertex > 0) problem = true;
+
+    }
+    */
+
+  /*
   // Set vertex x-coordinates for non-scalars
   for (var i = 0; i < vertices.length; i++) {
       var vertex = vertices[i];
@@ -236,6 +404,7 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
           vertex.x = total_x / (vertex.target_edges.length + vertex.source_edges.length);
       }
   }
+  */
 
   // Compute position data of all regular and singular points of the diagram
   let positions = new Map();
@@ -303,6 +472,8 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
     }
 
   }
+
+  console.log('2d layout algorithm required ' + (left_iterations + right_iterations) + ' iterations');
 
   let minBounds = [min_x - 2, -1];
   let maxBounds = [max_x + 2, 2 * diagram.data.length + 1];

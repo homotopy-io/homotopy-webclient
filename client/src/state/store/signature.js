@@ -89,7 +89,7 @@ export default (state = initialSignature, action) => {
       generators = {...generators};
       let keep = {};
       for (let generator of Object.values(generators)) {
-        if (!generator.generator.usesCell(removedGenerator)) {
+        if (!generator.generator.usesId(id)) {
           keep[generator.generator.id] = generator;
         }
       }
@@ -97,13 +97,13 @@ export default (state = initialSignature, action) => {
 
       // Clear main diagram and source/target previews if necessary
       let w = state.workspace;
-      if (w.diagram && w.diagram.usesCell(removedGenerator)) {
+      if (w.diagram && w.diagram.usesId(id)) {
         state = dotProp.set(state, "workspace.diagram", null);
       }
-      if (w.source && w.source.usesCell(removedGenerator)) {
+      if (w.source && w.source.usesId(id)) {
         state = dotProp.set(state, "workspace.source", null);
       }
-      if (w.target && w.target.usesCell(removedGenerator)) {
+      if (w.target && w.target.usesId(id)) {
         state = dotProp.set(state, "workspace.target", null);
       }
 

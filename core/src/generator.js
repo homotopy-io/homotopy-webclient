@@ -110,25 +110,15 @@ export class Generator {
     return box;
   }
 
-  usesCell(generator) {
-    if (this.id == generator.id) {
+  usesId(id) {
+    if (this.id == id) {
       return true;
     }
-
-    // Generators can only use cells which have a lower dimension
-    if (generator.n >= this.n) {
-      return false;
-    }
-
+    
     // The generator uses the specified cell iff the source or target uses it
-    if (this.source != null) {
-      if (this.source.usesCell(generator)) {
-        return true;
-      }
-
-      if (this.target.usesCell(generator)) {
-        return true;
-      }
+    if (this.source) {
+      if (this.source.usesId(id)) return true;
+      if (this.target.usesId(id)) return true;
     }
 
     return false;

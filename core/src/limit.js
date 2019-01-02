@@ -162,9 +162,8 @@ toJSON() {
     return target;
   }
 
-  usesCell(generator) {
-    return (this.forward_limit.usesCell(generator) || this.backward_limit.usesCell(generator)
-    );
+  usesId(id) {
+    return (this.forward_limit.usesId(id) || this.backward_limit.usesId(id));
   }
 
   pad(depth, source_boundary) {
@@ -821,21 +820,21 @@ export class LimitComponent {
     return new LimitComponent({ n: this.n, source_data, target_data, sublimits, first });
   }
 
-  usesCell(generator) {
+  usesId(id) {
     if (this.n == 0) {
       let type = this.type;
-      if (this.source_id == generator.id) return true;
-      if (this.target_id == generator.id) return true;
+      if (this.source_id == id) return true;
+      if (this.target_id == id) return true;
       return false;
     }
 
     for (let content of this.source_data) {
-      if (content.usesCell(generator)) return true;
+      if (content.usesId(id)) return true;
     }
-    if (this.target_data.usesCell(generator)) return true;
+    if (this.target_data.usesId(id)) return true;
 
     for (let sublimit of this.sublimits) {
-      if (sublimit.usesCell(generator)) return true;
+      if (sublimit.usesId(id)) return true;
     }
 
     return false;
@@ -1040,9 +1039,9 @@ export class Limit /*extends Array*/ {
     return new Limit({ n, components, source_size });
   }
 
-  usesCell(generator) {
+  usesId(id) {
     for (let component of this.components) {
-      if (component.usesCell(generator)) return true;
+      if (component.usesId(id)) return true;
     }
 
     return false;
