@@ -1,7 +1,7 @@
 import * as React from "react";
 import { connect } from "react-redux";
 
-import { clearDiagram, setProjection, setSlice, setRenderer } from "~/state/actions/workspace";
+// import { clearDiagram, setProjection, setSlice, setRenderer } from "~/state/actions/workspace";
 import { getDiagram, getSlice, getProjection, getSliceBounds, getRenderer } from "~/state/store/workspace";
 
 import Tool, { Control } from "~/components/Tool";
@@ -38,11 +38,11 @@ export const DiagramTool = ({
 
 export default connect(
   state => ({
-    diagram: getDiagram(state),
-    slice: getSlice(state),
-    projection: getProjection(state),
-    sliceBounds: getSliceBounds(state),
-    renderer: getRenderer(state)
+    diagram: getDiagram(state.proof),
+    slice: getSlice(state.proof),
+    projection: getProjection(state.proof),
+    sliceBounds: getSliceBounds(state.proof),
+    renderer: getRenderer(state.proof)
   }),
   dispatch => ({
     onClearDiagram: () => dispatch({ type: 'workspace/clear-diagram' }),

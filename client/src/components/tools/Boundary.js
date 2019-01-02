@@ -2,7 +2,7 @@ import * as React from "react";
 import styled from "styled-components";
 import { connect } from "react-redux";
 
-import { clearBoundary } from "~/state/actions/workspace";
+// import { clearBoundary } from "~/state/actions/workspace";
 import { getSource, getTarget } from "~/state/store/workspace";
 
 import Tool from "~/components/Tool";
@@ -35,8 +35,8 @@ export const BoundaryTool = ({
 
 export default connect(
   state => ({
-    source: getSource(state),
-    target: getTarget(state)
+    source: getSource(state.proof),
+    target: getTarget(state.proof)
   }),
   dispatch => ({
     onClearBoundary: () => dispatch({ type: 'workspace/clear-boundary' })

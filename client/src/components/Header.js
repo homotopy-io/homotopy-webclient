@@ -1,36 +1,50 @@
 import * as React from "react";
 import { connect } from "react-redux";
 import ReactFileReader from 'react-file-reader'
+import { change } from 'redux-form'
 
 import styled from "styled-components";
 import * as Compression from '~/util/compression'
 import downloadJSON from '~/util/export'
 
 export const Header = ({
-  serialization
+  metadata, setMetadata, serialization
 }) =>
   <Actions style={{userSelect: 'none'}}>
     {/*<Action>Log In</Action>
     <Action>Sign Up</Action>
     <Action>Gallery</Action>
     <Action>Help</Action>*/}
-    <Action onClick={() => downloadJSON(Compression.decompress(serialization), `homotopy.io - ${new Date()}`)}>Export</Action>
-    <ReactFileReader fileTypes={'application/json'} handleFiles={handleUpload}>
+    <Action onClick={() => downloadJSON({
+      metadata,
+      content: serialization
+    }, `homotopy.io - ${new Date()}`)}>Export</Action>
+    <ReactFileReader fileTypes={'application/json'} handleFiles={files => handleUpload(files, setMetadata)}>
       <Action>Import</Action>
     </ReactFileReader>
   </Actions>;
 
 export default connect(
-  ({ serialization }) => ({
+  ({ serialization, form }) => ({
+    metadata: form.metadata.values,
     serialization
+  }),
+  dispatch => ({
+    setMetadata: (metadata) => {
+      for (const k in metadata) {
+        dispatch(change('metadata', k, metadata[k]))
+      }
+    }
   })
 )(Header)
 
-const handleUpload = (files) => {
+const handleUpload = (files, setMetadata) => {
   const fr = new FileReader()
   fr.onload = (event) => {
     // onload triggers on successful read
-    window.location.hash = Compression.compress(fr.result)
+    const project = JSON.parse(fr.result)
+    setMetadata(project.metadata)
+    window.location.hash = project.content
   }
   fr.readAsText(files.item(0)) // TODO: input validation
 }

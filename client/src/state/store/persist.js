@@ -2,7 +2,9 @@ import * as Core from "homotopy-core";
 import * as Compression from "../../util/compression";
 import dotProp from "dot-prop-immutable";
 
-export default (state, action) => {
+export const initialPersist = null
+
+export default (state = initialPersist, action) => {
 
   const serializer = new Core.SerializeCyclic();
 

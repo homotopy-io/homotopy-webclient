@@ -1,13 +1,11 @@
 import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mess
-import workspace from "~/state/store/workspace";
-import signature from "~/state/store/signature";
-import attach from "~/state/store/attach";
-//import object_store from "~/state/store/object_store";
-//import LZ from "lz-string";
-//import * as Core from "homotopy-core";
 import dotProp from "dot-prop-immutable";
-//import stringify from "json-stringify-safe";
-import persist from "~/state/store/persist";
+import { createStore, compose, combineReducers } from 'redux'
+import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
+import signatureReducer, { initialSignature } from '~/state/store/signature'
+import attachReducer, { initialAttach } from '~/state/store/attach'
+import persistReducer, { initialPersist } from '~/state/store/persist'
+import { reducer as formReducer } from 'redux-form'
 import * as Core from "homotopy-core";
 import * as Compression from "../util/compression";
 
@@ -15,25 +13,15 @@ import * as Compression from "../util/compression";
 let serializer = new Core.SerializeCyclic();
 
 export const initialState = {
-  signature: {
-    generators: {},
-    edited: null /* not sure what this does */
-  },
-  workspace: {
-    diagram: null,
-    source: null,
-    target: null,
-    slice: null,
-    projection: null,
-    renderer: 2
-  },
-  attach: {
-    options: null,
-    highlight: null
-  },
-  serialization: null,
-  hash: null
-};
+  proof: {
+    signature: initialSignature,
+    workspace: initialWorkspace,
+    attach: initialAttach,
+    serialization: initialPersist,
+    hash: null
+  }
+}
+
 
 let persist_blacklist = [
   'persist/deserialize',
@@ -43,15 +31,14 @@ let persist_blacklist = [
   'attach/clear-highlight',
 ];
 
-export default (state, action) => {
-
+const proofReducer = (state = initialState, action) => {
   let action_t0 = performance.now();
 
   _assert(state.diagram === undefined);
-  state = persist(state, action);
-  state = workspace(state, action);
-  state = signature(state, action);
-  state = attach(state, action);
+  state = persistReducer(state, action)
+  state = workspaceReducer(state, action)
+  state = signatureReducer(state, action)
+  state = attachReducer(state, action)
 
   // Persist the state
   if (action.type.indexOf('INIT') == -1 && persist_blacklist.indexOf(action.type) == -1) {
@@ -100,4 +87,16 @@ export default (state, action) => {
   console.log(`Handled action \"${action.type}" in ${Math.floor(performance.now() - action_t0)} ms`);
 
   return state;
-};
+}
+
+const rootReducer = combineReducers({
+  proof: proofReducer,
+  form: formReducer
+})
+
+export default () => {
+  return createStore(
+    rootReducer,
+    initialState
+  )
+}

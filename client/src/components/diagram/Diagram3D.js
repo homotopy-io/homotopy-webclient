@@ -20,7 +20,7 @@ import { indexBuffer, vertexBuffer } from "~/util/3d/buffers";
 export default compose(
   withLayout,
   connect(
-    state => ({ generators: getGenerators(state) }),
+    state => ({ generators: getGenerators(state.proof) }),
   ),
   withSize
 )(props => props.layout

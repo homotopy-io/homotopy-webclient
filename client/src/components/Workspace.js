@@ -18,7 +18,6 @@ export const Workspace = ({
   slice,
   renderer,
   onSelectCell,
-  test,
   onHomotopy
 }) => {
   let Diagram = renderer == 2 ? Diagram2D : Diagram3D;
@@ -44,12 +43,11 @@ export const Workspace = ({
 
 export default connect(
   state => ({
-    diagram: getDiagram(state),
-    dimension: getDisplayDimension(state),
-    highlight: getHighlight(state),
-    slice: getSlice(state),
-    renderer: getRenderer(state),
-    test: state.workspace
+    diagram: getDiagram(state.proof),
+    dimension: getDisplayDimension(state.proof),
+    highlight: getHighlight(state.proof),
+    slice: getSlice(state.proof),
+    renderer: getRenderer(state.proof),
   }),
   dispatch => ({
     onSelectCell: (points) => dispatch({ type: 'workspace/select-cell', payload: { points } }),
