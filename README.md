@@ -16,9 +16,11 @@ Subsequent times:
 
 Production:
 
-- first, run `npm run build` in the `core` directory.
-- then, run `npm run build` in the `client` directory.
+- first, run `yarn run build` in the `core` directory.
+- then, run `yarn run build` in the `client` directory.
 
 Development:
 
-- in `client` and `core`, run `npm run dev`, which automatically rebuilds when the source changes. In `client`, this also starts a webserver at http://127.0.0.1:8080.
+- in `client` and `core`, run `npm run dev`, which automatically rebuilds when
+  the source changes. In `client`, this also starts a webserver at
+  http://localhost:8080.

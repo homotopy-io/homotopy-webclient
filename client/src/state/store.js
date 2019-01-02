@@ -21,6 +21,8 @@ import firebaseConfig from '~/../config/firebaseConfig.js'
 import * as Core from "homotopy-core";
 import * as Compression from "../util/compression";
 
+import { composeWithDevTools } from 'redux-devtools-extension';
+
 // Persistent serializer
 let serializer = new Core.SerializeCyclic();
 
@@ -131,7 +133,8 @@ export default () => {
     compose(
       reduxFirestore(firebase),
       reactReduxFirebase(firebase, reactReduxFirebaseConfig),
-      install()
+      install(),
+      composeWithDevTools()
     )
   )
 }
