@@ -1,4 +1,4 @@
-import { computeLayout, Geometry } from "homotopy-core";
+import { computeLayout0d, computeLayout1d, computeLayout2d, computeLayout3d, Geometry } from "homotopy-core";
 import * as Rx from "rxjs";
 import Worker from "worker-loader!./worker.js";
 
@@ -49,10 +49,23 @@ class LayoutWorker {
 const layoutWorker = new LayoutWorker();
 
 export default (diagram, dimension) => {
+  let t0 = performance.now();
+
   let points = [...Geometry.pointsOf(diagram, dimension)];
   let edges = [...Geometry.edgesOf(diagram, dimension)];
 
-  let job = computeLayout(dimension, points, edges);
+  let t1 = performance.now();
+
+  let job;
+  if (dimension == 0) {
+    job = computeLayout0d(dimension, points, edges);
+  } else if (dimension == 1) {
+    job = computeLayout3d(dimension, points, edges);
+  } else if (dimension == 2) {
+    job = computeLayout3d(dimension, points, edges);
+  } else if (dimension == 3) {
+    job = computeLayout3d(dimension, points, edges);
+  } else throw Error("Invalid dimension for layout engine");
   let result;
   while (true) {
     let step = job.next();
@@ -61,6 +74,10 @@ export default (diagram, dimension) => {
       break;
     }
   }
+
+  let t2 = performance.now();
+
+  console.log(`${dimension}d layout for ${diagram.n}d diagram, prepared (${Math.floor(t1-t0)} ms), solved (${Math.floor(t2-t1)} ms)`);
 
   return Rx.Observable.create(observer => {
     // let onComplete = result => {

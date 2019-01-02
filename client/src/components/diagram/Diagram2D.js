@@ -893,7 +893,11 @@ export class Diagram2D extends React.Component {
         fill={highlight ? "#f1c40f" : colour}
         key={key}
         onClick={e => this.onSelect(e, points)}>
-        {this.props.interactive && <title>{sGenerator.name}</title>}
+        {this.props.interactive
+          &&
+         <title>
+         {sGenerator.name} @ [{s.point[0]/2},{s.point[1]/2}]
+         </title>}
       </path>
     );
   }
@@ -999,7 +1003,7 @@ export class Diagram2D extends React.Component {
     );
 
     let t1 = performance.now();
-    console.log(`Rendered 2d diagram in ${Math.floor(t1-t0)} ms`);
+    console.log(`2d rendering of ${this.diagram.n}d diagram completed in ${Math.floor(t1-t0)} ms`);
 
     return r;
   }

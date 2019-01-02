@@ -90,7 +90,10 @@ export const boundaryOf = (diagram, dimension) => {
 };
 
 export const slicesOf = function*(diagram) {
-  if (_debug) _assert(diagram.n > 0);
+  if (_debug) {
+    _assert(diagram);
+    _assert(diagram.n > 0);
+  }
 
   yield [-1, diagram.source];
 

@@ -9,7 +9,10 @@ export { SerializeCyclic } from "./serialize_flat";
 
 import * as Geometry from "./layout/geometry";
 export { Geometry };
-export { default as computeLayout } from "./layout/solver";
+export { default as computeLayout0d } from "./layout/solver0d";
+export { default as computeLayout1d } from "./layout/solver1d";
+export { default as computeLayout2d } from "./layout/solver2d";
+export { default as computeLayout3d } from "./layout/solver3d";
 
 import * as Boundary from "./boundary";
 export { Boundary };

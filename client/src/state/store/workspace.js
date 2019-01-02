@@ -191,7 +191,7 @@ export default (state, action) => {
 
     } case 'workspace/set-renderer': {
 
-      state = dotProp.set(state, "workspace.renderer", renderer);
+      state = dotProp.set(state, "workspace.renderer", action.payload.renderer);
       state = dotProp.set(state, "workspace.slice", updateSlices(state));
       break;
 

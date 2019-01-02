@@ -21,4 +21,4 @@ Production:
 
 Development:
 
-- in `client` and `core`, run `npm run dev`, which automatically rebuilds when the source changes. In `client`, this also starts a webserver.
+- in `client` and `core`, run `npm run dev`, which automatically rebuilds when the source changes. In `client`, this also starts a webserver at http://127.0.0.1:8080.
