@@ -24,7 +24,7 @@ export default compose(
   withLayout,
   connect(
     // TODO: Only get the generators that appear in the diagram
-    state => ({ generators: getGenerators(state) }),
+    state => ({ generators: getGenerators(state.proof) }),
   ),
   withSize,
 )(props => props.layout

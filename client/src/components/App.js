@@ -17,7 +17,6 @@ export class App extends React.Component {
     //this.props = props;
     super(props);
     //this.props = props;
-    this.state = { hash: null, serialization: null };
   }
 
   componentDidMount() {
@@ -28,7 +27,6 @@ export class App extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    
     return nextProps.hash != this.props.hash;
   }
 
@@ -62,7 +60,7 @@ export class App extends React.Component {
   }
 }
 
-export default connect(({ hash, serialization }) => ({ hash, serialization }))(App);
+export default connect(({ proof: { hash, serialization } }) => ({ hash, serialization }))(App);
 
 const Container = styled.div`
   display: flex;

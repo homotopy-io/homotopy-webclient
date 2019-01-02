@@ -48,7 +48,7 @@ export const Generator = ({
   </Wrapper>;
 
 export default connect(
-  (state, { id }) => getGenerator(state, id),
+  (state, { id }) => getGenerator(state.proof, id),
   (dispatch, { id }) => ({
     onSelect: () => dispatch({ type: "signature/select-generator", payload: { id } }),
     onRemove: () => dispatch({ type: "signature/remove-generator", payload: { id } }),

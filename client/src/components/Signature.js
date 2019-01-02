@@ -56,7 +56,7 @@ export const Signature = ({
   </Wrapper>;
 
 export default connect(
-  state => ({ groups: getDimensionGroups(state) }),
+  state => ({ groups: getDimensionGroups(state.proof) }),
   dispatch => ({ onAddGenerator: () => dispatch({ type: "signature/create-zero-cell" }) })
 )(reduxForm({
   form: "metadata",

@@ -1,6 +1,6 @@
 import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
-import { createStore, compose } from 'redux'
+import { createStore, compose, combineReducers } from 'redux'
 import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
 import attachReducer, { initialAttach } from '~/state/store/attach'
@@ -13,11 +13,13 @@ import * as Compression from "../util/compression";
 let serializer = new Core.SerializeCyclic();
 
 export const initialState = {
-  signature: initialSignature,
-  workspace: initialWorkspace,
-  attach: initialAttach,
-  serialization: initialPersist,
-  hash: null
+  proof: {
+    signature: initialSignature,
+    workspace: initialWorkspace,
+    attach: initialAttach,
+    serialization: initialPersist,
+    hash: null
+  }
 }
 
 
@@ -29,7 +31,7 @@ let persist_blacklist = [
   'attach/clear-highlight',
 ];
 
-const rootReducer = (state = initialState, action) => {
+const proofReducer = (state = initialState, action) => {
   let action_t0 = performance.now();
 
   _assert(state.diagram === undefined);
@@ -84,17 +86,17 @@ const rootReducer = (state = initialState, action) => {
 
   console.log(`Handled action \"${action.type}" in ${Math.floor(performance.now() - action_t0)} ms`);
 
-  // collect the metadata
-  state = dotProp.set(state, 'form', formReducer(state.form, action))
-
   return state;
-};
+}
+
+const rootReducer = combineReducers({
+  proof: proofReducer,
+  form: formReducer
+})
 
 export default () => {
-  const store = createStore(
+  return createStore(
     rootReducer,
     initialState
   )
-
-  return store
 }
