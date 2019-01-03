@@ -53,18 +53,25 @@ export class Diagram2D extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    let old_diagram = this.props.diagram;
-    let new_diagram = nextProps.diagram;
+    let old_diagram = this.diagramToRender;
+    let new_diagram = nextProps.diagram.getSlice(...nextProps.slice);
+
+    if (this.props.width != nextProps.width) return true;
+    if (this.props.height != nextProps.height) return true;
+
+    //let old_diagram = this.props.diagram;
+    //let new_diagram = nextProps.diagram;
     if (old_diagram && !new_diagram) return true;
     if (!old_diagram && new_diagram) return true;
-    if (!this.props.diagram.equals(nextProps.diagram)) return true;
+    if (!old_diagram.equals(new_diagram)) return true;
+    //if (!this.props.diagram.equals(nextProps.diagram)) return true;
     if (this.props.slice.length != nextProps.slice.length) return true;
     for (let i=0; i<this.props.slice.length; i++) {
       if (this.props.slice[i] != nextProps.slice[i]) return true;
     }
     // Check for each generator used in the diagram if its parameters have changed
     for (let id of Object.keys(this.props.generators)) {
-      if (!this.props.diagram.usesId(id)) continue;
+      if (!new_diagram.usesId(id)) continue;
       let g_old = this.props.generators[id];
       let g_new = nextProps.generators[id];
       if (g_old.name != g_new.name) return true;
@@ -137,8 +144,10 @@ export class Diagram2D extends React.Component {
   getPosition(point) {
     let { positions, minBounds, maxBounds } = this.props.layout;
 
-    minBounds = [...Array(2 - point.length).fill(0), ...minBounds];
-    maxBounds = [...Array(2 - point.length).fill(0), ...maxBounds];
+    if (minBounds.length != 2) {
+      minBounds = [...Array(2 - point.length).fill(0), ...minBounds];
+      maxBounds = [...Array(2 - point.length).fill(0), ...maxBounds];
+    }
 
     let index = point.join(":");
     let value = positions.get(index);
@@ -168,7 +177,8 @@ export class Diagram2D extends React.Component {
   }
 
   get diagram() {
-    return this.props.diagram.getSlice(...this.props.slice);
+    return this.diagramToRender;
+    //return this.props.diagram.getSlice(...this.props.slice);
   }
 
   getGenerator(point) {
@@ -385,98 +395,150 @@ export class Diagram2D extends React.Component {
     return this.coordsToObject([y,x]);
   }
 
-  preparePoint(point) {
+  preparePoints(points_raw) {
     if (this.props.dimension == 0) {
-      return this.preparePoint0d(point)
+      return this.preparePoints0d(points_raw)
     } else if (this.props.dimension == 1) {
-      return this.preparePoint1d(point);
+      return this.preparePoints1d(points_raw);
     } else if (this.props.dimension == 2) {
-      return this.preparePoint2d(point);
+      return this.preparePoints2d(points_raw);
     } else _assert(false);
   }
 
-  preparePoint0d(point) {
-    if (_debug) _assert(point.length == 0);
-    let ref = '';
-    let generator = this.getGenerator(point);
-    let position = this.getPosition(point);
-    let slice = [];
-    let nontrivial = true;
-    return { point, generator, position, ref, slice, nontrivial };
+  preparePoints0d(points_raw) {
+    let points = [];
+    for (let i=0; i<points_raw.length; i++) {
+      let point = points_raw[i];
+      if (_debug) _assert(point.length == 0);
+      let ref = '';
+      let generator = this.getGenerator(point);
+      let position = this.getPosition(point);
+      let slice = [];
+      let nontrivial = true;
+      points.push({ point, generator, position, ref, slice, nontrivial });
+    }
+    return points;
   }
 
-  preparePoint1d(point) {
-    if (_debug) _assert(point.length == 1);
+  preparePoints1d(points_raw) {
 
-    let ref = point.join(',').toString();
-    let generator = this.getGenerator(point);
-    let position = this.getPosition(point);
+    let points = [];
 
-    // Compute some logical data about the point
-    let boundary = false;
-    let h = point[0];
-    if (h < 0) {
-      boundary = true;
-      h = 0;
-    } else if (h > this.diagram.data.length * 2) {
-      boundary = true;
-      h = this.diagram.data.length * 2;
+    for (let i=0; i<points_raw.length; i++) {
+
+      let point = points_raw[i];
+      if (_debug) _assert(point.length == 1);
+
+      let ref = point.join(',').toString();
+      let generator = this.getGenerator(point);
+      let position = this.getPosition(point);
+
+      // Compute some logical data about the point
+      let boundary = false;
+      let h = point[0];
+      if (h < 0) {
+        boundary = true;
+        h = 0;
+      } else if (h > this.diagram.data.length * 2) {
+        boundary = true;
+        h = this.diagram.data.length * 2;
+      }
+
+      let regular = (h % 2 == 0);
+      let height = regular ? h / 2 : (h - 1) / 2;
+      let slice = [{regular, height}];
+      let nontrivial = !regular;
+
+      points.push({ point, generator, position, ref, slice, nontrivial, boundary });
+
     }
 
-    let regular = (h % 2 == 0);
-    let height = regular ? h / 2 : (h - 1) / 2;
-    let slice = [{regular, height}];
-    let nontrivial = !regular;
-
-    return { point, generator, position, ref, slice, nontrivial, boundary };
+    return points;
   }
 
-  preparePoint2d(point) {
-    if (_debug) _assert(point.length == 2);
-    if (_debug) _assert(point[0] >= -1);
-    if (_debug) _assert(point[1] >= -1);
-    let ref = point.join(',').toString();
-    let generator = this.getGenerator(point);
-    let position = this.getPosition(point);
+  preparePoints2d(points_raw) {
 
-    // Compute some logical data about the point
-    let slice = [];
-    let d = this.diagram;
-    let boundary = false;
-    for (let i=0; i<2; i++) {
-      let p = point[i];
-      if (p < 0) {
-        boundary = true;
-        p = 0;
-      }
-      if (p > d.data.length * 2) {
-        boundary = true;
-        p = d.data.length * 2;
-      }
-      let regular = (p % 2 == 0);
-      let height = regular ? p / 2 : (p - 1) / 2;
-      let sub = { height, regular };
-      slice.push(sub);
-      if (i == 0) d = d.getSlice(sub);
+    let points = [];
+
+    // Analyze neighbourhoods
+    let forward_nontrivial = [];
+    let backward_nontrivial = [];
+    for (let i=0; i<this.diagram.data.length; i++) {
+      let data = this.diagram.data[i];
+      forward_nontrivial[i] = data.forward_limit.analyzeSingularNeighbourhoods();
+      backward_nontrivial[i] = data.backward_limit.analyzeSingularNeighbourhoods();
     }
 
-    // See if the neighbourhood of this point is nontrivial, and if so,
-    // whether it's algebraic.
-    let nontrivial = false;
-    let algebraic = false;
-    //let homotopy = false;
-    if (!slice[0].regular && !slice[1].regular) {
-      let data = this.diagram.data[slice[0].height];
-      let forward_nontrivial = data.forward_limit.analyzeSingularNeighbourhoods();
-      let backward_nontrivial = data.backward_limit.analyzeSingularNeighbourhoods();
-      nontrivial = forward_nontrivial[slice[1].height] || backward_nontrivial[slice[1].height];
-      if (nontrivial) {
-        algebraic = (generator.generator.n >= this.diagram.n);
-        //homotopy = !algebraic;
-      }
+    // Get all slices
+    let slice = this.diagram.source;
+    let slices = new Array(this.diagram.data.length * 2 + 1);
+    slices[0] = slice;
+    for (let i=0; i<this.diagram.data.length; i++) {
+      let data = this.diagram.data[i];
+      slice = data.forward_limit.rewrite_forward(slice);
+      slices[2 * i + 1] = slice;
+      slice = data.backward_limit.rewrite_backward(slice);
+      slices[2 * i + 2] = slice;
     }
 
-    return { point, generator, position, ref, nontrivial, algebraic, /* homotopy, */ slice, boundary };
+
+    for (let i=0; i<points_raw.length; i++) {
+
+      let point = points_raw[i];
+
+      if (_debug) {
+        _assert(point.length == 2);
+        _assert(point[0] >= -1);
+        _assert(point[1] >= -1);
+      }
+      let ref = point.join(',').toString();
+      let generator = this.getGenerator(point);
+      let position = this.getPosition(point);
+
+      // Compute some logical data about the point
+      let slice = new Array(2);
+      let d = this.diagram;
+      let boundary = false;
+      for (let i=0; i<2; i++) {
+        let p = point[i];
+        if (p < 0) {
+          boundary = true;
+          p = 0;
+        }
+        if (p > d.data.length * 2) {
+          boundary = true;
+          p = d.data.length * 2;
+        }
+        let regular = (p % 2 == 0);
+        let height = regular ? p / 2 : (p - 1) / 2;
+        let sub = { height, regular };
+        slice[i] = sub;
+        //if (i == 0) d = d.getSlice(sub);
+        if (i == 0) d = slices[p];
+      }
+
+      // See if the neighbourhood of this point is nontrivial, and if so,
+      // whether it's algebraic.
+      let nontrivial = false;
+      let algebraic = false;
+      //let homotopy = false;
+      if (!slice[0].regular && !slice[1].regular) {
+        //let data = this.diagram.data[slice[0].height];
+        //let forward_nontrivial = data.forward_limit.analyzeSingularNeighbourhoods();
+        //let backward_nontrivial = data.backward_limit.analyzeSingularNeighbourhoods();
+        //nontrivial = forward_nontrivial[slice[1].height] || backward_nontrivial[slice[1].height];
+        nontrivial = forward_nontrivial[slice[0].height][slice[1].height] || backward_nontrivial[slice[0].height][slice[1].height];
+        if (nontrivial) {
+          algebraic = (generator.generator.n >= this.diagram.n);
+          //homotopy = !algebraic;
+        }
+      }
+
+      points.push({ point, generator, position, ref, nontrivial, algebraic, /* homotopy, */ slice, boundary });
+
+    }
+
+    return points;
   }
 
   // Store the control points for each edge
@@ -927,6 +989,8 @@ export class Diagram2D extends React.Component {
 
   render() {
 
+    this.diagramToRender = this.props.diagram.getSlice(...this.props.slice);
+
     let t0 = performance.now();
 
     if (this.props.highlight) {
@@ -937,20 +1001,28 @@ export class Diagram2D extends React.Component {
     let points_raw = this.props.layout.points;
 
     // Prepare points
-    let points = [];
+    let points = this.preparePoints(points_raw);
+    /*
     for (let i=0; i<points_raw.length; i++) {
       points.push(this.preparePoint(points_raw[i]));
     }
+    */
+
+    let t1 = performance.now();
 
     // Prepare surfaces
     let edges = [];
     let surfaces = this.findSurfaces(this.diagram, edges_raw, edges);
 
-    // Consistency check on points
-    for (let i=0; i<points.length; i++) {
-      let point = points[i].point;
-      for (let j=0; j<point.length; j++) {
-        if (_debug) _assert(point[j] >= -1);
+    let t2 = performance.now();
+
+    if (_debug) {
+      // Consistency check on points
+      for (let i=0; i<points.length; i++) {
+        let point = points[i].point;
+        for (let j=0; j<point.length; j++) {
+          _assert(point[j] >= -1);
+        }
       }
     }
 
@@ -958,6 +1030,8 @@ export class Diagram2D extends React.Component {
     for (let i=0; i<edges.length; i++) {
       edges[i] = this.prepareEdge(edges[i], points);
     }
+
+    let t3 = performance.now();
 
     // Group edges by target nontrivial vertex, and set control points
     let edges_nontrivial_target = edges.filter(edge => edge.target_point.nontrivial);
@@ -994,6 +1068,8 @@ export class Diagram2D extends React.Component {
     }
     */
 
+    let t4 = performance.now();
+
     edges.map(this.prepareEdgeSVGPath, this);
     let x_coords = points.map(point => point.position[0]);
     let y_coords = points.map(point => point.position[1]);
@@ -1005,6 +1081,8 @@ export class Diagram2D extends React.Component {
     let max_y = Math.max(...y_coords) + delta;
     let dx = max_x - min_x;
     let dy = max_y - min_y;
+
+    let t5 = performance.now();
 
     let r = (
       <DiagramSVG
@@ -1025,8 +1103,14 @@ export class Diagram2D extends React.Component {
       </DiagramSVG>
     );
 
-    let t1 = performance.now();
-    console.log(`2d rendering of ${this.diagram.n}d diagram completed in ${Math.floor(t1-t0)} ms`);
+    let t6 = performance.now();
+    console.log(`2d rendering of ${this.diagram.n}d diagram, `
+      + `prepare points (${Math.floor(t1-t0)} ms, ${Math.floor(100*points.length/(t1-t0))/100} points/ms)), `
+      + `find surfaces (${Math.floor(t2-t1)} ms), `
+      + `prepare edges (${Math.floor(t3-t2)} ms), `
+      + `prepare masks (${Math.floor(t4-t3)} ms), `
+      + `prepare edge path (${Math.floor(t5-t4)} ms), `
+      + `componentized (${Math.floor(t6-t5)} ms)`);
 
     return r;
   }
