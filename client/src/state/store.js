@@ -2,13 +2,15 @@ import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mes
 import dotProp from "dot-prop-immutable";
 import { createStore, compose } from 'redux'
 import { install, combineReducers } from 'redux-loop'
+import ReduxQuerySync from 'redux-query-sync'
 import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
 import attachReducer, { initialAttach } from '~/state/store/attach'
 import persistReducer, { initialPersist } from '~/state/store/persist'
 import userReducer, { initialUser } from '~/state/store/user'
+import { setProjectID } from '~/state/actions/project'
 import projectReducer, { initialProject } from '~/state/store/project'
-import { reducer as formReducer } from 'redux-form'
+import { reducer as formReducer, change } from 'redux-form'
 import { reducer as projectListingReducer } from 'redux-modal'
 
 import { reactReduxFirebase, firebaseReducer } from 'react-redux-firebase'
@@ -134,6 +136,28 @@ export default () => {
       reduxFirestore(firebase),
       reactReduxFirebase(firebase, reactReduxFirebaseConfig),
       install(),
+      ReduxQuerySync.enhancer({
+        params: {
+          id: {
+            selector: state => state.project.id,
+            action: setProjectID
+          },
+          title: {
+            selector: state => state.form.metadata ? state.form.metadata.values.title : undefined,
+            action: value => change('metadata', 'title', value)
+          },
+          author: {
+            selector: state => state.form.metadata ? state.form.metadata.values.author : undefined,
+            action: value => change('metadata', 'author', value)
+          },
+          abstract: {
+            selector: state => state.form.metadata ? state.form.metadata.values.abstract : undefined,
+            action: value => change('metadata', 'abstract', value)
+          }
+        },
+        initialTruth: 'location',
+        replaceState: true // make browser back/forward skip metadata/projectid changes
+      }),
       composeWithDevTools()
     )
   )

@@ -3,7 +3,6 @@ import { compose } from 'redux'
 import { connect } from 'react-redux'
 import styled from "styled-components";
 
-import { change } from 'redux-form'
 import { connectModal } from 'redux-modal'
 import { firestoreConnect } from 'react-redux-firebase'
 import Modal from 'react-modal'
