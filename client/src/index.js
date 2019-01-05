@@ -19,8 +19,9 @@ const store = createStore()
 
 connectStore(store);
 
-Rx.fromEvent(document, "keydown") 
-  .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input"))
+Rx.fromEvent(document, "keydown")
+  .pipe(RxOps.filter(event => event.target.tagName.toLowerCase() != "input" &&
+                              event.target.tagName.toLowerCase() != "textarea" ))
   .pipe(RxOps.map(event => event.key))
   .subscribe(key => {
     switch (key) {
