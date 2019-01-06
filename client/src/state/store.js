@@ -18,6 +18,7 @@ import { reduxFirestore, firestoreReducer } from 'redux-firestore'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/firestore'
+import 'firebase/storage'
 import firebaseConfig from '~/../config/firebaseConfig.js'
 
 import * as Core from "homotopy-core";
