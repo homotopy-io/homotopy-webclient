@@ -110,8 +110,7 @@ const save = ({ storage }, firestore, { uid, docid, metadata, proof }, callback)
   // 1. create or locate a firestore entry for this proof object, containing all
   //    the metadata (firestore is our database to run queries against)
   // 2. upload the proof blob to firebase storage
-  // 3. set the metadata for the proof blob on firebase storage (currently not
-  //    used)
+  // 3. set the metadata for the proof blob on firebase storage
   if (!docid)
     // create object and update docid
     // TODO: handle add errors

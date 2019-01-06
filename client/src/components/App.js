@@ -1,5 +1,7 @@
 import * as React from "react";
+import { compose } from 'redux'
 import { connect } from "react-redux";
+import { firebaseConnect } from 'react-redux-firebase'
 import styled from "styled-components";
 import Header from "~/components/Header";
 import Login from "~/components/Login";
@@ -12,6 +14,7 @@ import AttachmentTool from "~/components/tools/Attachment";
 import LogoImg from '../logo.svg';
 
 //import * as PersistActions from "~/state/persist";
+import { setProject } from '~/state/actions/project'
 
 export class App extends React.Component {
 
@@ -26,6 +29,28 @@ export class App extends React.Component {
       let hash = window.location.hash.substr(1);
       this.props.dispatch({ type: 'persist/newhash', payload: hash });
     }, false);
+    // if we're logged in, and got a project id, try to load it
+    this.props.firebase.auth().onAuthStateChanged(user => {
+      if(user.uid && this.props.id) {
+        const fileRef = this.props.firebase.storage().ref().child(`${user.uid}/${this.props.id}/0.proof`)
+        fileRef.getMetadata()
+          .then(meta => {
+            fileRef.getDownloadURL()
+              .then(url => {
+                const xhr = new XMLHttpRequest()
+                xhr.onload = (evt => {
+                  this.props.dispatch(setProject({
+                    metadata: meta.customMetadata, // set metadata from firebase storage metadata
+                    proof: xhr.response
+                  }))
+                })
+                xhr.open('GET', url) // get proof blob from firebase storage
+                xhr.send()
+              })
+          })
+          .catch(err => console.error('Error downloading proof', err))
+      }
+    })
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -64,7 +89,17 @@ export class App extends React.Component {
   }
 }
 
-export default connect(({ proof: { hash, serialization } }) => ({ hash, serialization }))(App);
+export default compose(
+  firebaseConnect(),
+  connect(
+    state => ({
+      hash: state.proof.hash,
+      serialization: state.proof.serialization,
+      id: state.project.id,
+      uid: state.firebase.auth.uid
+    })
+  )
+)(App);
 
 const Container = styled.div`
   display: flex;
