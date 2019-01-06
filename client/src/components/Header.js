@@ -34,7 +34,7 @@ export const Header = ({
           </React.Fragment>
         : <React.Fragment>
           <Action onClick={() => alert('TODO: implement email/password changing')}>{auth.email}</Action>
-          <Action onClick={() => firebase.logout().then(() => setProjectID(undefined))}>Log out</Action>
+          <Action onClick={() => firebase.logout()}>Log out</Action>
           <Action onClick={() => save(firestore, {
             uid: auth.uid,
             docid: project.id,
