@@ -43,7 +43,6 @@ export class App extends React.PureComponent {
         if (err.message !== 'Reducers may not dispatch actions.')
           throw err // redux bug?
       }
-      this.forceUpdate() // makes sure deserializes get fired appropriately
     })
     // if we didn't get data in the url
     if (!hash || hash === 'undefined' || hash === 'null') {
