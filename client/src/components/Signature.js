@@ -90,8 +90,8 @@ export default connect(
     groups: getDimensionGroups(state.proof),
     initialValues: {
       title: state.form.metadata ? state.form.metadata.values.title : "Untitled Project",
-      author: state.form.metadata ? state.form.metadata.values.author : undefined,
-      abstract: state.form.metadata ? state.form.metadata.values.abstract : undefined,
+      author: state.form.metadata ? state.form.metadata.values.author : "",
+      abstract: state.form.metadata ? state.form.metadata.values.abstract : "",
     },
     metadata: state.form.metadata ? state.form.metadata.values : {}
   }),

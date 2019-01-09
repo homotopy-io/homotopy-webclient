@@ -138,6 +138,7 @@ const rootReducer = combineReducers({
 const reactReduxFirebaseConfig = {
   userProfile: 'users',
   useFirestoreForProfile: true,
+  attachAuthIsReady: true,
   enableLogging: true
 }
 

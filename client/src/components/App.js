@@ -35,6 +35,36 @@ export class App extends React.PureComponent {
 
   componentDidMount() {
     const hash = window.location.hash.substr(1);
+    this.props.authIsReady
+      .then(() => {
+        if (this.props.id) { // if we got a project id
+          if (this.props.uid) { // and a user id
+            const fileRef = this.props.firebase.storage().ref().child(`${this.props.uid}/${this.props.id}/0.proof`)
+            fileRef.getMetadata() // try to retrieve the project…
+              .then(meta => {
+                if (!hash || hash === 'undefined' || hash === 'null') // set it if we got no data in the url
+                  fileRef.getDownloadURL()
+                    .then(url => {
+                      const xhr = new XMLHttpRequest()
+                      xhr.onload = (evt => {
+                        this.props.dispatch(setProject({
+                          id: this.props.id,
+                          metadata: meta.customMetadata, // set metadata from firebase storage metadata
+                          proof: xhr.response
+                        }))
+                      })
+                      xhr.open('GET', url) // get proof blob from firebase storage
+                      xhr.send()
+                    })
+              })
+            .catch(err => { // not found
+              this.props.dispatch(setProjectID(undefined))
+            })
+          } else { // not logged in
+            this.props.dispatch(setProjectID(undefined))
+          }
+        }
+      })
     // listen for hash changes
     history.listen((location, action) => {
       try {
@@ -44,52 +74,6 @@ export class App extends React.PureComponent {
           throw err // redux bug?
       }
     })
-    // if we didn't get data in the url
-    if (!hash || hash === 'undefined' || hash === 'null') {
-      // if we got a project id
-      if (this.props.id) {
-        // set up a hook to load the project if we're logged in
-        this.props.firebase.auth().onAuthStateChanged(user => {
-          if (user && user.uid && this.props.id) {
-            const fileRef = this.props.firebase.storage().ref().child(`${user.uid}/${this.props.id}/0.proof`)
-            fileRef.getMetadata()
-              .then(meta => {
-                fileRef.getDownloadURL()
-                  .then(url => {
-                    const xhr = new XMLHttpRequest()
-                    xhr.onload = (evt => {
-                      this.props.dispatch(setProject({
-                        id: this.props.id,
-                        metadata: meta.customMetadata, // set metadata from firebase storage metadata
-                        proof: xhr.response
-                      }))
-                    })
-                    xhr.open('GET', url) // get proof blob from firebase storage
-                    xhr.send()
-                  })
-              })
-              .catch(err => {
-                console.error('Error downloading proof', err)
-                this.props.dispatch(setProjectID(undefined))
-              })
-          } else
-            this.props.dispatch(setProjectID(undefined))
-        })
-        console.log(`Got project ID ${this.props.id}, trying to load from firebase…`)
-      } else { // got data in url
-        if (this.props.id) { // check to make sure this id corresponds to a live id belonging to us
-        this.props.firebase.auth().onAuthStateChanged(user => {
-          if (user && user.uid && this.props.id) {
-            const fileRef = this.props.firebase.storage().ref().child(`${user.uid}/${this.props.id}/0.proof`)
-            fileRef.getMetadata()
-              .catch(err => { // either the project is not live or does not belong to us
-                this.props.dispatch(setProjectID(undefined))
-              })
-          }
-        })
-        }
-      }
-    }
   }
 
   render() {
@@ -119,7 +103,6 @@ export default compose(
   firebaseConnect(),
   connect(
     state => ({
-      hash: state.proof.hash,
       serialization: state.proof.serialization,
       uid: state.firebase.auth.uid
     })

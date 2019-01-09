@@ -37,12 +37,19 @@ export const Header = ({
         : <React.Fragment>
           <Action onClick={() => alert('TODO: implement email/password changing')}>{auth.email}</Action>
           <Action onClick={() => firebase.logout()}>Log out</Action>
+          <Action onClick={() => { setProjectID(undefined); window.location.hash = '' }}>New</Action>
           <Action onClick={() => save(firebase, firestore, {
             uid: auth.uid,
             docid: id,
             metadata,
             proof: serialization
           }, setProjectID)}>Save</Action>
+          <Action onClick={() => save(firebase, firestore, {
+            uid: auth.uid,
+            docid: undefined, // force a new document to be created
+            metadata,
+            proof: serialization
+          }, setProjectID)}>Clone</Action>
           <Action onClick={() => showModal('projectListing')}>My projects</Action>
           </React.Fragment>
     }
@@ -97,47 +104,56 @@ const handleUpload = (files, setProject) => {
 }
 
 const save = ({ storage }, firestore, { uid, docid, metadata, proof }, callback) => {
-  // build saveable object
-  const project = {
-    date: Date.now(), // last modified date
-    uid, // uid of owner
-    versions: [{
-      version: 0, // version number
-      metadata, // title, author, abstract
-    }]
-  }
-  // path to proof in firebase storage is `/${uid}/${docid}/${versions.version}`
-  const storageRef = storage().ref()
+  if (proof) {
+    const sanitizedMetadata = {
+      title: metadata.title || "EMPTY",
+      author: metadata.author || "EMPTY",
+      abstract: metadata.abstract || "EMPTY"
+    }
+    // build saveable object
+    const project = {
+      date: Date.now(), // last modified date
+      uid, // uid of owner
+      versions: [{
+        version: 0, // version number
+        metadata: { ...sanitizedMetadata }, // title, author, abstract
+      }]
+    }
+    // path to proof in firebase storage is `/${uid}/${docid}/${versions.version}`
+    const storageRef = storage().ref()
 
-  // now, in the following order
-  // 1. create or locate a firestore entry for this proof object, containing all
-  //    the metadata (firestore is our database to run queries against)
-  // 2. upload the proof blob to firebase storage
-  // 3. set the metadata for the proof blob on firebase storage
-  if (!docid)
-    // create object and update docid
-    // TODO: handle add errors
-    firestore.add({ collection: 'projects' }, project)
-      .then(result => {
-        const id = result.id
-        // upload blob to firebase storage
-        const fileRef = storageRef.child(`${uid}/${id}/0.proof`)
-        callback(id) // set project id
-        return fileRef.putString(proof, "raw", { customMetadata: { ...metadata, version: 0 }})
-          .then(res => console.log('Proof uploaded successfully', res))
-          .catch(err => console.error('Error uploading proof', err))
-      })
-  else
-    // update existing doc
-    // TODO: handle update errors
-    firestore.update({ collection: 'projects', doc: docid }, project)
-      .then(result => {
-        // upload blob to firebase storage
-        const fileRef = storageRef.child(`${uid}/${docid}/0.proof`)
-        return fileRef.putString(proof, "raw", { customMetadata: { ...metadata, version: 0 }})
-          .then(res => console.log('Proof uploaded successfully', res))
-          .catch(err => console.error('Error uploading proof', err))
-      })
+    // now, in the following order
+    // 1. create or locate a firestore entry for this proof object, containing all
+    //    the metadata (firestore is our database to run queries against)
+    // 2. upload the proof blob to firebase storage
+    // 3. set the metadata for the proof blob on firebase storage
+    if (!docid)
+      // create object and update docid
+      // TODO: handle add errors
+      firestore.add({ collection: 'projects' }, project)
+        .then(result => {
+          console.log('Result', result)
+          const id = result.id
+          // upload blob to firebase storage
+          const fileRef = storageRef.child(`${uid}/${id}/0.proof`)
+          callback(id) // set project id
+          return fileRef.putString(proof, "raw", { customMetadata: { ...sanitizedMetadata, version: 0 }})
+            .then(res => console.log('Proof uploaded successfully', res))
+            .catch(err => console.error('Error uploading proof', err))
+        })
+    else
+      // update existing doc
+      // TODO: handle update errors
+      firestore.update({ collection: 'projects', doc: docid }, project)
+        .then(result => {
+          // upload blob to firebase storage
+          const fileRef = storageRef.child(`${uid}/${docid}/0.proof`)
+          return fileRef.putString(proof, "raw", { customMetadata: { ...sanitizedMetadata, version: 0 }})
+            .then(res => console.log('Proof uploaded successfully', res))
+            .catch(err => console.error('Error uploading proof', err))
+        })
+  } else
+    alert('No proof to save!')
 }
 
 const Actions = styled.div`

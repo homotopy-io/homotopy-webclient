@@ -43,7 +43,7 @@ Rx.fromEvent(document, "keydown")
 const render = () => {
   ReactDOM.render(
     <ReactRedux.Provider store={store}>
-      <App />
+      <App authIsReady={store.firebaseAuthIsReady} />
     </ReactRedux.Provider>,
     document.getElementById("app")
   );
