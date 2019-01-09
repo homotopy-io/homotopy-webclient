@@ -8,12 +8,16 @@ import "@icon/stroke-7/stroke-7.css";
 
 import App from "~/components/App";
 import createStore from "~/state/store";
+import { configureUrlQuery } from 'react-url-query'
+import history from '~/util/history'
 import { connectStore } from "~/state/persist";
 
 import * as Rx from "rxjs";
 import * as RxOps from "rxjs/operators";
 
 //import stringify from "json-stringify-safe";
+
+configureUrlQuery({ history, addChangeHandlers: false })
 
 const store = createStore()
 

@@ -2,6 +2,7 @@ import * as React from "react";
 import PropTypes from 'prop-types'
 import { compose, bindActionCreators } from 'redux'
 import { connect } from "react-redux";
+import { addUrlProps, UrlQueryParamTypes } from 'react-url-query'
 import ReactFileReader from 'react-file-reader'
 import { show } from 'redux-modal'
 import { change } from 'redux-form'
@@ -15,9 +16,10 @@ import * as Compression from '~/util/compression'
 import downloadJSON from '~/util/export'
 
 export const Header = ({
-  serialization,
+  serialization, proof,
   metadata,
-  setProject, setProjectID, project,
+  setProject, setProjectID,
+  id,
   showModal,
   openModal, setInitialTab,
   firebase, firestore, auth
@@ -37,7 +39,7 @@ export const Header = ({
           <Action onClick={() => firebase.logout()}>Log out</Action>
           <Action onClick={() => save(firebase, firestore, {
             uid: auth.uid,
-            docid: project.id,
+            docid: id,
             metadata,
             proof: serialization
           }, setProjectID)}>Save</Action>
@@ -68,10 +70,10 @@ export default compose(
   firebaseConnect(),
   firestoreConnect(),
   connect(
-    ({ firebase: { auth }, proof: { serialization }, form, project }) => ({
+    ({ firebase: { auth }, proof, form }) => ({
       auth,
       metadata: form.metadata.values,
-      serialization, project
+      serialization: proof.serialization, proof
     }),
     dispatch => ({
       setInitialTab: (index) => dispatch(setInitialTab(index)),
@@ -81,6 +83,7 @@ export default compose(
       showModal: bindActionCreators(show, dispatch)
     })
   ),
+  addUrlProps({ id: UrlQueryParamTypes.string })
 )(Header)
 
 const handleUpload = (files, setProject) => {

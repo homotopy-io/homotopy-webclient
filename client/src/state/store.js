@@ -1,15 +1,15 @@
 import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
-import { createStore, compose } from 'redux'
+import { createStore, compose, applyMiddleware } from 'redux'
 import { install, combineReducers } from 'redux-loop'
-import ReduxQuerySync from 'redux-query-sync'
+import { urlQueryMiddleware } from 'react-url-query'
 import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
 import attachReducer, { initialAttach } from '~/state/store/attach'
 import persistReducer, { initialPersist } from '~/state/store/persist'
 import userReducer, { initialUser } from '~/state/store/user'
 import { setProjectID } from '~/state/actions/project'
-import projectReducer, { initialProject } from '~/state/store/project'
+import projectReducer from '~/state/store/project'
 import { reducer as formReducer, change } from 'redux-form'
 import { reducer as projectListingReducer } from 'redux-modal'
 
@@ -23,35 +23,42 @@ import firebaseConfig from '~/../config/firebaseConfig.js'
 
 import * as Core from "homotopy-core";
 import * as Compression from "../util/compression";
+import URLON from 'urlon'
 
-import { composeWithDevTools } from 'redux-devtools-extension';
+import { composeWithDevTools } from 'redux-devtools-extension/logOnlyInProduction';
 
 // Persistent serializer
 let serializer = new Core.SerializeCyclic();
 
+export const initialProof = {
+  signature: initialSignature,
+  workspace: initialWorkspace,
+  attach: initialAttach,
+  serialization: initialPersist,
+}
+
 export const initialState = {
-  proof: {
-    signature: initialSignature,
-    workspace: initialWorkspace,
-    attach: initialAttach,
-    serialization: initialPersist,
-    hash: null
-  },
-  user: initialUser,
-  project: initialProject
+  proof: initialProof,
+  user: initialUser
 }
 
 
 let persist_blacklist = [
   'persist/deserialize',
-  'persist/newhash',
   'persist/loaded',
   'attach/set-highlight',
   'attach/clear-highlight',
 ];
 
 const proofReducer = (state = initialState, action) => {
-  let action_t0 = performance.now();
+  // ignore non-proof-related actions
+  if (!action.type.startsWith('attach')
+    && !action.type.startsWith('signature')
+    && !action.type.startsWith('workspace')
+    && !action.type.startsWith('persist'))
+    return state
+
+  const action_t0 = performance.now();
 
   _assert(state.diagram === undefined);
   state = persistReducer(state, action)
@@ -87,8 +94,18 @@ const proofReducer = (state = initialState, action) => {
 
     let compressed = Compression.compress(string);
     state.serialization = compressed;
-    state.hash = compressed;
-    window.location.hash = compressed;
+    const prevHash = window.location.hash.substr(1)
+    if (prevHash) {
+      const olddata = URLON.parse(prevHash)
+      window.location.hash = URLON.stringify({
+        ...olddata,
+        proof: compressed
+      })
+    } else {
+      window.location.hash = URLON.stringify({
+        proof: compressed
+      })
+    }
 
     const t4 = performance.now();
 
@@ -97,21 +114,20 @@ const proofReducer = (state = initialState, action) => {
       + `serialized (${Math.floor(t3-t2)} ms, ${Math.floor(string.length/1024)} kb), `
       + `compressed (${Math.floor(t4-t3)} ms, ${Math.floor(compressed.length/1024)} kb)`);
 
-    state = { ...state, ...serializer.getHead() };
-
     // Deduplication analysis
     //serializer.deduplicate();
 
+    return { ...state, ...serializer.getHead() }
   }
 
   console.log(`Handled action \"${action.type}" in ${Math.floor(performance.now() - action_t0)} ms`);
 
-  return state;
+  return state
 }
 
 const rootReducer = combineReducers({
   proof: proofReducer,
-  project: projectReducer,
+  project: projectReducer, // this reducer is meta - no associated state
   form: formReducer,
   user: userReducer,
   modal: projectListingReducer,
@@ -133,33 +149,11 @@ export default () => {
   return createStore(
     rootReducer,
     initialState,
-    compose(
+    composeWithDevTools({trace: true})(
       reduxFirestore(firebase),
       reactReduxFirebase(firebase, reactReduxFirebaseConfig),
       install(),
-      ReduxQuerySync.enhancer({
-        params: {
-          id: {
-            selector: state => state.project.id,
-            action: setProjectID
-          },
-          title: {
-            selector: state => state.form.metadata ? state.form.metadata.values.title : undefined,
-            action: value => change('metadata', 'title', value)
-          },
-          author: {
-            selector: state => state.form.metadata ? state.form.metadata.values.author : undefined,
-            action: value => change('metadata', 'author', value)
-          },
-          abstract: {
-            selector: state => state.form.metadata ? state.form.metadata.values.abstract : undefined,
-            action: value => change('metadata', 'abstract', value)
-          }
-        },
-        initialTruth: 'location',
-        replaceState: true // make browser back/forward skip metadata/projectid changes
-      }),
-      composeWithDevTools()
+      applyMiddleware(urlQueryMiddleware())
     )
   )
 }

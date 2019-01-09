@@ -1,4 +1,5 @@
 import * as React from "react";
+import dotProp from "dot-prop-immutable";
 import { connect } from "react-redux";
 import styled from "styled-components";
 import Collapsible from 'react-collapsible'
@@ -9,26 +10,55 @@ import { getDimensionGroups } from "~/state/store/signature";
 
 import IconButton from "~/components/misc/IconButton";
 
+import URLON from 'urlon'
+
 export const Signature = ({
-  groups, onAddGenerator
+  groups, onAddGenerator, metadata
 }) =>
   <Wrapper style={{userSelect: 'none'}}>
     <Group>
       <GroupHeader>
         <GroupLabel>
-          <Field name="title" component="input" type="text" style={titleStyle} />
+          <Field name="title" component="input" type="text" onBlur={evt => {
+            // update hash
+            const hash = window.location.hash.substr(1)
+            if (hash) {
+              const data = URLON.parse(window.location.hash.substr(1))
+              window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.title', metadata.title))
+            } else {
+              window.location.hash = URLON.stringify({ metadata })
+            }
+          }} style={titleStyle} />
         </GroupLabel>
       </GroupHeader>
       <GroupContent>
         <Wrapper style={{padding: '0px 8px 8px 8px'}}>
           <MetaLabel>
             <label htmlFor="author" style={{paddingRight: '8px'}}>Author</label>
-            <Field name="author" component="input" type="text" style={inputStyle} />
+            <Field name="author" component="input" type="text" onBlur={evt => {
+              // update hash
+              const hash = window.location.hash.substr(1)
+              if (hash) {
+                const data = URLON.parse(window.location.hash.substr(1))
+                window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.author', metadata.author))
+              } else {
+                window.location.hash = URLON.stringify({ metadata })
+              }
+            }} style={inputStyle} />
           </MetaLabel>
         </Wrapper>
         <Wrapper style={{padding: '0px 8px 8px 8px'}}>
           <Collapsible trigger={<MetaLabel><label htmlFor="abstract" style={{paddingRight: '8px'}}>Abstract</label></MetaLabel>}>
-            <Field name="abstract" component="textarea" rows={5} style={inputStyle} />
+            <Field name="abstract" component="textarea" rows={5} onBlur={evt => {
+              // update hash
+              const hash = window.location.hash.substr(1)
+              if (hash) {
+                const data = URLON.parse(window.location.hash.substr(1))
+                window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.abstract', metadata.abstract))
+              } else {
+                window.location.hash = URLON.stringify({ metadata })
+              }
+            }} style={inputStyle} />
           </Collapsible>
         </Wrapper>
       </GroupContent>
@@ -62,7 +92,8 @@ export default connect(
       title: state.form.metadata ? state.form.metadata.values.title : "Untitled Project",
       author: state.form.metadata ? state.form.metadata.values.author : undefined,
       abstract: state.form.metadata ? state.form.metadata.values.abstract : undefined,
-    }
+    },
+    metadata: state.form.metadata ? state.form.metadata.values : {}
   }),
   dispatch => ({
     onAddGenerator: () => dispatch({ type: "signature/create-zero-cell" })

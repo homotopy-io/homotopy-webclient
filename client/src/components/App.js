@@ -1,6 +1,9 @@
 import * as React from "react";
+import PropTypes from 'prop-types'
 import { compose } from 'redux'
 import { connect } from "react-redux";
+import { addUrlProps, UrlQueryParamTypes } from 'react-url-query'
+import history from '~/util/history'
 import { firebaseConnect } from 'react-redux-firebase'
 import styled from "styled-components";
 import Header from "~/components/Header";
@@ -12,57 +15,81 @@ import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 import LogoImg from '../logo.svg';
+import URLON from 'urlon'
 
-//import * as PersistActions from "~/state/persist";
-import { setProject } from '~/state/actions/project'
+import { setProject, setProjectID } from '~/state/actions/project'
 
-export class App extends React.Component {
+const urlPropsQueryConfig = {
+  id: { type: UrlQueryParamTypes.string }
+}
+
+export class App extends React.PureComponent {
 
   constructor(props) {
-    //this.props = props;
     super(props);
-    //this.props = props;
+  }
+
+  static propTypes = {
+    id: PropTypes.string
   }
 
   componentDidMount() {
-    window.addEventListener("hashchange", () => {
-      let hash = window.location.hash.substr(1);
-      this.props.dispatch({ type: 'persist/newhash', payload: hash });
-    }, false);
-    // if we're logged in, and got a project id, try to load it
-    this.props.firebase.auth().onAuthStateChanged(user => {
-      if(user.uid && this.props.id) {
-        const fileRef = this.props.firebase.storage().ref().child(`${user.uid}/${this.props.id}/0.proof`)
-        fileRef.getMetadata()
-          .then(meta => {
-            fileRef.getDownloadURL()
-              .then(url => {
-                const xhr = new XMLHttpRequest()
-                xhr.onload = (evt => {
-                  this.props.dispatch(setProject({
-                    metadata: meta.customMetadata, // set metadata from firebase storage metadata
-                    proof: xhr.response
-                  }))
-                })
-                xhr.open('GET', url) // get proof blob from firebase storage
-                xhr.send()
-              })
-          })
-          .catch(err => console.error('Error downloading proof', err))
+    const hash = window.location.hash.substr(1);
+    // listen for hash changes
+    history.listen((location, action) => {
+      try {
+        this.props.dispatch({ type: 'persist/deserialize' })
+      } catch(err) {
+        if (err.message !== 'Reducers may not dispatch actions.')
+          throw err // redux bug?
       }
+      this.forceUpdate() // makes sure deserializes get fired appropriately
     })
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    return nextProps.hash != this.props.hash;
-  }
-
-  componentDidUpdate(prevProps, prevState, snapshot) {
-    if (this.props.hash != this.props.serialization) {
-      //console.log('NEED TO DESERIALIZE HASH');
-      this.props.dispatch({ type: 'persist/deserialize' });
-    } else {
-      //console.log('NOT DESERIALIZING HASH');
+    // if we didn't get data in the url
+    if (!hash || hash === 'undefined' || hash === 'null') {
+      // if we got a project id
+      if (this.props.id) {
+        // set up a hook to load the project if we're logged in
+        this.props.firebase.auth().onAuthStateChanged(user => {
+          if (user && user.uid && this.props.id) {
+            const fileRef = this.props.firebase.storage().ref().child(`${user.uid}/${this.props.id}/0.proof`)
+            fileRef.getMetadata()
+              .then(meta => {
+                fileRef.getDownloadURL()
+                  .then(url => {
+                    const xhr = new XMLHttpRequest()
+                    xhr.onload = (evt => {
+                      this.props.dispatch(setProject({
+                        id: this.props.id,
+                        metadata: meta.customMetadata, // set metadata from firebase storage metadata
+                        proof: xhr.response
+                      }))
+                    })
+                    xhr.open('GET', url) // get proof blob from firebase storage
+                    xhr.send()
+                  })
+              })
+              .catch(err => {
+                console.error('Error downloading proof', err)
+                this.props.dispatch(setProjectID(undefined))
+              })
+          } else
+            this.props.dispatch(setProjectID(undefined))
+        })
+        console.log(`Got project ID ${this.props.id}, trying to load from firebase…`)
+      } else { // got data in url
+        if (this.props.id) { // check to make sure this id corresponds to a live id belonging to us
+        this.props.firebase.auth().onAuthStateChanged(user => {
+          if (user && user.uid && this.props.id) {
+            const fileRef = this.props.firebase.storage().ref().child(`${user.uid}/${this.props.id}/0.proof`)
+            fileRef.getMetadata()
+              .catch(err => { // either the project is not live or does not belong to us
+                this.props.dispatch(setProjectID(undefined))
+              })
+          }
+        })
+        }
+      }
     }
   }
 
@@ -95,10 +122,10 @@ export default compose(
     state => ({
       hash: state.proof.hash,
       serialization: state.proof.serialization,
-      id: state.project.id,
       uid: state.firebase.auth.uid
     })
-  )
+  ),
+  addUrlProps({ urlPropsQueryConfig })
 )(App);
 
 const Container = styled.div`
