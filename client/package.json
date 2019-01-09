@@ -26,6 +26,7 @@
     "babel-polyfill": "^6.26.0",
     "dot-prop-immutable": "^1.4.0",
     "firebase": "^5.7.1",
+    "history": "^4.7.2",
     "homotopy-core": "0.1.0",
     "hsluv": "^0.0.3",
     "mda": "^1.1.1",
