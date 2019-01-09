@@ -1,7 +1,6 @@
 import { change } from 'redux-form'
 import * as Core from "homotopy-core";
 import * as Compression from "~/util/compression";
-import history from '~/util/history'
 import URLON from 'urlon'
 
 /**
