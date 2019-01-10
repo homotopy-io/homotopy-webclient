@@ -1,5 +1,9 @@
 # homotopy.io
 
+master: [![CircleCI](https://circleci.com/gh/homotopy-io/webclient/tree/master.svg?style=svg)](https://circleci.com/gh/homotopy-io/webclient/tree/master)
+
+stable: [![CircleCI](https://circleci.com/gh/homotopy-io/webclient/tree/stable.svg?style=svg)](https://circleci.com/gh/homotopy-io/webclient/tree/stable)
+
 ## License
 
 This work is made available under the CC BY-NC 3.0, Attribution-NonCommercial 3.0 Unported
