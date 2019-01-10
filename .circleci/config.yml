@@ -1,0 +1,59 @@
+version: 2.1
+orbs:
+  node: circleci/node@0.0.7
+jobs:
+  build:
+    executor: node/default
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - dependencies-{{ checksum "client/package.json" }}-{{ checksum "core/package.json" }}
+            - dependencies-
+      - run:
+          name: Install dependencies
+          command: yarn
+      - save_cache:
+          key: dependencies-{{ checksum "client/package.json" }}-{{ checksum "core/package.json" }}
+          paths:
+            - node_modules
+            - yarn.lock
+      - run:
+          name: Build homotopy-core
+          command: cd core && yarn run build
+      - run:
+          name: Build web client
+          command: cd client && yarn run build
+      - run:
+          name: Copy index.html
+          command: cp client/assets/index.html client/dist
+      - save_cache:
+          key: dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - client/dist
+            - client/firebase.json
+            - client/.firebaserc
+            - client/firestore.rules
+            - client/firestore.indexes.json
+            - client/storage.rules
+  deploy:
+    executor: node/default
+    steps:
+      - restore_cache:
+          key: dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Install firebase-tools
+          command: yarn add firebase-tools
+      - run:
+          name: Deploy to firebase
+          command: cd client && ../node_modules/.bin/firebase deploy --token $FIREBASE_DEPLOY_TOKEN
+workflows:
+  build-and-deploy:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: stable
