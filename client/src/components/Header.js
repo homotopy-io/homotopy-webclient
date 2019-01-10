@@ -14,6 +14,9 @@ import { setProject, setProjectID } from '~/state/actions/project'
 import styled from "styled-components";
 import * as Compression from '~/util/compression'
 import downloadJSON from '~/util/export'
+import { save } from '~/util/firebase'
+
+import URLON from 'urlon' // for an ugly hack
 
 export const Header = ({
   serialization, proof,
@@ -22,7 +25,8 @@ export const Header = ({
   id,
   showModal,
   openModal, setInitialTab,
-  firebase, firestore, auth
+  firebase, firestore, auth,
+  serialize
 }) =>
   <Actions style={{userSelect: 'none'}}>
     {/* 0ms sleeps are an ugly hack because otherwise the initialTab state does
@@ -38,18 +42,22 @@ export const Header = ({
           <Action onClick={() => alert('TODO: implement email/password changing')}>{auth.email}</Action>
           <Action onClick={() => firebase.logout()}>Log out</Action>
           <Action onClick={() => { setProjectID(undefined); window.location.hash = '' }}>New</Action>
-          <Action onClick={() => save(firebase, firestore, {
-            uid: auth.uid,
-            docid: id,
-            metadata,
-            proof: serialization
-          }, setProjectID)}>Save</Action>
-          <Action onClick={() => save(firebase, firestore, {
-            uid: auth.uid,
-            docid: undefined, // force a new document to be created
-            metadata,
-            proof: serialization
-          }, setProjectID)}>Clone</Action>
+          <Action onClick={() => {
+            if (!window.location.hash.substr(1))
+              serialize()
+            // FIXME: this really ought to update the proof.serialization key in
+            // the redux store when we get here, but it's still undefined for
+            // some reason, even though it's updated in window.location.hash:
+            // console.log("Serialization", serialization)
+            // as a workaround, we'll parse it from window.location.hash -
+            // should find out what's going on and fix this eventually
+            save(firebase, firestore, {
+              uid: auth.uid,
+              docid: id,
+              metadata,
+              proof: serialization || URLON.parse(window.location.hash.substr(1)).proof
+            }, setProjectID)
+          }}>Save</Action>
           <Action onClick={() => showModal('projectListing')}>My projects</Action>
           </React.Fragment>
     }
@@ -87,7 +95,8 @@ export default compose(
       openModal: () => dispatch(openModal()),
       setProject: (project) => dispatch(setProject(project)),
       setProjectID: id => dispatch(setProjectID(id)),
-      showModal: bindActionCreators(show, dispatch)
+      showModal: bindActionCreators(show, dispatch),
+      serialize: () => dispatch({ type: "persist/serialize" })
     })
   ),
   addUrlProps({ id: UrlQueryParamTypes.string })
@@ -101,59 +110,6 @@ const handleUpload = (files, setProject) => {
     setProject(project)
   }
   fr.readAsText(files.item(0)) // TODO: input validation
-}
-
-const save = ({ storage }, firestore, { uid, docid, metadata, proof }, callback) => {
-  if (proof) {
-    const sanitizedMetadata = {
-      title: metadata.title || "EMPTY",
-      author: metadata.author || "EMPTY",
-      abstract: metadata.abstract || "EMPTY"
-    }
-    // build saveable object
-    const project = {
-      date: Date.now(), // last modified date
-      uid, // uid of owner
-      versions: [{
-        version: 0, // version number
-        metadata: { ...sanitizedMetadata }, // title, author, abstract
-      }]
-    }
-    // path to proof in firebase storage is `/${uid}/${docid}/${versions.version}`
-    const storageRef = storage().ref()
-
-    // now, in the following order
-    // 1. create or locate a firestore entry for this proof object, containing all
-    //    the metadata (firestore is our database to run queries against)
-    // 2. upload the proof blob to firebase storage
-    // 3. set the metadata for the proof blob on firebase storage
-    if (!docid)
-      // create object and update docid
-      // TODO: handle add errors
-      firestore.add({ collection: 'projects' }, project)
-        .then(result => {
-          console.log('Result', result)
-          const id = result.id
-          // upload blob to firebase storage
-          const fileRef = storageRef.child(`${uid}/${id}/0.proof`)
-          callback(id) // set project id
-          return fileRef.putString(proof, "raw", { customMetadata: { ...sanitizedMetadata, version: 0 }})
-            .then(res => console.log('Proof uploaded successfully', res))
-            .catch(err => console.error('Error uploading proof', err))
-        })
-    else
-      // update existing doc
-      // TODO: handle update errors
-      firestore.update({ collection: 'projects', doc: docid }, project)
-        .then(result => {
-          // upload blob to firebase storage
-          const fileRef = storageRef.child(`${uid}/${docid}/0.proof`)
-          return fileRef.putString(proof, "raw", { customMetadata: { ...sanitizedMetadata, version: 0 }})
-            .then(res => console.log('Proof uploaded successfully', res))
-            .catch(err => console.error('Error uploading proof', err))
-        })
-  } else
-    alert('No proof to save!')
 }
 
 const Actions = styled.div`

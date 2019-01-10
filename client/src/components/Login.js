@@ -56,7 +56,8 @@ const Login = ({
                        registerBtn: {
                          label: "Sign up"
                        },
-                       onRegister: () => onRegister(firebase.createUser, setError),
+                       onRegister: () => onRegister(firebase.createUser, setError)
+                         .then((response) => onCloseModal()),
                        recoverPasswordInputs: [
                          {
                            label: 'Email',

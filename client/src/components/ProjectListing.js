@@ -7,14 +7,15 @@ import { connectModal } from 'redux-modal'
 import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
 import Modal from 'react-modal'
 
-import { setProject } from '~/state/actions/project'
+import { setProject, setProjectID } from '~/state/actions/project'
+import { save, load } from '~/util/firebase'
 
 Modal.setAppElement('body')
 
 // TODO: styling
 
 export const ProjectListing = ({
-  show, handleHide, uid, projects, firebase, firestore, setProject
+  show, handleHide, uid, projects, firebase, firestore, setProject, serialization
 }) =>
   <Modal
     isOpen={show}
@@ -26,26 +27,20 @@ export const ProjectListing = ({
       <Project key={project.id}>
       {/* TODO: handle multiple versions */}
       {JSON.stringify(project.versions[0].metadata)}
-        <button onClick={() => {
-          // download the proof blob corresponding to this project
-          // see: https://firebase.google.com/docs/storage/web/download-files
-          const storageRef = firebase.storage().ref()
-          const fileRef = storageRef.child(`${uid}/${project.id}/0.proof`)
-          fileRef.getDownloadURL().then(url => {
-            const xhr = new XMLHttpRequest()
-            xhr.onload = (evt => {
-              setProject({
-                ...project.versions[0], // set metadata from firestore
-                id: project.id,
-                proof: xhr.response
-              })
-              handleHide()
-            })
-            xhr.open('GET', url) // get proof blob from firebase storage
-            xhr.send()
-          })
-            .catch(err => console.error('Error downloading proof', err))
-        }}>Load</button>
+      <button onClick={() => {
+        load(firebase, project, setProject)
+        handleHide()
+      }}>Load</button>
+      <button onClick={() => {
+        load(firebase, project, setProject)
+        save(firebase, firestore, {
+          uid,
+          docid: undefined, // force a new document to be created
+          metadata: project.versions[0].metadata,
+          proof: serialization
+        }, setProjectID)
+        handleHide()
+      }}>Clone</button>
       <button onClick={() => {
         // delete db entry in firestore
         firestore.delete({ collection: 'projects', doc: project.id })
@@ -61,10 +56,12 @@ export default compose(
   connect(
     state => ({
       uid: state.firebase.auth.uid,
-      projects: state.firestore.ordered.projects
+      projects: state.firestore.ordered.projects,
+      serialization: state.proof.serialization
     }),
     dispatch => ({
-      setProject: project => dispatch(setProject(project))
+      setProject: project => dispatch(setProject(project)),
+      setProjectID: id => dispatch(setProjectID(id))
     })
   ),
   firebaseConnect(),

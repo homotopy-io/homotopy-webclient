@@ -47,34 +47,57 @@ export default (state = initialPersist, action) => {
     // If we just loaded a new state, integrate it into the Redux state
     case 'persist/loaded':
       return { ...state, ...action.payload };
-    /*
     case 'persist/serialize': {
+      const t0 = performance.now();
 
-      // We've been asked to serialize the state
-      let state_modified = Object.assign({}, state);
-      delete state_modified.serialization;
+      // Prepare part of the state ready to be serialized
+      let { workspace, signature, attach } = state;
+      let state_to_serialize = { workspace, signature, attach };
 
       // Update the serializer with the current state
-      const timeBefore = performance.now();
-      serializer.update(state_modified);
-      const timeAfter = performance.now();
-      console.log(`Updated object store in ${Math.floor(timeAfter - timeBefore)}ms`);
+      serializer.update(state_to_serialize);
+
+      const t1 = performance.now();
+      const s1 = serializer.object_to_index.size;
+
+      // Deduplication analysis
+      serializer.deduplicate();
+
+      const t2 = performance.now();
+      const s2 = serializer.object_to_index.size;
 
       // Stringify and compress the state
       let string = serializer.stringify();
-      let compressed = LZ.compressToBase64(string);
-      console.log(`Compressed length is ${compressed.length}`);
-      if (state.serialization !== compressed) {
-        state.serialization = compressed;
-      }
+
+      const t3 = performance.now();
+
+      let compressed = Compression.compress(string);
 
       // Put the string into local storage
       //window.localStorage.setItem("homotopy_io_state", compressed);
 
       // Put the string into the URL
-      window.location.hash = compressed;
+      const prevHash = window.location.hash.substr(1)
+      if (prevHash) {
+        const olddata = URLON.parse(prevHash)
+        window.location.hash = URLON.stringify({
+          ...olddata,
+          proof: compressed
+        })
+      } else {
+        window.location.hash = URLON.stringify({
+          proof: compressed
+        })
+      }
+
+      const t4 = performance.now();
+      console.log(`State decycled (${Math.floor(t1-t0)} ms, ${s1} objects), `
+        + `deduplicated (${Math.floor(t2-t1)} ms, ${s2} objects), `
+        + `serialized (${Math.floor(t3-t2)} ms, ${Math.floor(string.length/1024)} kb), `
+        + `compressed (${Math.floor(t4-t3)} ms, ${Math.floor(compressed.length/1024)} kb)`);
+
+      return { ...state, serialization: compressed }
     }
-    */
     default: return state;
   }
 }
