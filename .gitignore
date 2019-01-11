@@ -11,3 +11,4 @@ core/npm-debug.log
 client/yarn-error.log
 core/yarn-error.log
 yarn.lock
+*.bat

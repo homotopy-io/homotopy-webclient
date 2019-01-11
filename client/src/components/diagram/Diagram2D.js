@@ -325,14 +325,15 @@ export class Diagram2D extends React.Component {
     let colour = this.getColour(generator, this.diagram.n);
     let key = `point#${point.position.join(":")}`;
     let fill_opacity = 1;
-    let r = 20;
+    let small_radius = 15;
+    let r = small_radius;
     if (point.nontrivial && !point.algebraic) {
       if (point.count_depths == null) {
         fill_opacity = 0;
         r = 25;
       } else if (point.count_depths <= 1) {
         fill_opacity = 1;
-        r = 20;
+        r = small_radius;
         colour = this.getColour(generator, this.diagram.n - 1);
       } else {
         fill_opacity = 0;
