@@ -16,12 +16,17 @@ import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 import LogoImg from '../logo.svg';
 import URLON from 'urlon'
+import ReactGA from 'react-ga';
 
 import { setProject, setProjectID } from '~/state/actions/project'
 
 const urlPropsQueryConfig = {
   id: { type: UrlQueryParamTypes.string }
 }
+
+ReactGA.initialize('UA-132388362-1');
+ReactGA.pageview(window.location.pathname + window.location.search);
+
 
 export class App extends React.PureComponent {
 
