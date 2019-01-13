@@ -159,6 +159,9 @@ export class Diagram3D extends React.Component {
       this.scene.remove(object);
     }
 
+    // In dimension 0, do nothing
+    if (this.props.dimension == 0) return;
+
     // Create edge graph
     let graph = new Graph(p => p.join(":"));
     for (let { source, target, codim, dir } of this.props.layout.edges) {
@@ -273,6 +276,7 @@ export class Diagram3D extends React.Component {
     surface = subdivideSurface(surface, merge, merge);
     surface = subdivideSurface(surface, merge, merge);
     surface = subdivideSurface(surface, merge, merge);
+    if (!surface) return;
     
     let groups = groupSurface(surface, (a, b) => a.generator.n == b.generator.n);
 

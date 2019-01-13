@@ -9,6 +9,7 @@ import cycle from "../cycle";
  * @return {Surface} The subdivided surface.
  */
 export const subdivideSurface = (surface, mergeFace = (a) => a, mergeEdge = (a) => a) => {
+  if (!surface) return null;
   let vertices = [];
   let annotations = [];
   let cells = [];
@@ -16,7 +17,10 @@ export const subdivideSurface = (surface, mergeFace = (a) => a, mergeEdge = (a) 
   // Create a face point for every face.
   let faceVertices = new Map();
 
+  if (!surface) debugger;
+
   for (let face of surface.faces.values()) {
+    //if (face.vertices.length == 0) continue;
     let position = Vector.average(...[...face.vertices].map(p => p.position));
     let annotation = mergeFace(...[...face.vertices].map(v => v.annotation));
 
@@ -59,6 +63,8 @@ export const subdivideSurface = (surface, mergeFace = (a) => a, mergeEdge = (a) 
       let Q = Vector.average(...faces.map(face => vertices[faceVertices.get(face.index)]));
       let R = Vector.average(...edges.map(edge => vertices[edgeVertices.get(edge.index)]));
       let S = vertex.position;
+
+      if (!Q || !R) return;
 
       let vector = [0, 0, 0];
       Vector.addScaled(vector, Q, 1 / edges.length);

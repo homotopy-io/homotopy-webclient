@@ -1,4 +1,5 @@
 export const average = (...vectors) => {
+  if (vectors.length == 0) return null;
   let average = Array(vectors[0].length).fill(0);
 
   for (let vector of vectors) {
