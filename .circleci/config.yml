@@ -24,9 +24,6 @@ jobs:
       - run:
           name: Build web client
           command: cd client && yarn run build
-      - run:
-          name: Copy index.html
-          command: cp client/assets/index.html client/dist
       - save_cache:
           key: dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
           paths:

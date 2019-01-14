@@ -1,6 +1,3 @@
-const webpack = require('webpack');
-const path = require("path");
-
 module.exports = {
   entry: {
     app: "./src/index.js"
@@ -34,17 +31,5 @@ module.exports = {
         enforce: "pre"
       }
     ]
-  },
-  plugins: [
-  ],
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js",
-    globalObject: "this"
-  },
-  devServer: {
-    contentBase: "./assets",
-    hot: true
-  },
-  devtool: "source-map"
+  }
 };
