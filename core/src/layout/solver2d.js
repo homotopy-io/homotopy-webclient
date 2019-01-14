@@ -344,68 +344,6 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
     }
   }
 
-/*
-    // Even up inputs and outputs for vertices
-    for (var i = 0; i < vertices.length; i++) {
-      var vertex = vertices[i];
-      //if (vertex.source_edges.length == 0) continue;
-      //if (vertex.target_edges.length == 0) continue;
-      if (vertex.source_edges.length + vertex.target_edges.length == 0) continue;
-      //let source_mean = vertex.source_edges.length == 0 ? null : (vertex.source_edges[0].x + vertex.source_edges[vertex.source_edges.length - 1].x) / 2;
-      //let target_mean = vertex.target_edges.length == 0 ? null : (vertex.target_edges[0].x + vertex.target_edges[vertex.target_edges.length - 1].x) / 2;
-      let source_mean = vertex.source_edges.length == 0 ? null : ArrayUtil.mean(vertex.source_edges);
-      let target_mean = vertex.target_edges.length == 0 ? null : ArrayUtil.mean(vertex.target_edges);
-      let shift_source = 0;
-      let shift_target = 0;
-      let shift_vertex = 0;
-      if (source_mean == null) {
-        if (vertex.x > target_mean) {
-          shift_target = vertex.x - target_mean;
-        } else if (target_mean > vertex.x) {
-          shift_vertex = target_mean - vertex.x;
-        }
-      } else if (target_mean == null) {
-        if (vertex.x > source_mean) {
-          shift_source = vertex.x - source_mean;
-        } else if (source_mean > vertex.x) {
-          shift_vertex = source_mean - vertex.x;
-        }
-      } else {
-        let mean = Math.max(vertex.x, target_mean, source_mean);
-        shift_source = mean > source_mean ? mean - source_mean : 0;
-        shift_target = mean > target_mean ? mean - target_mean : 0;
-        shift_vertex = mean > vertex.x ? mean - vertex.x : 0;
-      }
-      for (let i = 0; i < vertex.source_edges.length; i++) vertex.source_edges[i].x += shift_source;
-      for (let i = 0; i < vertex.target_edges.length; i++) vertex.target_edges[i].x += shift_target;
-      vertex.x += shift_vertex;
-      if (shift_source > 0 || shift_target > 0 || shift_vertex > 0) problem = true;
-
-    }
-    */
-
-  /*
-  // Set vertex x-coordinates for non-scalars
-  for (var i = 0; i < vertices.length; i++) {
-      var vertex = vertices[i];
-      if (vertex.source_edges.length + vertex.target_edges.length == 0) continue;
-      if (vertex.source_edges.length == 1) {
-          vertex.x = vertex.source_edges[0].x;
-      } else if (vertex.target_edges.length == 1) {
-          vertex.x = vertex.target_edges[0].x;
-      } else {
-          var total_x = 0;
-          for (var j = 0; j < vertex.source_edges.length; j++) {
-              total_x += vertex.source_edges[j].x;
-          }
-          for (var j = 0; j < vertex.target_edges.length; j++) {
-              total_x += vertex.target_edges[j].x;
-          }
-          vertex.x = total_x / (vertex.target_edges.length + vertex.source_edges.length);
-      }
-  }
-  */
-
   // Compute position data of all regular and singular points of the diagram
   let positions = new Map();
   let empty = regular_levels.length == 1 && regular_levels[0].length == 0;
@@ -480,21 +418,6 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
   let maxBounds = [max_x + 2, 2 * diagram.data.length + 1];
   yield* []; // fake the existence of an iterative solver
   return { positions, minBounds, maxBounds };
-
-  ///////////////////////////
-
-  /*
-  return { edges, vertices, regular_levels, max_x, max_y: diagram.data.length };
-
-  //////////////////////////////////////////////////
-
-  let bounds = solver.getBounds();
-  let minBounds = bounds.min;
-  let maxBounds = bounds.max;
-
-  yield* [];
-  return { positions, minBounds, maxBounds };
-  */
 }
 
 const pointId = point => point.join(":");

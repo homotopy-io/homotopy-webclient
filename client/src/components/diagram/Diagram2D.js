@@ -972,7 +972,7 @@ export class Diagram2D extends React.Component {
     return (
       <path
         d={path}
-        stroke={'#fff' /* colour */ }
+        stroke={/*'#fff'*/ colour }
         strokeWidth={1}
         vectorEffect={"non-scaling-stroke"}
         shapeRendering='crispEdges'

@@ -51,6 +51,7 @@ export default connect(
     diagram: getDiagram(state.proof),
     slice: getSlice(state.proof)
   }),
+
   dispatch => ({
     onSource: () => dispatch({ type: 'workspace/set-source' }),
     onTarget: () => dispatch({ type: 'workspace/set-target'}),
