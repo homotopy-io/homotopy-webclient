@@ -242,6 +242,8 @@ export default (state = initialWorkspace, action) => {
     } case 'workspace/restrict-diagram': {
 
       let { diagram, slice } = state.workspace;
+      if (!diagram || !slice) break;
+      if (slice.length == 0) break;
       for (let i=0; i<slice.length; i++) {
         if (slice > 0 && slice < 2 * diagram.data.length) {
           if (slice % 2 == 1) {

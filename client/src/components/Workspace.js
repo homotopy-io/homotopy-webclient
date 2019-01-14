@@ -33,8 +33,6 @@ export const Workspace = ({
           interactive
           onSelect={onSelectCell}
           onHomotopy={onHomotopy}
-          //onContract={onContract}
-          //onExpand={onExpand}
         />
       }
     </Wrapper>

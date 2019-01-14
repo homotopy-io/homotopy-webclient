@@ -327,8 +327,8 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
   }
 
   // Find maximum and minimum x-coordinates
-  let max_x = -Number.MAX_VALUE;
-  let min_x = Number.MAX_VALUE;
+  let max_x = 0;
+  let min_x = 0;
   for (var i = 0; i < regular_levels.length; i++) {
     let level = regular_levels[i];
     for (let j = 0; j < level.length; j++) {
@@ -408,8 +408,9 @@ export default function*(dimension, arg_points, arg_edges, diagram) {
 
   // Compute position data of all regular and singular points of the diagram
   let positions = new Map();
-  let left_boundary = { x : min_x - 2 };
-  let right_boundary = { x : max_x + 2 };
+  let empty = regular_levels.length == 1 && regular_levels[0].length == 0;
+  let left_boundary = { x : empty ? min_x - 1 : min_x - 2 };
+  let right_boundary = { x : empty ? max_x + 1 : max_x + 2 };
   for (let y = -1; y <= 2 * diagram.data.length + 1; y++) {
 
     let y_logical = Math.min(Math.max(y, 0), 2 * diagram.data.length);
