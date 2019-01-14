@@ -11,6 +11,7 @@ import Login from "~/components/Login";
 import ProjectListing from "~/components/ProjectListing";
 import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
+import ButtonTool from "~/components/tools/Buttons";
 import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
@@ -26,7 +27,6 @@ const urlPropsQueryConfig = {
 
 ReactGA.initialize('UA-132388362-1');
 ReactGA.pageview(window.location.pathname + window.location.search);
-
 
 export class App extends React.PureComponent {
 
@@ -93,12 +93,13 @@ export class App extends React.PureComponent {
           <Workspace />
         </Content>
         <ToolBar>
+          <ButtonTool />
           <DiagramTool />
           <AttachmentTool />
           <BoundaryTool />
         </ToolBar>
         <Login />
-      <ProjectListing />
+        <ProjectListing />
       </Container>
     );
   }

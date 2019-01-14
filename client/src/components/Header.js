@@ -58,7 +58,7 @@ export const Header = ({
               proof: serialization || URLON.parse(window.location.hash.substr(1)).proof
             }, setProjectID)
           }}>Save</Action>
-          <Action onClick={() => showModal('projectListing')}>My projects</Action>
+          <Action onClick={() => showModal('projectListing')}>Projects</Action>
           </React.Fragment>
     }
     {/*<Action>Gallery</Action>

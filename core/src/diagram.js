@@ -923,12 +923,22 @@ export class Diagram {
   equals(d2) {
     var d1 = this;
     if (d1.n != d2.n) return false;
-    if (d1.n == 0) return d1.type == d2.type;
+    if (d1.n == 0) return d1.id == d2.id;
     if (d1.data.length != d2.data.length) return false;
     for (var i = 0; i < this.data.length; i++) {
       if (!d1.data[i].equals(d2.data[i])) return false;
     }
     return d1.source.equals(d2.source);
+  }
+
+  sameBoundary(d2) {
+    if (!d2) return false;
+    let d1 = this;
+    if (d1.n != d2.n) return false;
+    if (d1.n == 0) return true;
+    if (!d1.source.equals(d2.source)) return false;
+    if (!d1.getTarget().equals(d2.getTarget())) return false;
+    return true;
   }
 
   // Produce the Content object that contracts a diagram
