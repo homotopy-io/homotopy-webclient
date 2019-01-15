@@ -33,3 +33,9 @@ Development:
 Deployment:
 
 - (Project collaborators only.) Merge to `stable` and push; this is then automatically deployed.
+
+## Citation
+
+You can cite _homotopy.io_ using the following BiBTeX entries:
+
+    @misc{homotopyio-tool, author = {Lukas Heidemann, Nick Hu and Jamie Vicary}, title = {\emph{homotopy.io}}, year = 2019, doi = {10.5281/zenodo.2540764}, url = {https://doi.org/10.5281/zenodo.2540764} }
