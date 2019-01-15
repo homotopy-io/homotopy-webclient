@@ -24,11 +24,6 @@ Subsequent times:
 
 - In root directory, run `yarn` to install all dependencies and link the included packages together.
 
-Production:
-
-- First run `yarn run build` in the `core` directory.
-- Then run `yarn run build` in the `client` directory.
-
 Development:
 
 - In `client` and `core`, run `npm run dev`, which automatically rebuilds when
