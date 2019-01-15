@@ -36,6 +36,6 @@ Deployment:
 
 ## Citation
 
-You can cite _homotopy.io_ using the following BiBTeX entries:
+You can cite _homotopy.io_ using the following BiBTeX entry:
 
     @misc{homotopyio-tool, author = {Lukas Heidemann, Nick Hu and Jamie Vicary}, title = {\emph{homotopy.io}}, year = 2019, doi = {10.5281/zenodo.2540764}, url = {https://doi.org/10.5281/zenodo.2540764} }
