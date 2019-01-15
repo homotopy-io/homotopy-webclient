@@ -76,11 +76,41 @@ export class Diagram3D extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
+    let old_diagram = this.diagramToRender;
+    let new_diagram = nextProps.diagram.getSlice(...nextProps.slice);
+
+    if (this.props.width != nextProps.width) return true;
+    if (this.props.height != nextProps.height) return true;
+
+    //let old_diagram = this.props.diagram;
+    //let new_diagram = nextProps.diagram;
+    if (old_diagram && !new_diagram) return true;
+    if (!old_diagram && new_diagram) return true;
+    if (!old_diagram.equals(new_diagram)) return true;
+    //if (!this.props.diagram.equals(nextProps.diagram)) return true;
+    if (this.props.slice.length != nextProps.slice.length) return true;
+    for (let i=0; i<this.props.slice.length; i++) {
+      if (this.props.slice[i] != nextProps.slice[i]) return true;
+    }
+    // Check for each generator used in the diagram if its parameters have changed
+    for (let id of Object.keys(this.props.generators)) {
+      if (!new_diagram.usesId(id)) continue;
+      let g_old = this.props.generators[id];
+      let g_new = nextProps.generators[id];
+      if (g_old.name != g_new.name) return true;
+      if (g_old.color != g_new.color) return true;
+    }
+    return false;
+
+
+/*
+
     let old_diagram = this.props.diagram;
     let new_diagram = nextProps.diagram;
     if (old_diagram && !new_diagram) return true;
     if (!old_diagram && new_diagram) return true;
     return (!this.props.diagram.equals(nextProps.diagram));
+    */
   }
 
   componentDidUpdate(oldProps) {
@@ -93,8 +123,11 @@ export class Diagram3D extends React.Component {
     }
 
     // Contents changed
+    this.diagramToRender = this.props.diagram.getSlice(...this.props.slice);
     let { diagram, dimension, slices, generators } = this.props;
-    
+    this.buildScene();
+
+    /*
     if (
       diagram !== oldProps.diagram ||
       dimension !== oldProps.dimension ||
@@ -106,6 +139,7 @@ export class Diagram3D extends React.Component {
         material.color.set(new THREE.Color(generators[id].color));
       }
     }
+    */
   }
 
   componentWillUnmount() {
@@ -114,10 +148,17 @@ export class Diagram3D extends React.Component {
   }
 
   get diagram() {
+    return this.diagramToRender;
+    //return this.props.diagram.getSlice(...this.props.slice);
+  }
+  /*
+  get diagram() {
     return this.props.diagram.getSlice(...this.props.slice);
   }
+  */
 
   render() {
+    this.diagramToRender = this.props.diagram.getSlice(...this.props.slice);
     return (
       <DiagramContainer innerRef={this.diagramRef} />
     );
@@ -158,6 +199,9 @@ export class Diagram3D extends React.Component {
     for (let object of this.objects) {
       this.scene.remove(object);
     }
+
+    // Discard all the materials because they may have changed
+    this.materials.clear();
 
     // In dimension 0, do nothing
     if (this.props.dimension == 0) return;

@@ -1130,6 +1130,20 @@ export class Diagram {
 
   }
 
+  getSingularContent() {
+    if (this.n == 0) return this.id;
+    let content = [];
+    for (let i=0; i<this.data.length; i++) {
+      let slice = this.getSlice({ height: i, regular: false});
+      content.push(slice.getSingularContent());
+    }
+    return content;
+  }
+
+  getSingularContentJSON() {
+    return JSON.stringify(this.getSingularContent());
+  }
+
   // Recursive procedure constructing a Limit object that expands a diagram at a given position
   getExpansionLimit({location, direction, generators}) {
 

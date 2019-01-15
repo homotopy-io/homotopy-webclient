@@ -37,6 +37,7 @@ export const idAt = (diagram, point) => {
 */
 
 export const idAt = (diagram, point) => {
+  _assert(diagram);
   return diagram.getActionId(point);
   
 }
