@@ -22,15 +22,19 @@ First time:
 
 Subsequent times:
 
-- in root directory, run `yarn` to install all dependencies and link the included packages together.
+- In root directory, run `yarn` to install all dependencies and link the included packages together.
 
 Production:
 
-- first, run `yarn run build` in the `core` directory.
-- then, run `yarn run build` in the `client` directory.
+- First run `yarn run build` in the `core` directory.
+- Then run `yarn run build` in the `client` directory.
 
 Development:
 
-- in `client` and `core`, run `npm run dev`, which automatically rebuilds when
+- In `client` and `core`, run `npm run dev`, which automatically rebuilds when
   the source changes. In `client`, this also starts a webserver at
   http://localhost:8080.
+  
+Deployment:
+
+- (Project collaborators only.) Merge to `stable` and push; this is then automatically deployed.
