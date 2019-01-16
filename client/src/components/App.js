@@ -25,6 +25,7 @@ const urlPropsQueryConfig = {
   id: { type: UrlQueryParamTypes.string }
 }
 
+// Google Analytics integration
 ReactGA.initialize('UA-132388362-1');
 ReactGA.pageview(window.location.pathname + window.location.search);
 
