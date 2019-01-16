@@ -64,7 +64,7 @@ export const subdivideSurface = (surface, mergeFace = (a) => a, mergeEdge = (a) 
       let R = Vector.average(...edges.map(edge => vertices[edgeVertices.get(edge.index)]));
       let S = vertex.position;
 
-      if (!Q || !R) return;
+      if (!Q || !R) return surface;
 
       let vector = [0, 0, 0];
       Vector.addScaled(vector, Q, 1 / edges.length);
