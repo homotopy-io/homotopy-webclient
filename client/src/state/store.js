@@ -7,11 +7,10 @@ import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
 import attachReducer, { initialAttach } from '~/state/store/attach'
 import persistReducer, { initialPersist } from '~/state/store/persist'
-import userReducer, { initialUser } from '~/state/store/user'
 import { setProjectID } from '~/state/actions/project'
 import projectReducer from '~/state/store/project'
-import { reducer as formReducer, change } from 'redux-form'
-import { reducer as projectListingReducer } from 'redux-modal'
+import { reducer as form, change } from 'redux-form'
+import { reducer as modal } from 'redux-modal'
 
 import { reactReduxFirebase, firebaseReducer } from 'react-redux-firebase'
 import { reduxFirestore, firestoreReducer } from 'redux-firestore'
@@ -32,7 +31,6 @@ export const initialProof = {
 
 export const initialState = {
   proof: initialProof,
-  user: initialUser
 }
 
 
@@ -73,11 +71,10 @@ const proofReducer = (state = initialState, action) => {
 const rootReducer = combineReducers({
   proof: proofReducer,
   project: projectReducer, // this reducer is meta - no associated state
-  form: formReducer,
-  user: userReducer,
-  modal: projectListingReducer,
   firebase: firebaseReducer,
-  firestore: firestoreReducer
+  firestore: firestoreReducer,
+  form,
+  modal
 })
 
 const reactReduxFirebaseConfig = {

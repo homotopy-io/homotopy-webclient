@@ -8,7 +8,6 @@ import { show } from 'redux-modal'
 import { change } from 'redux-form'
 
 import { firebaseConnect, firestoreConnect, isLoaded, isEmpty } from 'react-redux-firebase'
-import { openModal, setInitialTab } from "~/state/actions/user";
 import { setProject, setProjectID } from '~/state/actions/project'
 
 import styled from "styled-components";
@@ -24,7 +23,6 @@ export const Header = ({
   setProject, setProjectID,
   id,
   showModal,
-  openModal, setInitialTab,
   firebase, firestore, auth,
   serialize
 }) =>
@@ -35,8 +33,7 @@ export const Header = ({
       ? <span>Loading…</span>
       : isEmpty(auth)
         ? <React.Fragment>
-          <Action onClick={ () => {setInitialTab('login'); setTimeout(() => openModal(), 0)} }>Log In</Action>
-          <Action onClick={ () => {setInitialTab('register'); setTimeout(() => openModal(), 0)} }>Sign Up</Action>
+          <Action onClick={() => showModal('firebaseUiAuth')}>Log In</Action>
           </React.Fragment>
         : <React.Fragment>
           <Action onClick={() => alert('TODO: implement email/password changing')}>{auth.email}</Action>
@@ -73,8 +70,6 @@ export const Header = ({
   </Actions>;
 
 Header.propTypes = {
-  openModal: PropTypes.func.isRequired,
-  setInitialTab: PropTypes.func.isRequired,
   firebase: PropTypes.shape({
     logout: PropTypes.func.isRequired
   }),
@@ -91,8 +86,6 @@ export default compose(
       serialization: proof.serialization, proof
     }),
     dispatch => ({
-      setInitialTab: (index) => dispatch(setInitialTab(index)),
-      openModal: () => dispatch(openModal()),
       setProject: (project) => dispatch(setProject(project)),
       setProjectID: id => dispatch(setProjectID(id)),
       showModal: bindActionCreators(show, dispatch),
