@@ -29,9 +29,10 @@ const urlPropsQueryConfig = {
 ReactGA.initialize('UA-132388362-1');
 ReactGA.pageview(window.location.pathname + window.location.search);
 
-// Alert if the browser is not Chrome
-var isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-if (!isChrome) alert ('Homotopy.io works best when viewed in the Chrome web browser.');
+// Alert if the browser is not Firefox or Chrome
+const isFirefox = /Mozilla/.test(navigator.userAgent)
+const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor)
+if (!isFirefox && !isChrome) alert ('Homotopy.io is only tested on Firefox and Chrome.')
 
 export class App extends React.PureComponent {
 
