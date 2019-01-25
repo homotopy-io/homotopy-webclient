@@ -4,7 +4,7 @@ import { compose } from 'redux'
 import { connect } from "react-redux";
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query'
 import history from '~/util/history'
-import { firebaseConnect } from 'react-redux-firebase'
+import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
 import styled from "styled-components";
 import Header from "~/components/Header";
 import Login from "~/components/Login";
@@ -43,38 +43,38 @@ export class App extends React.PureComponent {
     id: PropTypes.string
   }
 
-  componentDidMount() {
+  async componentDidMount() {
     const hash = window.location.hash.substr(1);
-    this.props.authIsReady
-      .then(() => {
-        if (this.props.id) { // if we got a project id
-          if (this.props.uid) { // and a user id
-            const fileRef = this.props.firebase.storage().ref().child(`${this.props.uid}/${this.props.id}/0.proof`)
-            fileRef.getMetadata() // try to retrieve the project…
-              .then(meta => {
-                if (!hash || hash === 'undefined' || hash === 'null') // set it if we got no data in the url
-                  fileRef.getDownloadURL()
-                    .then(url => {
-                      const xhr = new XMLHttpRequest()
-                      xhr.onload = (evt => {
-                        this.props.dispatch(setProject({
-                          id: this.props.id,
-                          metadata: meta.customMetadata, // set metadata from firebase storage metadata
-                          proof: xhr.response
-                        }))
-                      })
-                      xhr.open('GET', url) // get proof blob from firebase storage
-                      xhr.send()
-                    })
-              })
-            .catch(err => { // not found
-              this.props.dispatch(setProjectID(undefined))
-            })
-          } else { // not logged in
-            this.props.dispatch(setProjectID(undefined))
-          }
+    const getProofPath = async () => {
+      // get from firestore the path to the blob
+      await this.props.firestore.get({ collection: "projects", doc: this.props.id })
+      const uid = this.props.projects[this.props.id].uid
+      if (this.props.uid !== uid)
+        this.props.dispatch(setProjectID(undefined)) // doesn't belong to us
+      return `${uid}/${this.props.id}/0.proof`
+    }
+    await this.props.authIsReady
+    if (this.props.id) { // if we got a project id
+      try {
+        const path = await getProofPath()
+        const fileRef = this.props.firebase.storage().ref().child(path)
+        const meta = await fileRef.getMetadata() // try to retrieve the project…
+        if (!hash || hash === 'undefined' || hash === 'null') { // set it if we got no data in the url
+          const url = await fileRef.getDownloadURL()
+          const xhr = new XMLHttpRequest()
+          xhr.onload = (evt => {
+            this.props.dispatch(setProject({
+              metadata: meta.customMetadata, // set metadata from firebase storage metadata
+              proof: xhr.response
+            }))
+          })
+          xhr.open('GET', url) // get proof blob from firebase storage
+          xhr.send()
         }
-      })
+      } catch (err) { // couldn't retrieve project
+        this.props.dispatch(setProjectID(undefined))
+      }
+    }
     // listen for hash changes
     history.listen((location, action) => {
       try {
@@ -112,10 +112,12 @@ export class App extends React.PureComponent {
 
 export default compose(
   firebaseConnect(),
+  firestoreConnect(),
   connect(
     state => ({
       serialization: state.proof.serialization,
-      uid: state.firebase.auth.uid
+      uid: state.firebase.auth.uid,
+      projects: state.firestore.data.projects
     })
   ),
   addUrlProps({ urlPropsQueryConfig })

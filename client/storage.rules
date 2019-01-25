@@ -1,6 +1,9 @@
 service firebase.storage {
   match /b/{bucket}/o {
     // Files look like: "/<UID>/<PROJECTID>/<VERSION>.proof"
+    match /{userId}/{projectId}/{version} {
+      allow read: if resource.metadata.public == "true";
+    }
     match /{userId}/{allPaths=**} {
       allow read, write: if request.auth.uid == userId;
     }

@@ -27,6 +27,14 @@ export const ProjectListing = ({
       <Project key={project.id}>
       {/* TODO: handle multiple versions */}
       {JSON.stringify(project.versions[0].metadata)}
+      <br /><input type="checkbox" checked={project.public} onClick={evt => {
+        const readable = evt.target.checked
+        firestore.update({ collection: "projects", doc: project.id }, {public: readable})
+        const blob = firebase.storage().ref().child(`${uid}/${project.id}/0.proof`)
+        blob.updateMetadata({
+          customMetadata: {public: readable}
+        })
+      }}/>Public<br />
       <button onClick={() => {
         load(firebase, project, setProject)
         handleHide()
