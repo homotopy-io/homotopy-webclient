@@ -3,6 +3,7 @@ import dotProp from "dot-prop-immutable";
 import { connect } from "react-redux";
 import styled from "styled-components";
 import Collapsible from 'react-collapsible'
+import './Collapsible.css'
 import { Field, reduxForm } from 'redux-form'
 
 import Generator from "~/components/Generator";
@@ -48,7 +49,10 @@ export const Signature = ({
           </MetaLabel>
         </Wrapper>
         <Wrapper style={{padding: '0px 8px 8px 8px'}}>
-          <Collapsible trigger={<MetaLabel><label htmlFor="abstract" style={{paddingRight: '8px'}}>Abstract</label></MetaLabel>}>
+          <Collapsible trigger={<MetaLabel><label htmlFor="abstract" style={{paddingRight: '8px'}}>Abstract</label></MetaLabel>}
+                       open={typeof metadata !== 'undefined'
+                             && typeof metadata.abstract !== 'undefined'
+                             && metadata.abstract !== ""}>
             <Field name="abstract" component="textarea" rows={5} onBlur={evt => {
               // update hash
               const hash = window.location.hash.substr(1)
