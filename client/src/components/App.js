@@ -2,6 +2,8 @@ import * as React from "react";
 import PropTypes from 'prop-types'
 import { compose } from 'redux'
 import { connect } from "react-redux";
+import ReduxBlockUi from 'react-block-ui/redux'
+import 'react-block-ui/style.css'
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query'
 import history from '~/util/history'
 import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
@@ -89,24 +91,26 @@ export class App extends React.PureComponent {
 
   render() {
     return (
-      <Container>
-        <SignatureBar>
-          <Logo><LogoImage src={LogoImg}/></Logo>
-          <Signature />
-        </SignatureBar>
-        <Content>
-          <Header />
-          <Workspace />
-        </Content>
-        <ToolBar>
-          <ButtonTool />
-          <DiagramTool />
-          <AttachmentTool />
-          <BoundaryTool />
-        </ToolBar>
-        <Login />
-        <ProjectListing />
-      </Container>
+      <ReduxBlockUi style={{height: "100%"}} block={"@@reduxFirestore/GET_REQUEST"} unblock={["persist/deserialize", /fail/i]}>
+        <Container>
+          <SignatureBar>
+            <Logo><LogoImage src={LogoImg}/></Logo>
+            <Signature />
+          </SignatureBar>
+          <Content>
+            <Header />
+            <Workspace />
+          </Content>
+          <ToolBar>
+            <ButtonTool />
+            <DiagramTool />
+            <AttachmentTool />
+            <BoundaryTool />
+          </ToolBar>
+          <Login />
+          <ProjectListing />
+        </Container>
+      </ReduxBlockUi>
     );
   }
 }

@@ -34,6 +34,7 @@
     "mda": "^1.1.1",
     "pako": "^1.0.7",
     "react": "16.4.2",
+    "react-block-ui": "^1.1.3",
     "react-collapsible": "^2.3.2",
     "react-color": "^2.14.1",
     "react-dom": "16.4.2",
