@@ -9,7 +9,8 @@ module.exports = merge(common, {
   plugins: [
     new CleanWebpackPlugin(['dist']),
     new HtmlWebpackPlugin({
-      template: "assets/index.html"
+      template: "assets/index.html",
+      favicon: "assets/favicon.ico"
     })
   ],
   output: {

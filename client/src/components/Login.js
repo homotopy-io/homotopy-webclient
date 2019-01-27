@@ -3,10 +3,13 @@ import PropTypes from 'prop-types'
 import { compose } from 'redux'
 import { connect } from 'react-redux'
 import { connectModal } from 'redux-modal'
-import Modal from 'react-modal'
 import { firebaseConnect } from 'react-redux-firebase'
 import FirebaseAuth from 'react-firebaseui/FirebaseAuth'
 import * as firebaseui from 'firebaseui'
+
+import Dialog from '@material-ui/core/Dialog'
+import DialogContent from '@material-ui/core/DialogContent'
+import DialogTitle from '@material-ui/core/DialogTitle'
 
 const Login = ({
   show, handleHide, firebase
@@ -31,24 +34,16 @@ const Login = ({
     },
     credentialHelper: firebaseui.auth.CredentialHelper.GOOGLE_YOLO
   }
-  return <Modal
-    isOpen={show}
-    onAfterOpen={() => console.log("Login opened")}
-    onRequestClose={handleHide}
-    style={{
-      content: {
-        top: "50%",
-        left: "50%",
-        right: "auto",
-        bottom: "auto",
-        marginRight: "-50%",
-        transform: 'translate(-50%, -50%)'
-      }
-    }}
-    contentLabel="Login"
+  return <Dialog
+    open={show}
+    onClose={handleHide}
+    aria-labelledby="login-title"
   >
-    <FirebaseAuth uiCallback={ui => ui.disableAutoSignIn()} uiConfig={uiConfig} firebaseAuth={firebase.auth()} />
-  </Modal>
+    <DialogTitle id="login-title">Login</DialogTitle>
+    <DialogContent>
+      <FirebaseAuth uiCallback={ui => ui.disableAutoSignIn()} uiConfig={uiConfig} firebaseAuth={firebase.auth()} />
+    </DialogContent>
+  </Dialog>
 }
 
 Login.propTypes = {

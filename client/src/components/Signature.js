@@ -2,7 +2,6 @@ import * as React from "react";
 import dotProp from "dot-prop-immutable";
 import { connect } from "react-redux";
 import styled from "styled-components";
-import Collapsible from 'react-collapsible'
 import { Field, reduxForm } from 'redux-form'
 
 import Generator from "~/components/Generator";
@@ -12,56 +11,89 @@ import IconButton from "~/components/misc/IconButton";
 
 import URLON from 'urlon'
 
+import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+import TextField from '@material-ui/core/TextField'
+import ExpansionPanel from '@material-ui/core/ExpansionPanel'
+import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary'
+import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails'
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
+import Typography from '@material-ui/core/Typography'
+
+const theme = createMuiTheme({
+  typography: {
+    useNextVariants: true
+  },
+  palette: {
+    type: "dark",
+		background: {
+			paper: "#34495e"
+		}
+  }
+})
+
+// from https://redux-form.com/8.1.0/examples/material-ui/
+const renderTextField = ({
+  label,
+  input,
+  meta: { touched, invalid, error },
+  ...custom
+}) => (
+  <TextField
+  label={label}
+  placeholder={label}
+  error={touched && invalid}
+  helperText={touched && error}
+  {...input}
+  {...custom}
+  />
+)
+
 export const Signature = ({
   groups, onAddGenerator, metadata
 }) =>
-  <Wrapper style={{userSelect: 'none'}}>
+  <MuiThemeProvider theme={theme} style={{userSelect: 'none'}}>
     <Group>
       <GroupHeader>
-        <GroupLabel>
-          <Field name="title" component="input" type="text" onBlur={evt => {
-            // update hash
-            const hash = window.location.hash.substr(1)
-            if (hash) {
-              const data = URLON.parse(window.location.hash.substr(1))
-              window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.title', metadata.title))
-            } else {
-              window.location.hash = URLON.stringify({ metadata })
-            }
-          }} style={titleStyle} />
-        </GroupLabel>
+        <Field name="title" component={renderTextField} fullWidth onBlur={evt => {
+          // update hash
+          const hash = window.location.hash.substr(1)
+          if (hash) {
+            const data = URLON.parse(window.location.hash.substr(1))
+            window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.title', metadata.title))
+          } else {
+            window.location.hash = URLON.stringify({ metadata })
+          }
+        }} inputProps={{style: titleStyle}} />
       </GroupHeader>
-      <GroupContent>
-        <Wrapper style={{padding: '0px 8px 8px 8px'}}>
-          <MetaLabel>
-            <label htmlFor="author" style={{paddingRight: '8px'}}>Author</label>
-            <Field name="author" component="input" type="text" onBlur={evt => {
-              // update hash
-              const hash = window.location.hash.substr(1)
-              if (hash) {
-                const data = URLON.parse(window.location.hash.substr(1))
-                window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.author', metadata.author))
-              } else {
-                window.location.hash = URLON.stringify({ metadata })
-              }
-            }} style={inputStyle} />
-          </MetaLabel>
-        </Wrapper>
-        <Wrapper style={{padding: '0px 8px 8px 8px'}}>
-          <Collapsible trigger={<MetaLabel><label htmlFor="abstract" style={{paddingRight: '8px'}}>Abstract</label></MetaLabel>}>
-            <Field name="abstract" component="textarea" rows={5} onBlur={evt => {
-              // update hash
-              const hash = window.location.hash.substr(1)
-              if (hash) {
-                const data = URLON.parse(window.location.hash.substr(1))
-                window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.abstract', metadata.abstract))
-              } else {
-                window.location.hash = URLON.stringify({ metadata })
-              }
-            }} style={inputStyle} />
-          </Collapsible>
-        </Wrapper>
-      </GroupContent>
+			<div style={{margin: '0px 16px 8px 16px'}}>
+				<Field name="author" component={renderTextField} label="Author" fullWidth onBlur={evt => {
+					// update hash
+					const hash = window.location.hash.substr(1)
+					if (hash) {
+						const data = URLON.parse(window.location.hash.substr(1))
+						window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.author', metadata.author))
+					} else {
+						window.location.hash = URLON.stringify({ metadata })
+					}
+				}} />
+			</div>
+			<ExpansionPanel>
+				<ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
+					<Typography>Abstract</Typography>
+				</ExpansionPanelSummary>
+				<ExpansionPanelDetails>
+					<Field name="abstract" component={renderTextField} multiline fullWidth onBlur={evt => {
+						// update hash
+						const hash = window.location.hash.substr(1)
+						if (hash) {
+							const data = URLON.parse(window.location.hash.substr(1))
+							window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.abstract', metadata.abstract))
+						} else {
+							window.location.hash = URLON.stringify({ metadata })
+						}
+					}} />
+				</ExpansionPanelDetails>
+			</ExpansionPanel>
     </Group>
     {groups.map((generators, dimension) =>
       <Group key={dimension}>
@@ -83,7 +115,7 @@ export const Signature = ({
         </GroupContent>
       </Group>
     )}
-  </Wrapper>;
+  </MuiThemeProvider>;
 
 export default connect(
   state => ({
@@ -101,8 +133,6 @@ export default connect(
 )(reduxForm({
   form: "metadata"
 })(Signature))
-
-const Wrapper = styled.div``;
 
 const Group = styled.div``;
 
@@ -131,29 +161,7 @@ const GroupContent = styled.div`
   padding-bottom: 16px;
 `;
 
-const MetaLabel = styled.div`
-  font-weight: 500;
-  padding: 8px;
-  display: flex;
-  background: #34495e;
-  border: none;
-  color: #ecf0f1;
-  text-transform: capitalize;
-`
-
 const titleStyle = {
-  paddingLeft: '4px',
-  background: '#34495e',
-  border: 'none',
-  width: '100%',
-  color: '#ecf0f1',
-  fontSize: '1.2em'
+  fontSize: "1.3em"
 }
 
-const inputStyle = {
-  paddingLeft: '4px',
-  background: '#46596c',
-  border: 'none',
-  width: '100%',
-  color: '#ecf0f1'
-}

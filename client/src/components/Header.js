@@ -17,6 +17,8 @@ import { save } from '~/util/firebase'
 
 import URLON from 'urlon' // for an ugly hack
 
+import CircularProgress from '@material-ui/core/CircularProgress'
+
 export const Header = ({
   serialization, proof,
   metadata,
@@ -30,7 +32,7 @@ export const Header = ({
     {/* 0ms sleeps are an ugly hack because otherwise the initialTab state does
     not propagate properly --- TODO: fixme */}
     { !isLoaded(auth)
-      ? <span>Loading…</span>
+      ? <CircularProgress />
       : isEmpty(auth)
         ? <React.Fragment>
           <Action onClick={() => showModal('firebaseUiAuth')}>Log In</Action>
