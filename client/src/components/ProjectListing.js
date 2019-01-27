@@ -3,62 +3,119 @@ import { compose } from 'redux'
 import { connect } from 'react-redux'
 import styled from "styled-components";
 
+import Button from '@material-ui/core/Button'
+import Card from '@material-ui/core/Card'
+import CardActions from '@material-ui/core/CardActions'
+import CardContent from '@material-ui/core/CardContent'
+import CardHeader from '@material-ui/core/CardHeader'
+import DeleteIcon from '@material-ui/icons/Delete'
+import Dialog from '@material-ui/core/Dialog'
+import DialogActions from '@material-ui/core/DialogActions'
+import DialogContent from '@material-ui/core/DialogContent'
+import DialogTitle from '@material-ui/core/DialogTitle'
+import FilterNoneIcon from '@material-ui/icons/FilterNone'
+import FormControlLabel from '@material-ui/core/FormControlLabel'
+import IconButton from '@material-ui/core/IconButton'
+import LaunchIcon from '@material-ui/icons/Launch'
+import LinkIcon from '@material-ui/icons/Link'
+import Switch from '@material-ui/core/Switch'
+import Tooltip from '@material-ui/core/Tooltip'
+import Typography from '@material-ui/core/Typography'
+
 import { connectModal } from 'redux-modal'
 import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
-import Modal from 'react-modal'
 
 import { setProject, setProjectID } from '~/state/actions/project'
 import { save, load } from '~/util/firebase'
 
-Modal.setAppElement('body')
-
-// TODO: styling
-
 export const ProjectListing = ({
   show, handleHide, uid, projects, firebase, firestore, setProject, serialization
 }) =>
-  <Modal
-    isOpen={show}
-    onAfterOpen={() => console.log("Project listing opened")}
-    onRequestClose={handleHide}
-    contentLabel="Project Listing"
+  <Dialog
+    open={show}
+    onClose={handleHide}
+    scroll="paper"
+    aria-labelledby="project-listing-title"
   >
-    {projects.map(project =>
-      <Project key={project.id}>
-      {/* TODO: handle multiple versions */}
-      {JSON.stringify(project.versions[0].metadata)}
-      <br /><input type="checkbox" checked={project.public} onClick={evt => {
-        const readable = evt.target.checked
-        firestore.update({ collection: "projects", doc: project.id }, {public: readable})
-        const blob = firebase.storage().ref().child(`${uid}/${project.id}/0.proof`)
-        blob.updateMetadata({
-          customMetadata: {public: readable}
-        })
-      }}/>Public<br />
-      <button onClick={() => {
-        load(firebase, project, setProject)
-        handleHide()
-      }}>Load</button>
-      <button onClick={() => {
-        load(firebase, project, setProject)
-        save(firebase, firestore, {
-          uid,
-          docid: undefined, // force a new document to be created
-          metadata: project.versions[0].metadata,
-          proof: serialization
-        }, setProjectID)
-        handleHide()
-      }}>Clone</button>
-      <button onClick={() => {
-        // delete db entry in firestore
-        firestore.delete({ collection: 'projects', doc: project.id })
-        // delete blob in firebase storage
-        firebase.deleteFile(`${uid}/${project.id}/0.proof`)
-      }}>Delete</button>
-      </Project>
-    )}
-    <button onClick={handleHide}>Close</button>
-  </Modal>
+    <DialogTitle id="project-listing-title">Projects</DialogTitle>
+    <DialogContent>
+      {projects.map(project =>
+        <Project key={project.id}>
+        {/* TODO: handle multiple versions */}
+          <Card>
+            <CardHeader
+              title={project.versions[0].metadata.title}
+              subheader={`Author: ${project.versions[0].metadata.author}`} />
+            <CardContent>
+              <Typography>
+                {project.versions[0].metadata.abstract}
+              </Typography>
+            </CardContent>
+            <CardActions disableActionSpacing>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={project.public}
+                    onChange={evt => {
+                      const readable = evt.target.checked
+                      firestore.update({ collection: "projects", doc: project.id }, {public: readable})
+                      const blob = firebase.storage().ref().child(`${uid}/${project.id}/0.proof`)
+                      blob.updateMetadata({
+                        customMetadata: {public: readable}
+                      })
+                    }}
+                    value="public"
+                  />
+                }
+                label="Public"
+              />
+              <Tooltip title={project.public ? "Copy link to clipboard" : "Make the project public to create a sharable link"}>
+                <div>
+                  <IconButton aria-label="Copy link to clipboard" disabled={!project.public}>
+                    <LinkIcon />
+                  </IconButton>
+                </div>
+              </Tooltip>
+              <Tooltip title="Load">
+                <IconButton aria-label="Load" onClick={() => {
+                  load(firebase, project, setProject)
+                  handleHide()
+                }}>
+                  <LaunchIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Clone">
+                <IconButton aria-label="Clone" onClick={() => {
+                  load(firebase, project, setProject)
+                  save(firebase, firestore, {
+                    uid,
+                    docid: undefined, // force a new document to be created
+                    metadata: project.versions[0].metadata,
+                    proof: serialization
+                  }, setProjectID)
+                }}>
+                  <FilterNoneIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton aria-label="Delete" onClick={() => {
+                  // delete db entry in firestore
+                  firestore.delete({ collection: 'projects', doc: project.id })
+                  // delete blob in firebase storage
+                  firebase.deleteFile(`${uid}/${project.id}/0.proof`)
+                }}>
+                  <DeleteIcon />
+                </IconButton>
+              </Tooltip>
+            </CardActions>
+          </Card>
+        </Project>
+      )}
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={handleHide}>Close</Button>
+    </DialogActions>
+  </Dialog>
 
 export default compose(
   connect(
@@ -87,4 +144,5 @@ export default compose(
 )(ProjectListing)
 
 const Project = styled.div`
+ margin-bottom: 12px;
 `;

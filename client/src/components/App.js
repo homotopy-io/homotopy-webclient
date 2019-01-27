@@ -21,6 +21,9 @@ import LogoImg from '../logo.svg';
 import URLON from 'urlon'
 import ReactGA from 'react-ga';
 
+import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+import CircularProgress from '@material-ui/core/CircularProgress'
+
 import { setProject, setProjectID } from '~/state/actions/project'
 
 const urlPropsQueryConfig = {
@@ -30,6 +33,13 @@ const urlPropsQueryConfig = {
 // Google Analytics integration
 ReactGA.initialize('UA-132388362-1');
 ReactGA.pageview(window.location.pathname + window.location.search);
+
+// Material UI theme
+const theme = createMuiTheme({
+  typography: {
+    useNextVariants: true
+  }
+})
 
 // Alert if the browser is not Firefox or Chrome
 const isFirefox = /Mozilla/.test(navigator.userAgent)
@@ -91,26 +101,33 @@ export class App extends React.PureComponent {
 
   render() {
     return (
-      <ReduxBlockUi style={{height: "100%"}} block={"@@reduxFirestore/GET_REQUEST"} unblock={["persist/deserialize", /fail/i]}>
-        <Container>
-          <SignatureBar>
-            <Logo><LogoImage src={LogoImg}/></Logo>
-            <Signature />
-          </SignatureBar>
-          <Content>
-            <Header />
-            <Workspace />
-          </Content>
-          <ToolBar>
-            <ButtonTool />
-            <DiagramTool />
-            <AttachmentTool />
-            <BoundaryTool />
-          </ToolBar>
-          <Login />
-          <ProjectListing />
-        </Container>
-      </ReduxBlockUi>
+      <MuiThemeProvider theme={theme}>
+        <ReduxBlockUi
+          style={{height: "100%"}}
+          block={"@@reduxFirestore/GET_REQUEST"}
+          unblock={["persist/deserialize", /fail/i]}
+          loader={<CircularProgress />}
+        >
+          <Container>
+            <SignatureBar>
+              <Logo><LogoImage src={LogoImg}/></Logo>
+              <Signature />
+            </SignatureBar>
+            <Content>
+              <Header />
+              <Workspace />
+            </Content>
+            <ToolBar>
+              <ButtonTool />
+              <DiagramTool />
+              <AttachmentTool />
+              <BoundaryTool />
+            </ToolBar>
+            <Login />
+            <ProjectListing />
+          </Container>
+        </ReduxBlockUi>
+      </MuiThemeProvider>
     );
   }
 }
