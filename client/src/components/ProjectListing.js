@@ -25,11 +25,13 @@ import Typography from '@material-ui/core/Typography'
 import { connectModal } from 'redux-modal'
 import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
 
+import copy from 'copy-to-clipboard'
+
 import { setProject, setProjectID } from '~/state/actions/project'
 import { save, load } from '~/util/firebase'
 
 export const ProjectListing = ({
-  show, handleHide, uid, projects, firebase, firestore, setProject, serialization
+  show, handleHide, uid, projects, firebase, firestore, setProject, serialization, copied, clearCopied, setCopied
 }) =>
   <Dialog
     open={show}
@@ -69,9 +71,16 @@ export const ProjectListing = ({
                 }
                 label="Public"
               />
-              <Tooltip title={project.public ? "Copy link to clipboard" : "Make the project public to create a sharable link"}>
+              <Tooltip
+                title={project.public ? copied ? "Copied!" : "Copy link to clipboard" : "Make the project public to create a sharable link"}
+                onClose={evt => setTimeout(clearCopied, 1000)}
+                interactive
+              >
                 <div>
-                  <IconButton aria-label="Copy link to clipboard" disabled={!project.public}>
+                  <IconButton aria-label="Copy link to clipboard" disabled={!project.public} onClick={() => {
+                    copy(`${window.location.host}/?id=${project.id}`)
+                    setCopied()
+                  }}>
                     <LinkIcon />
                   </IconButton>
                 </div>
@@ -122,11 +131,14 @@ export default compose(
     state => ({
       uid: state.firebase.auth.uid,
       projects: state.firestore.ordered.projects,
-      serialization: state.proof.serialization
+      serialization: state.proof.serialization,
+      copied: state.copied
     }),
     dispatch => ({
       setProject: project => dispatch(setProject(project)),
-      setProjectID: id => dispatch(setProjectID(id))
+      setProjectID: id => dispatch(setProjectID(id)),
+      setCopied: () => dispatch({ type: "copied/set" }),
+      clearCopied: () => dispatch({ type: "copied/clear" })
     })
   ),
   firebaseConnect(),

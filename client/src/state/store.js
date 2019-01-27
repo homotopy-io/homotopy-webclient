@@ -8,6 +8,7 @@ import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
 import attachReducer, { initialAttach } from '~/state/store/attach'
 import persistReducer, { initialPersist } from '~/state/store/persist'
+import copied from '~/state/store/copied'
 import { setProjectID } from '~/state/actions/project'
 import projectReducer from '~/state/store/project'
 import { reducer as form, change } from 'redux-form'
@@ -32,6 +33,7 @@ export const initialProof = {
 
 export const initialState = {
   proof: initialProof,
+  copied: false
 }
 
 
@@ -75,7 +77,8 @@ const rootReducer = combineReducers({
   firebase: firebaseReducer,
   firestore: firestoreReducer,
   form,
-  modal
+  modal,
+  copied
 })
 
 const reactReduxFirebaseConfig = {
