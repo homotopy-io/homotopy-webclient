@@ -488,7 +488,7 @@ export class Monotone extends Array {
         x++;
       }
       upper_elements.push(upper_list);
-      g.addLinearGraph(upper_list, upper[i].bias_left);
+      g.addLinearGraph(upper_list, upper[i].bias);
     }
 
     // Quotient by the data of the lower monotones
@@ -513,7 +513,7 @@ export class Monotone extends Array {
     let order = g.getLinearOrder();
 
     // If it wasn't linearly orderable, fail
-    //if (!order) return null;
+    if (order.error) return order;
 
     // Build the cocones, which should be monotones
     let size = g.getNumNodes();

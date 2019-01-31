@@ -9,10 +9,10 @@ export class DirectedQuotientGraph {
     this.aliases = new Map(); // remember old node names
   }
 
-  addNode(node, bias_left) {
+  addNode(node, bias) {
     let nodeData = this.nodes.get(node);
     if (nodeData) return;
-    this.nodes.set(node, { predecessors: new Set(), successors: new Set(), bias_left });
+    this.nodes.set(node, { predecessors: new Set(), successors: new Set(), bias });
   }
 
   addEdge(source, target) {
@@ -28,10 +28,10 @@ export class DirectedQuotientGraph {
     return this.nodes.get(source).successors.has(target);
   }
 
-  addLinearGraph(list, bias_left) {
+  addLinearGraph(list, bias) {
     if (_debug) _assert(list instanceof Array);
     for (let i=0; i<list.length; i++) {
-      this.addNode(list[i], bias_left);
+      this.addNode(list[i], bias);
       if (i == 0) continue;
       this.addEdge(list[i - 1], list[i]);
     }
@@ -48,7 +48,7 @@ export class DirectedQuotientGraph {
     if (_debug) _assert(this.nodes.get(b));
     let a_data = this.nodes.get(a);
     let b_data = this.nodes.get(b);
-    let final_bias = a_data.bias_left || b_data.bias_left;
+    let final_bias = a_data.bias || b_data.bias;
     let a_predecessors = [...a_data.predecessors.keys()];
     for (let i=0; i<a_predecessors.length; i++) {
       let predecessor = a_predecessors[i];
@@ -80,7 +80,7 @@ export class DirectedQuotientGraph {
       }
     }, this);
     this.aliases.set(a, b);
-    b_data.bias_left = final_bias;
+    b_data.bias = final_bias;
     if (_debug) _assert(this.isIrreflexive());
   }
 
@@ -210,12 +210,17 @@ export class DirectedQuotientGraph {
     // Iteratively select from and update this list of candidate elements
     while (next_elements.size > 0) {
 
+      // Check if first node has zero bias
+      let require_unique = (this.nodes.values().next().value.bias === 0);
+
       // See if any of them are acceptable
       let chosen_node;
+      let failure = false;
       for (let node of next_elements) {
 
         // Is this node the successor of any other next_element?
         let invalid = false;
+        let elements = next_elements.entries()
         for (let a of next_elements) {
           if (a == node) continue;
           if (this.nodes.get(a).successors.has(node)) {
@@ -224,20 +229,29 @@ export class DirectedQuotientGraph {
         }
         if (invalid) continue;
 
+        // Check for non-unique linear order
+        if (require_unique && chosen_node !== undefined) {
+          failure = true;
+          break;
+        }
+
         // Possibly choose this node
         if (chosen_node === undefined) chosen_node = node;
 
         // Is the new node preferable?
-        else if (!this.nodes.get(chosen_node).bias_left && this.nodes.get(node).bias_left) {
+        else if (this.nodes.get(node).bias < this.nodes.get(chosen_node).bias) {
           chosen_node = node;
         }
 
-        // If the chosen node has bias_left, it's the winner
-        if (this.nodes.get(chosen_node).bias_left) break;
+        // If the chosen node has bias -1, it's the winner
+        if (this.nodes.get(chosen_node).bias === -1) break;
       }
 
+      if (failure) return { error: 'not contractible' };
+
       // There should always be a chosen node
-      if (_debug) _assert(chosen_node !== undefined);
+      //if (_debug) _assert(chosen_node !== undefined);
+      if (chosen_node === null) return null;
 
       // Set this node as next in the linear order
       linear_order.set(chosen_node, linear_order.size);
@@ -248,7 +262,6 @@ export class DirectedQuotientGraph {
       for (let a of immediate_successors) {
         next_elements.add(a);
       }
-
     }
 
     // We should have ordered all the elements
@@ -261,40 +274,6 @@ export class DirectedQuotientGraph {
 
     // Return the linear order
     return linear_order;
-  }
-
-  // Return the linear order of all the names, including aliases. MUST BE TRANSITIVELY CLOSED.
-  getLinearOrder_OLD() {
-
-    // Rank the nodes by number of successors
-    let num_nodes = [...this.nodes.keys()].length;
-    let nodes_by_num_successors = [];
-    let initial = null;
-    this.nodes.forEach(function(data, node) {
-      let num_successors = [...data.successors.keys()].length;
-      if (_debug) _assert(num_successors < num_nodes);
-      if (_debug) _assert(nodes_by_num_successors[num_successors] === undefined);
-      //if (nodes_by_num_successors[num_successors] !== undefined) return null;
-      nodes_by_num_successors[num_successors] = node;
-    }, this);
-    for (let i=0; i<num_nodes; i++) {
-      //if (nodes_by_num_successors[i] === undefined) return null;
-      if (_debug) _assert(nodes_by_num_successors[i] !== undefined);
-    }
-
-    // Build the final map of the linear order on all names
-    let order = new Map();
-    for (let i=0; i<num_nodes; i++) {
-      order.set(nodes_by_num_successors[num_nodes - i - 1], i);
-    }
-
-    // Also build it for the aliases which have been substituted
-    this.aliases.forEach(function(value, key) {
-      if (_debug) _assert(order.has(value));
-      order.set(key, order.get(value));
-    });
-
-    return order;
   }
 
   getNumNodes() {

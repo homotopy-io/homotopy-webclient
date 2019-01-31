@@ -1072,7 +1072,7 @@ export class Diagram {
 
         // Try to contract from start to finish
         let singular = this.getSlice({ height: start, regular: false });
-        let upper = [{ diagram: singular, bias_left: false }];
+        let upper = [{ diagram: singular, bias: 0 }];
         let lower = [];
         for (let i=start; i<finish; i++) {
           let backward_limit = this.data[i].backward_limit;
@@ -1083,7 +1083,7 @@ export class Diagram {
             right_index: i + 1 - start, right_limit: forward_limit
           });
           singular = forward_limit.rewrite_forward(regular);
-          upper.push({ diagram: singular, bias_left: false });
+          upper.push({ diagram: singular, bias: 0 });
         }
         let contraction = Diagram.multiUnify({ lower, upper, generators });
 
@@ -1357,6 +1357,7 @@ export class Diagram {
     if (_debug) _assert(location.length >= 1); // Contraction requires at least 1 coordinate
     let height = location[0].height;
     if (_debug) _assert(!isNaN(height));
+    if (_debug) _assert(tendency === -1 || tendency === 0 || tendency === 1);
 
     if (location.length == 1) {
 
@@ -1376,7 +1377,7 @@ export class Diagram {
       let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2, bias: tendency }];
       */
 
-      let upper = [{ diagram: D1, bias_left: tendency <= 0}, {diagram: D2, bias_left: tendency > 0 }];
+      let upper = [{ diagram: D1, bias: tendency }, {diagram: D2, bias: -tendency }];
       let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2 }];
 
       let contract_data = Diagram.multiUnify({ lower, upper, generators });
@@ -1435,9 +1436,10 @@ export class Diagram {
     if (_debug) {
 
       for (let i = 0; i < upper.length; i++) {
-        _propertylist(upper[i], ["diagram", "bias_left"]);
+        _propertylist(upper[i], ["diagram", "bias"]);
         _assert(upper[i].diagram instanceof Diagram);
         _assert(upper[i].diagram.n == n);
+        _assert(upper[i].bias === -1 || upper[i].bias === 0 || upper[i].bias === 1);
       }
 
       for (let i = 0; i < lower.length; i++) {
@@ -1493,7 +1495,7 @@ export class Diagram {
     // Get the unification of the singular monotones
     let m_upper = [];
     for (let i = 0; i < upper.length; i++) {
-      m_upper[i] = { size: upper[i].diagram.data.length, bias_left: upper[i].bias_left };
+      m_upper[i] = { size: upper[i].diagram.data.length, bias: upper[i].bias };
     }
     let m_lower = [];
     for (let i = 0; i < lower.length; i++) {
@@ -1596,11 +1598,12 @@ export class Diagram {
     for (let i = 0; i < upper.length; i++) {
       let u = upper_preimage[i];
       let slice_positions = [];
-      let bias_left = upper[i].bias_left;
+      //let bias = upper[i].bias;
+      let bias = 0; // remove bias for codimension > 0
       for (let j = 0; j < u.data.length; j++) {
         slice_positions.push(upper_exploded.length);
         //upper_exploded.push(u.getSlice({ height: j, regular: false }));
-        upper_exploded.push({diagram: u.getSlice({ height: j, regular: false }), bias_left});
+        upper_exploded.push({diagram: u.getSlice({ height: j, regular: false }), bias});
         if (j == 0) continue; // one less regular level than singular level to include
         let diagram = u.getSlice({ height: j, regular: true });
         let left_limit = u.data[j - 1].backward_limit;
