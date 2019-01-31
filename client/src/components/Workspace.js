@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import Diagram2D from "~/components/diagram/Diagram2D";
 import Diagram3D from "~/components/diagram/Diagram3D";
 
-import { getDiagram, getDisplayDimension, getSlice, getRenderer } from "~/state/store/workspace";
+import { getDiagram, getDisplayDimension, getSlice, getRenderer, getProjection } from "~/state/store/workspace";
 import { getHighlight } from "~/state/store/attach";
 //import { selectCell, homotopy } from "~/state/actions/workspace";
 
@@ -18,7 +18,8 @@ export const Workspace = ({
   slice,
   renderer,
   onSelectCell,
-  onHomotopy
+  onHomotopy,
+  projection
 }) => {
   let Diagram = renderer == 2 ? Diagram2D : Diagram3D;
 
@@ -30,6 +31,7 @@ export const Workspace = ({
           dimension={dimension}
           highlight={highlight}
           slice={slice}
+          projection={projection}
           interactive
           onSelect={onSelectCell}
           onHomotopy={onHomotopy}
@@ -46,6 +48,7 @@ export default connect(
     highlight: getHighlight(state.proof),
     slice: getSlice(state.proof),
     renderer: getRenderer(state.proof),
+    projection: getProjection(state.proof)
   }),
   dispatch => ({
     onSelectCell: (points) => dispatch({ type: 'workspace/select-cell', payload: { points } }),

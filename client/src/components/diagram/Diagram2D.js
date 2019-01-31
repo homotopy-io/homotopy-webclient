@@ -23,7 +23,6 @@ import { mask } from "ip";
 export default compose(
   withLayout,
   connect(
-    // TODO: Only get the generators that appear in the diagram
     state => ({ generators: getGenerators(state.proof) }),
   ),
   withSize,
@@ -53,22 +52,24 @@ export class Diagram2D extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
+
     let old_diagram = this.diagramToRender;
     let new_diagram = nextProps.diagram.getSlice(...nextProps.slice);
 
     if (this.props.width != nextProps.width) return true;
     if (this.props.height != nextProps.height) return true;
+    if (this.props.projection != nextProps.projection) return true;
 
-    //let old_diagram = this.props.diagram;
-    //let new_diagram = nextProps.diagram;
     if (old_diagram && !new_diagram) return true;
     if (!old_diagram && new_diagram) return true;
     if (!old_diagram.equals(new_diagram)) return true;
+
     //if (!this.props.diagram.equals(nextProps.diagram)) return true;
     if (this.props.slice.length != nextProps.slice.length) return true;
     for (let i=0; i<this.props.slice.length; i++) {
       if (this.props.slice[i] != nextProps.slice[i]) return true;
     }
+
     // Check for each generator used in the diagram if its parameters have changed
     for (let id of Object.keys(this.props.generators)) {
       if (!new_diagram.usesId(id)) continue;
@@ -77,7 +78,10 @@ export class Diagram2D extends React.Component {
       if (g_old.name != g_new.name) return true;
       if (g_old.color != g_new.color) return true;
     }
+
+    // Nothing relevant has changed so we don't need to redraw
     return false;
+
   }
 
   componentDidUpdate(props) {
@@ -1285,7 +1289,6 @@ export class Diagram2D extends React.Component {
     // Subdivide the surfaces
     for (let i=0; i<surfaces.length; i++) {
 
-
       let surface = surfaces[i];
       let sm = surface[0];
       let mt = surface[1];
@@ -1301,7 +1304,6 @@ export class Diagram2D extends React.Component {
       let edge_t = { source_point: st.child_point, target_point: mt.child_point };
       let [s, m, t] = [sm.source_point, mt.source_point, st.target_point]; 
       new_edges.push(edge_s, edge_m, edge_t);
-
 
       // Create new surfaces
       let surface_1 = [ sm.child_1, edge_s, st.child_1 ];

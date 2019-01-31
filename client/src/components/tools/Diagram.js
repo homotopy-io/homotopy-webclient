@@ -64,7 +64,7 @@ export const ProjectionControl = ({
 
   return (
     <Control label="Projection">
-      <select onChange={e => onChange(Number(e.target.value)) } value={value}>
+      <select onChange={e => onChange(Number(e.target.value))} value={value}>
         {options.map(option =>
           <option value={option} key={option}>
             {option}
