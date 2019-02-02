@@ -59,6 +59,7 @@ export class Diagram2D extends React.Component {
     if (this.props.width != nextProps.width) return true;
     if (this.props.height != nextProps.height) return true;
     if (this.props.projection != nextProps.projection) return true;
+    if (this.props.highlight != nextProps.highlight) return true;
 
     if (old_diagram && !new_diagram) return true;
     if (!old_diagram && new_diagram) return true;
@@ -102,7 +103,10 @@ export class Diagram2D extends React.Component {
 
   onSelect(e, points) {
     if (this.props.interactive) {
-      this.props.onSelect && this.props.onSelect(points);
+      if (this.props.onSelect) {
+        console.log('Diagram2D onSelect points ' + JSON.stringify(points));
+        this.props.onSelect(points);
+      }
     }
   }
 
@@ -172,12 +176,29 @@ export class Diagram2D extends React.Component {
     }
 
     let { path, subdiagram } = this.props.highlight;
+
+    let new_path = { ...path };
+    for (let i=0; i<this.props.slice.length; i++) {
+      if (new_path.depth === null) {
+        // do nothing
+      } else {
+        new_path.depth --;
+        if (new_path.depth == 0) {
+          new_path.depth = null;
+          new_path.boundary = null;
+        }
+      }
+    }
+    return Core.Boundary.containsPoint(this.diagramToRender, point, new_path, subdiagram);
+
+    /*
     return Core.Boundary.containsPoint(
       this.props.diagram,
       [...this.props.slice, ...point],
       path,
       subdiagram
     );
+    */
   }
 
   get diagram() {
@@ -562,8 +583,8 @@ export class Diagram2D extends React.Component {
     let tGenerator = edge.target_point.generator;
     let sPosition = edge.source_point.position;
     let tPosition = edge.target_point.position;
-    if (edge.target_point.nontrivial) {
-      if (edge.target_point.algebraic && sPosition[1] != tPosition[1]) {
+    if (true /*edge.target_point.nontrivial*/) {
+      if (true /*edge.target_point.algebraic && sPosition[1] != tPosition[1]*/) {
 
         edge.st_control = sPosition.slice();
         edge.st_control[1] = (4 * edge.st_control[1] + tPosition[1]) / 5;
@@ -929,9 +950,10 @@ export class Diagram2D extends React.Component {
     let tsControl = st.ts_control;
 
     let highlight = (
-      this.isPointHighlighted(s.point) &&
-      this.isPointHighlighted(m.point) &&
-      this.isPointHighlighted(t.point)
+      false
+      || this.isPointHighlighted(s.point)
+      || this.isPointHighlighted(m.point)
+      || this.isPointHighlighted(t.point)
     );
 
     let path = 'M ' + sPosition.join(" ")// + ' ' + sm.svg_path + mt.svg_path + st.svg_path;
@@ -955,7 +977,7 @@ export class Diagram2D extends React.Component {
     */
 
     let sGenerator = s.generator;
-    let colour = this.getColour(sGenerator, this.diagram.n - 2);
+    let colour = highlight ? "#f1c40f" : this.getColour(sGenerator, this.diagram.n - 2);
     //let key = 'surface#' + s.point.join(":") + '#' + m.point.join(":") + '#' + t.point.join(":")';
     let key = 'surface#' + s.position.join(":")
       + '#' + m.position.join(":")
@@ -970,17 +992,17 @@ export class Diagram2D extends React.Component {
     }
 
     // We only need to pass the coordinates through
-    points = points.map(point => point.point);
+    points = points.map(point => point.point.slice());
 
     /* Remove stroke here to see triangles when debugging */
     return (
       <path
         d={path}
-        stroke={/*'#fff'*/ colour }
+        stroke={/*'#fff'*/ colour}
         strokeWidth={1}
         vectorEffect={"non-scaling-stroke"}
         shapeRendering='crispEdges'
-        fill={highlight ? "#f1c40f" : colour}
+        fill={colour}
         key={key}
         onClick={e => this.onSelect(e, points)}>
         {this.props.interactive

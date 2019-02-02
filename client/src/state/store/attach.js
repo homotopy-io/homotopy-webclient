@@ -84,6 +84,15 @@ export default createReducer(initialAttach, {
     if (diagram == null) return;
     if (_debug) _assert(points instanceof Array);
     if (_debug) _assert(points.length > 0);
+    //if (_debug && points.length > 1) debugger;
+
+    let new_points = [];
+    for (let i=0; i<points.length; i++) {
+      new_points.push(points[i].slice());
+    }
+    points = new_points;
+
+    console.log('workspace/select-cell at ' + JSON.stringify(points));
 
     // Respect the current slices
     for (let i=0; i<points.length; i++) {

@@ -89,7 +89,8 @@ export const containsPoint = (diagram, point, path, subdiagram) => {
   }
 
   if (path.boundary && path.depth > 1) {
-    let slice = diagram.source;
+    //let slice = path.boundary == 'source' ? diagram.source : diagram.getTarget();
+    let slice = height <= 0 ? diagram.source : diagram.getTarget();
     return containsPoint(slice, rest, {
       ...path,
       depth: path.depth - 1
