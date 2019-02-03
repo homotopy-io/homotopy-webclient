@@ -12,6 +12,10 @@ const custom_class = css({
 export const ToastTool = ({
   notificationProp, onToasted
 }) => {
+  if (!notificationProp) {
+    onToasted();
+    return null;
+  }
   for (let i=0; i<notificationProp.length; i++) {
     toast.error(notificationProp[i] /*{ bodyClassName: custom_class }*/);
   }
