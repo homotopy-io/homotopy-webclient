@@ -64,7 +64,6 @@ export class App extends React.PureComponent {
   }
 
   async componentDidMount() {
-    toast('Test toast');
     const hash = window.location.hash.substr(1);
     const getProofPath = async () => {
       // get from firestore the path to the blob
