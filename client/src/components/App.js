@@ -17,9 +17,16 @@ import ButtonTool from "~/components/tools/Buttons";
 import DiagramTool from "~/components/tools/Diagram";
 import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
+import ToastTool from "~/components/tools/Toast";
 import LogoImg from '../logo.svg';
 import URLON from 'urlon'
 import ReactGA from 'react-ga';
+
+// Toast stuff
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Slide, Zoom, Flip, Bounce } from 'react-toastify';
+import { css } from 'glamor';
 
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import CircularProgress from '@material-ui/core/CircularProgress'
@@ -57,6 +64,7 @@ export class App extends React.PureComponent {
   }
 
   async componentDidMount() {
+    toast('Test toast');
     const hash = window.location.hash.substr(1);
     const getProofPath = async () => {
       // get from firestore the path to the blob
@@ -125,6 +133,21 @@ export class App extends React.PureComponent {
             </ToolBar>
             <Login />
             <ProjectListing />
+            <ToastTool />
+            <ToastContainer
+              position={toast.POSITION.BOTTOM_RIGHT}
+              autoClose={3000}
+              transition={Slide}
+              closeButton={false}
+              hideProgressBar={true}
+              //newestOnTop={true}
+              draggable={false}
+              style={{width: '305px',
+                borderRadius: '8px!important',
+                fontFamily: 'Roboto',
+                userSelect: 'none'
+              }}
+            />
           </Container>
         </ReduxBlockUi>
       </MuiThemeProvider>

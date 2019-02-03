@@ -6,6 +6,7 @@ import * as WorkspaceActions from "~/state/actions/workspace";
 import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
 import { createGenerator, getGenerator, getFreshId } from "~/state/store/signature";
+import { notify } from "~/state/store/notify";
 
 export const initialWorkspace = {
   diagram: null,
@@ -13,7 +14,8 @@ export const initialWorkspace = {
   target: null,
   slice: null,
   projection: null,
-  renderer: 2
+  renderer: 2,
+  notifications: []
 }
 
 export const getDiagram = (state) => {
@@ -118,7 +120,7 @@ export default (state = initialWorkspace, action) => {
 
     case 'workspace/set-source': {
 
-      let { target, diagram } = state.workspace;
+      let { target, diagram, notifications } = state.workspace;
       let source = diagram;
       if (diagram == null) return state;
 
@@ -207,8 +209,13 @@ export default (state = initialWorkspace, action) => {
     } case 'workspace/homotopy': {
 
       let { point, direction } = action.payload;
-      let { diagram, slice } = state.workspace;
+      let { diagram, slice, notifications } = state.workspace;
       let { generators } = state.signature;
+
+      if (point.length < 2) {
+        state = notify(state, "Can't perform homotopy on " + point.length + "d diagram");
+        return state;
+      }
 
       if (diagram == null || point.length < 2) return state;
 
@@ -216,13 +223,21 @@ export default (state = initialWorkspace, action) => {
       let path = Core.Boundary.getPath(diagram, [...slice, ...point]);
 
       try {
-        let { new_diagram, new_slice } = Core.attach(
+        let attach_result = Core.attach(
           generators,
           diagram,
           (boundary, point) => boundary.homotopy(point, direction, generators),
           path,
           slice
         );
+
+        // If the attach failed, then the action is done
+        if (attach_result.error) {
+          state = notify(state, attach_result.error);
+          break;
+        };
+
+        let { new_diagram, new_slice } = attach_result;
 
         state = dotProp.set(state, "workspace.diagram", new_diagram);
         state = dotProp.set(state, "workspace.slice", new_slice);
@@ -320,6 +335,11 @@ export default (state = initialWorkspace, action) => {
       // Update the slices so they are still valid
       state = dotProp.set(state, "workspace.slice", updateSlices(state));
 
+      break;
+
+    } case 'workspace/toasted': {
+
+      state = dotProp.set(state, "workspace.notifications", []);
       break;
 
     } case 'signature/select-generator': {

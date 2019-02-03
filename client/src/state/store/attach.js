@@ -4,6 +4,8 @@ import * as WorkspaceActions from "~/state/actions/workspace";
 import * as AttachActions from "~/state/actions/attach";
 import * as Core from "homotopy-core";
 import { _assert, _debug } from "../../../../core/src/util/debug";
+import { toast } from 'react-toastify';
+import { notify } from "~/state/store/notify";
 
 export const initialAttach = {
   options: null,
@@ -78,6 +80,7 @@ export default createReducer(initialAttach, {
   },
 
   ["workspace/select-cell"]: (state, { points }) => {
+
     let { diagram, slice } = state.workspace;
     let { generators } = state.signature;
 
@@ -125,19 +128,18 @@ export default createReducer(initialAttach, {
       */
     }));
 
-    if (options.length == 1) {
+    if (options.length == 0) {
+      state = notify(state, "Couldn't attach anything");
+    } else if (options.length == 1) {
       let [ option ] = options;
       let {new_diagram, new_slice} = Core.attachGenerator(generators, diagram, option.generator, option.path, slice);
       state = dotProp.set(state, "workspace.diagram", new_diagram);
       state = dotProp.set(state, "workspace.slice", new_slice);
-      return state;
-    } else if (options.length > 1) {
+    } else {
       state = dotProp.set(state, "attach.options", options);
       state = dotProp.set(state, "attach.highlight", null);
-      return state;
-    } else {
-      return state;
     }
+    return state;
   },
 
   ["workspace/clear-options"]: (state) => {

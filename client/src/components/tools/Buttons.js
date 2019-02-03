@@ -33,7 +33,9 @@ export const ButtonTool = ({
     <Tool title="Actions" style={ActionToolStyle}>
       <div style={{maxWidth: '350px', padding: '5px'}}>
         <MuiThemeProvider theme={theme}>
-          <Button disabled={!diagram || (target && !diagram.sameBoundary(target))} style={ActionButtonStyle} variant="contained" onClick={onSource}> <u>S</u>ource </Button>
+          <Button disabled={!diagram || (target && !diagram.sameBoundary(target))} style={ActionButtonStyle} variant="contained" onClick={function() {
+            onSource()
+            }/*onSource*/ }> <u>S</u>ource </Button>
           <Button disabled={!diagram || (source && !diagram.sameBoundary(source))} style={ActionButtonStyle} variant="contained" onClick={onTarget}> <u>T</u>arget </Button>
           <Button disabled={!diagram} style={ActionButtonStyle} variant="contained" onClick={onIdentity}> <u>I</u>dentity </Button>
           <Button disabled={!diagram} style={ActionButtonStyle} variant="contained" onClick={onClear}> <u>C</u>lear </Button>
@@ -42,7 +44,7 @@ export const ButtonTool = ({
           <Button disabled={!diagram || diagram.n == 0 || diagram.data.length == 0} style={ActionButtonStyle} variant="contained" onClick={onBehead}> Behea<u>d</u> </Button>
         </MuiThemeProvider>
       </div>
-    </Tool>
+  </Tool>
   );
 };
 

@@ -247,7 +247,7 @@ export class DirectedQuotientGraph {
         if (this.nodes.get(chosen_node).bias === -1) break;
       }
 
-      if (failure) return { error: 'not contractible' };
+      if (failure) return { error: 'Not contractible' };
 
       // There should always be a chosen node
       //if (_debug) _assert(chosen_node !== undefined);

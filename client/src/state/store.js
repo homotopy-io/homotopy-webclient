@@ -36,7 +36,6 @@ export const initialState = {
   copied: false
 }
 
-
 let persist_blacklist = [
   'persist/serialize',
   'persist/deserialize',

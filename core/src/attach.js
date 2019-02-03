@@ -11,9 +11,9 @@ export const attach = (generators, diagram, build, path, slice) => {
     _assert(generators);
   }
 
-
   if (path.boundary == null) {
     let content = build(diagram, path.point, null);
+    if (content.error) return content;
     let new_slice = content.updateSlice(slice);
     let new_diagram = diagram.rewrite(content);
     if (_debug) _assert(new_diagram.typecheck(generators));
@@ -48,6 +48,7 @@ export const attach = (generators, diagram, build, path, slice) => {
   // Build the content
   let boundary = Boundary.followPath(diagram, path);
   let content = build(boundary, path.point, path.boundary);
+  if (content.error) return content;
 
   // Attach the content to the diagram
   let source, data, new_slice;

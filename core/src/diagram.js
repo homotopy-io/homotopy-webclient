@@ -1,7 +1,6 @@
 import { _assert, _debug, isNatural, _propertylist } from "~/util/debug";
 import * as ArrayUtil from "~/util/array";
 import { Limit, Content, LimitComponent } from "~/limit";
-
 // blah
 import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
@@ -956,7 +955,7 @@ export class Diagram {
     if (_debug) _assert(click_diagram);
 
     if (click_diagram.n < 2) {
-      throw "Need more dimensions to perform a homotopy";
+      return { error: "Can't perform homotopy in " + click_diagram.n + "d subdiagram"};
     }
 
     // If we're dragging horizontally, the last point has to be singular
@@ -1026,8 +1025,11 @@ export class Diagram {
 
       let forward_limit = new Limit({ n: this.n, components: [], source_size: this.data.length });
       let backward_limit = this.getExpansionLimit({location, direction, generators});
+      if (backward_limit.error) return backward_limit;
       let content = new Content({ n: this.n, forward_limit, backward_limit });
-      if (!content.typecheck(generators, this)) throw "This expansion doesn't typecheck";
+      if (!content.typecheck(generators, this)) {
+        return { error: "Expansion doesn't typecheck" };
+      }
       return content;
   
     } else { // contraction
@@ -1038,17 +1040,19 @@ export class Diagram {
       // We assume we're always contracting up, so adjust direction and last height appropriately
       if (direction < 0) {
         if (location[location.length - 1].height == 0) {
-          throw "Can't perform contraction off the bottom of the diagram";
+          return { error: "Can't drag a cell off the diagram" };
         }
         location[location.length - 1].height --;
       }
       let forward_limit = this.getContractionLimit({location, tendency, generators});
-      if (forward_limit.error) throw Error(forward_limit.error);
+      if (forward_limit.error) return forward_limit;
       let singular = forward_limit.rewrite_forward(this);
       let normalization = singular.normalizeSingular();
       let backward_limit = normalization.embedding;
       let content = new Content({ n: this.n, forward_limit, backward_limit });
-      if (!content.typecheck(generators, this)) throw Error("This contraction doesn't typecheck");
+      if (!content.typecheck(generators, this)) {
+        return { error: "Contraction doesn't typecheck" };
+      }
       return content;  
 
     }
@@ -1166,14 +1170,12 @@ export class Diagram {
           r1_height = location[0].height;
           c = this.data[r1_height];
           if (c.forward_limit.components.length == 0 || c.backward_limit.components.length == 0) {
-            console.log("Can't smooth homotopy here, trivial limiting behaviour");
-            throw 0;
+            return { error: "Can't smooth homotopy, trivial limiting behaviour" };
           }
           let pushed_index = c.forward_limit.updateSliceForward([2 * location[1].height + (location[1].regular ? 0 : 1)]);
           smoothing_position = {height: Math.floor(pushed_index / 2), regular: pushed_index % 2 == 0};
           if (smoothing_position.regular) {
-            console.log("Can't smooth homotopy here, chosen point flows to regular height");
-            throw 0;
+            return { error: "Can't smooth homotopy, chosen point flows to regular height" };
           }
 
         }
@@ -1184,13 +1186,13 @@ export class Diagram {
           r1_height = location[0].height - 1;
           c = this.data[r1_height];
           if (c.forward_limit.components.length == 0 || c.backward_limit.components.length == 0) {
-            console.log("Can't smooth homotopy here, trivial limiting behaviour");
+            return { error: "Can't smooth homotopy, trivial limiting behaviour" };
             throw 0;
           }
           let pushed_index = c.backward_limit.updateSliceForward([2 * location[1].height + (location[1].regular ? 0 : 1)]);
           smoothing_position = {height: Math.floor(pushed_index / 2), regular: pushed_index % 2 == 0};
           if (smoothing_position.regular) {
-            console.log("Can't smooth homotopy here, chosen point flows to regular height");
+            return { error: "Can't smooth homotopy, chosen point flows to regular height" };
             throw 0;
           }
 
@@ -1202,7 +1204,7 @@ export class Diagram {
         let targets_b = c.backward_limit.getComponentTargets();
         let index_b = targets_b.indexOf(smoothing_position.height);
         if (index_f < 0 || index_b < 0) {
-          console.log("Can't smooth homotopy here, chosen location not suitable");
+          return { error: "Can't smooth homotopy, chosen location not suitable" };
           throw 0;
         }
 
@@ -1212,7 +1214,7 @@ export class Diagram {
         if (_debug) _assert(forward_preimage.length == 1);
         if (_debug) _assert(backward_preimage.length == 1);
         if (!forward_preimage.equals(backward_preimage)) {
-          console.log("Can't smooth homotopy here, incoming limits not locally symmetrical");
+          return { error: "Can't smooth homotopy, incoming limits not locally symmetrical" };
           throw 0;
         }
         let new_forward_components = [];
@@ -1285,7 +1287,7 @@ export class Diagram {
 
     } else if (location[0].regular) {
 
-      throw "Can't perform expansion on regular slice";
+      return { error: "Can't expand regular slice" };
 
     } else { // Recursive expansion on singular slice, 2018-11-HIO-4
 
@@ -1295,7 +1297,7 @@ export class Diagram {
       let recursive = slice.getExpansionLimit({ location: location.slice(1), direction, generators });
 
       // Try to factorize
-      try {
+      let expansion = (function() {
 
         // Factorize on the left and right
         let data = this.data[location[0].height];
@@ -1303,13 +1305,13 @@ export class Diagram {
         // Forward factorization
         let forward_factorization = data.forward_limit.factorThrough(recursive, generators);
         if (forward_factorization.error) {
-          throw Error("couldn't factorize forward limit\n" + forward_factorization.error);
+          return { error: "Couldn't factorize forward limit\n" + forward_factorization.error };
         }
 
         // Backward factorization
         let backward_factorization = data.backward_limit.factorThrough(recursive, generators);
         if (backward_factorization.error) {
-          throw Error("couldn't factorize backward limit\n" + backward_factorization.error);
+          return { error: "Couldn't factorize backward limit\n" + backward_factorization.error };
         }
 
         // Construct expansion data
@@ -1324,27 +1326,25 @@ export class Diagram {
         console.log("Performed pullback");
         return limit.compose(normalization.embedding);
 
-      }
+      }).bind(this)();
 
-      // If the factorization has failed, just insert a bubble
-      catch(e) {
+      // If the factorization was successful, return it
+      if (!expansion.error) return expansion;
 
-        console.log('Factorization failed: ' + e.stack);
-        console.log('Inserting bubble instead');
+      // The factorization failed, just insert a bubble
+      console.log('Factorization failed: ' + expansion.error);
+      console.log('Inserting bubble instead');
 
-        // Insert bubble
-        let first = location[0].height;
-        let target_data = this.data[first];
-        let c1 = new Content({ n: this.n - 1, forward_limit: target_data.forward_limit, backward_limit: recursive });
-        let c2 = new Content({ n: this.n - 1, forward_limit: recursive, backward_limit: target_data.backward_limit });
-        let source_data = [c1, c2];
-        let sublimits = [new Limit({ n: this.n - 1, components: [] }), new Limit({ n: this.n - 1, components: [] })];
-        let component = new LimitComponent({ n: this.n, first, sublimits, source_data, target_data});
-        let limit = new Limit({n: this.n, components: [component], source_size: this.data.length + 1 });
-        return limit;
-
-
-      }
+      // Insert bubble
+      let first = location[0].height;
+      let target_data = this.data[first];
+      let c1 = new Content({ n: this.n - 1, forward_limit: target_data.forward_limit, backward_limit: recursive });
+      let c2 = new Content({ n: this.n - 1, forward_limit: recursive, backward_limit: target_data.backward_limit });
+      let source_data = [c1, c2];
+      let sublimits = [new Limit({ n: this.n - 1, components: [] }), new Limit({ n: this.n - 1, components: [] })];
+      let component = new LimitComponent({ n: this.n, first, sublimits, source_data, target_data});
+      let limit = new Limit({n: this.n, components: [component], source_size: this.data.length + 1 });
+      return limit;
 
     }
 
@@ -1365,7 +1365,7 @@ export class Diagram {
       if (_debug) _assert(!location[0].regular); // The UI should never trigger contraction from a regular slice
       if (_debug) _assert(height >= 0);
       if (height >= this.data.length - 1) {
-        throw "Can't perform contraction off the top of the diagram";
+        return { error: "Can't drag a cell off the diagram" };
       }
       let regular = this.getSlice({ height: height + 1, regular: true });
       let D1 = this.getSlice({ height, regular: false });
