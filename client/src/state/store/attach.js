@@ -130,11 +130,13 @@ export default createReducer(initialAttach, {
 
     if (options.length == 0) {
       state = notify(state, "Couldn't attach anything");
+      state = clearOptions(state);
     } else if (options.length == 1) {
       let [ option ] = options;
       let {new_diagram, new_slice} = Core.attachGenerator(generators, diagram, option.generator, option.path, slice);
       state = dotProp.set(state, "workspace.diagram", new_diagram);
       state = dotProp.set(state, "workspace.slice", new_slice);
+      state = clearOptions(state);
     } else {
       state = dotProp.set(state, "attach.options", options);
       state = dotProp.set(state, "attach.highlight", null);
