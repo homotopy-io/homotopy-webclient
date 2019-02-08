@@ -166,6 +166,10 @@ export default createReducer(initialAttach, {
     return clearOptions(state);
   },
 
+  ["workspace/homotopy"]: (state) => {
+    return clearOptions(state);
+  },
+
   ["workspace/set-slice"]: (state) => {
     return clearOptions(state);
   },
