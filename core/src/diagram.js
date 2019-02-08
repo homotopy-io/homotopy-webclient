@@ -1089,7 +1089,7 @@ export class Diagram {
           singular = forward_limit.rewrite_forward(regular);
           upper.push({ diagram: singular, bias: 0 });
         }
-        let contraction = Diagram.multiUnify({ lower, upper, generators });
+        let contraction = Diagram.multiUnify({ lower, upper, generators, depth: 0 });
 
         // If the contraction was not good, break out
         if (contraction.error) break;
@@ -1187,13 +1187,11 @@ export class Diagram {
           c = this.data[r1_height];
           if (c.forward_limit.components.length == 0 || c.backward_limit.components.length == 0) {
             return { error: "Can't smooth homotopy, trivial limiting behaviour" };
-            throw 0;
           }
           let pushed_index = c.backward_limit.updateSliceForward([2 * location[1].height + (location[1].regular ? 0 : 1)]);
           smoothing_position = {height: Math.floor(pushed_index / 2), regular: pushed_index % 2 == 0};
           if (smoothing_position.regular) {
             return { error: "Can't smooth homotopy, chosen point flows to regular height" };
-            throw 0;
           }
 
         }
@@ -1205,7 +1203,6 @@ export class Diagram {
         let index_b = targets_b.indexOf(smoothing_position.height);
         if (index_f < 0 || index_b < 0) {
           return { error: "Can't smooth homotopy, chosen location not suitable" };
-          throw 0;
         }
 
         let range = { first: smoothing_position.height, last: smoothing_position.height + 1 };
@@ -1380,7 +1377,7 @@ export class Diagram {
       let upper = [{ diagram: D1, bias: tendency }, {diagram: D2, bias: -tendency }];
       let lower = [{ diagram: regular, left_index: 0, right_index: 1, left_limit: L1, right_limit: L2 }];
 
-      let contract_data = Diagram.multiUnify({ lower, upper, generators });
+      let contract_data = Diagram.multiUnify({ lower, upper, generators, depth: 0 });
       if (contract_data.error) return contract_data;
 
       // Build the limit to the contracted diagram
@@ -1452,9 +1449,8 @@ export class Diagram {
         //_assert(Number.isInteger(l.bias) && (l.bias >= -1) && (l.bias <= 1));
       }
 
-      _assert(depth == null || isNatural(depth));
       _assert(upper.length > 0); // doesn't make sense to pushout no families (?)
-
+      _assert(isNatural(depth));
     }
 
     // Special case of an identity pushout
@@ -1470,7 +1466,12 @@ export class Diagram {
 
       // If there's more than one top-dimensional type, throw an error
       if (_debug) _assert(top_types.length > 0);
-      if (top_types.length > 1) return { error: "no unification, multiple top types in base case" };
+      if (top_types.length > 1) {
+        return { error: "Doesn't contract"
+          + (depth > 0 ? " at codimension " + depth : "")
+          + ", multiple top types in base case"
+        };
+      }
       let target_id = top_types[0].generator.id;
 
       // Build the cocone maps
@@ -1507,7 +1508,11 @@ export class Diagram {
       m_lower.push({ left, right });
     }
     let m_unif = Monotone.multiUnify({ lower: m_lower, upper: m_upper });
-    if (m_unif.error) return m_unif;
+    if (m_unif.error) {
+      if (depth == 0) return m_unif;
+      m_unif.error += " at codimension " + depth;
+      return m_unif;
+    }
 
     // Find size of unification set
     let target_size = m_unif[0].target_size;
@@ -1517,7 +1522,7 @@ export class Diagram {
     for (let i = 0; i < upper.length; i++) limit_components[i] = [];
     let target_content = [];
     for (let i = 0; i < target_size; i++) {
-      let component = Diagram.multiUnifyComponent({ upper, lower }, m_unif, m_lower, i, generators);
+      let component = Diagram.multiUnifyComponent({ upper, lower }, m_unif, m_lower, i, generators, depth);
       if (component.error) return component;
       target_content.push(component.target_content);
       for (let j = 0; j < upper.length; j++) {
@@ -1566,7 +1571,7 @@ export class Diagram {
     }
   }
 
-  static multiUnifyComponent({ upper, lower }, m_cocone, m_lower, height, generators) {
+  static multiUnifyComponent({ upper, lower }, m_cocone, m_lower, height, generators, depth) {
 
     // Restrict upper, lower to the appropriate heights
     let upper_preimage = [];
@@ -1633,7 +1638,7 @@ export class Diagram {
         lower_exploded.push({ diagram, left_limit, right_limit, left_index, right_index /*, bias*/ });
       }
     }
-    let exploded = { upper: upper_exploded, lower: lower_exploded, generators };
+    let exploded = { upper: upper_exploded, lower: lower_exploded, generators, depth: depth + 1 };
     if (_debug) _assert(upper_exploded.length > 0);
     let nonempty_upper = null;
     for (let i = 0; i < upper.length; i++) {

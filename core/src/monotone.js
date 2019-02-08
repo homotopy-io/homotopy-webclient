@@ -99,18 +99,6 @@ export class Monotone extends Array {
     if (_debug) _assert(typeof(right) == "number" && right >= -1 && right <= 1);
     if (_debug) _assert(n == null || isNatural(n));
     if (n == null) {
-      /*
-      if (first.length == 0) {
-          if (first.target_size > 0 && second.target_size > 0) {
-              if (right == null) throw "no monotone unification";
-              else if (right == false) return Monotone.union(first.target_size, second.target_size);
-              else return Monotone.union(second.target_size, first.target_size, true);
-          }
-          else if (first.target_size == 0) return { first: second.copy(), second: Monotone.getIdentity(second.target_size) };
-          else if (second.target_size == 0) return { first: Monotone.getIdentity(first.target_size), second: first.copy() };
-          else _assert(false); // Above cases should be exclusive
-      }
-      */
       //return this.unify({ second, right, depth: first.length }); // begin the induction
       n = first.length + 1; // add an extra element for a 'tidying up' pass
     }
@@ -165,20 +153,6 @@ export class Monotone extends Array {
         injections.first.append(t);
         injections.second.append(t);
       }
-
-      /*
-      // If we haven't been given a tendency, fail
-      if (right == null) throw "no monotone unification at depth " + depth + ", cannot unify head-to-head monotones without a bias";
-      let major = right ? { monotone: injections.second, delta: right_delta } : { monotone: injections.first, delta: left_delta };
-      let minor = right ? { monotone: injections.first, delta: left_delta } : { monotone: injections.second, delta: right_delta };
-      for (let i = 0; i < major.delta - 1; i++) major.monotone.grow();
-      minor.monotone.target_size += major.delta - 1;
-      for (let i = 0; i < minor.delta - 1; i++) minor.monotone.grow();
-      major.monotone.target_size = minor.monotone.target_size;
-      let t = injections.first.target_size;
-      injections.first.append(t);
-      injections.second.append(t);
-      */
 
     } else if (left_delta == 0 || right_delta == 0) {
 

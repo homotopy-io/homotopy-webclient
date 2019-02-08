@@ -292,9 +292,9 @@ toJSON() {
     if (_debug) _assert(f.components.length > 0 || b.components.length > 0);
 
     // The only failure case is if there is only a single component
-    if (f.components.length == 0 && b.components.length == 1) throw "can't expand a single component";
-    if (f.components.length == 1 && b.components.length == 0) throw "can't expand a single component";
-    if (f.components.length == 1 && b.components.length == 1 && f_old && b_old) throw "can't expand a single component";
+    if (f.components.length == 0 && b.components.length == 1) return { error: "Can't expand a single component" };
+    if (f.components.length == 1 && b.components.length == 0) return { error: "Can't expand a single component" };
+    if (f.components.length == 1 && b.components.length == 1 && f_old && b_old) return { error: "can't expand a single component" };
 
     // E - Prepare the first new forward limit by deleting the chosen component
     let f_new_1 = f;
