@@ -28,7 +28,12 @@ export const Header = ({
   firebase, firestore, auth,
   serialize
 }) =>
-  <Actions style={{userSelect: 'none'}}>
+  <HeaderBar>
+  <LeftActions>
+    <Action onClick={() => {window.open("https://ncatlab.org/nlab/show/homotopy.io",'_blank');}}>User guide</Action>
+    <Action onClick={() => {window.open("https://github.com/homotopy-io/webclient/issues",'_blank');}}>Issue tracker</Action>
+  </LeftActions>
+  <RightActions style={{userSelect: 'none'}}>
     {/* 0ms sleeps are an ugly hack because otherwise the initialTab state does
     not propagate properly --- TODO: fixme */}
     { !isLoaded(auth)
@@ -69,7 +74,8 @@ export const Header = ({
     <ReactFileReader fileTypes={'application/json'} handleFiles={files => handleUpload(files, setProject)}>
       <Action>Import</Action>
     </ReactFileReader>
-  </Actions>;
+  </RightActions>
+  </HeaderBar>;
 
 Header.propTypes = {
   firebase: PropTypes.shape({
@@ -107,12 +113,25 @@ const handleUpload = (files, setProject) => {
   fr.readAsText(files.item(0)) // TODO: input validation
 }
 
-const Actions = styled.div`
+const LeftActions = styled.div`
+  display: flex;
+  justify-content: flex-start;
+  padding: 8px;
+  margin: 0px;
+  overflow: hidden;
+`;
+
+const RightActions = styled.div`
   display: flex;
   justify-content: flex-end;
   padding: 8px;
   margin: 0px;
   overflow: hidden;
+`;
+
+const HeaderBar = styled.div`
+  display: flex;
+  justify-content: space-between;
 `;
 
 const Action = styled.div`
