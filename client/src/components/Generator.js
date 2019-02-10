@@ -11,15 +11,34 @@ import ColorPicker from "~/components/misc/ColorPicker";
 import Diagram2D from "~/components/diagram/Diagram2D";
 
 export const Generator = ({
+  id,
   name,
   color,
+  focused,
+  setFocus,
   generator,
   onSelect,
   onRemove,
   onRename,
   onRecolor
 }) =>
-  <Wrapper>
+  <Wrapper onMouseEnter={() => setFocus(true)}
+           onMouseLeave={() => {
+            setFocus(false)
+            const nameInput = document.getElementById(`generator-${id}-input`).value
+            if (name !== nameInput)
+              onRename(nameInput)
+            setTimeout(() =>
+              renderMathInElement(document.getElementById(`generator-${id}`), {
+                delimiters: [
+                  {left: "$$", right: "$$", display: true},
+                  {left: "\\[", right: "\\]", display: true},
+                  {left: "$", right: "$", display: false},
+                  {left: "\\(", right: "\\)", display: false}
+                ]
+              }),
+            0)
+           }}>
     <Preview onClick={onSelect}>
       <Diagram2D
         diagram={generator.diagram}
@@ -28,10 +47,15 @@ export const Generator = ({
       />
     </Preview>
     <Details>
+      {!focused && <RenderedName id={`generator-${id}`}>{name}</RenderedName>}
       <Name
-        type="text"
-        value={name}
-        onChange={e => onRename(e.target.value)}
+        id={`generator-${id}-input`}
+        type={focused ? "text" : "hidden"}
+        defaultValue={name}
+        onBlur={e => {
+          if (e.target.value !== name)
+            onRename(e.target.value)
+        }}
       />
       <ColorPicker
         color={color}
@@ -53,7 +77,8 @@ export default connect(
     onSelect: () => dispatch({ type: "signature/select-generator", payload: { id } }),
     onRemove: () => dispatch({ type: "signature/remove-generator", payload: { id } }),
     onRename: (name) => dispatch({ type: "signature/rename-generator", payload: { id, name } }),
-    onRecolor: (color) => dispatch({ type: "signature/recolor-generator", payload: { id, color } })
+    onRecolor: (color) => dispatch({ type: "signature/recolor-generator", payload: { id, color } }),
+    setFocus: (focus, cmd) => dispatch({ type: "signature/set-focus", payload: { id, focus, cmd } })
   })
 )(Generator);
 
@@ -77,8 +102,15 @@ const Details = styled.div`
   flex: 1;
 `;
 
+const RenderedName = styled.div`
+  padding-left: 8px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  background: #34495e;
+  font-size: 15px;
+`
+
 const Name = styled.input`
-  font-weight: 500;
   padding: 8px;
   background: #34495e;
   border: none;

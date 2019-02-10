@@ -25,9 +25,9 @@ const theme = createMuiTheme({
   },
   palette: {
     type: "dark",
-		background: {
-			paper: "#34495e"
-		}
+    background: {
+      paper: "#34495e"
+    }
   }
 })
 
@@ -49,51 +49,70 @@ const renderTextField = ({
 )
 
 export const Signature = ({
-  groups, onAddGenerator, metadata
+  groups, titleFocused, setTitleFocus, abstractFocused, setAbstractFocus, onAddGenerator, metadata
 }) =>
-  <MuiThemeProvider theme={theme} style={{userSelect: 'none'}}>
+  <MuiThemeProvider theme={theme}>
     <Group>
-      <GroupHeader>
-        <Field name="title" component={renderTextField} fullWidth onBlur={evt => {
+      <GroupHeader onMouseEnter={() => setTitleFocus(true)}
+                   onMouseLeave={() => {
+                     setTitleFocus(false)
+                     setTimeout(() =>
+                       renderMathInElement(document.getElementById("title"), {
+                         delimiters: [
+                           {left: "$$", right: "$$", display: true},
+                           {left: "\\[", right: "\\]", display: true},
+                           {left: "$", right: "$", display: false},
+                           {left: "\\(", right: "\\)", display: false}
+                         ]
+                       }),
+                     0)
+                   }}>
+        {!titleFocused && <RenderedTitle id="title">{metadata.title}</RenderedTitle>}
+        <Field name="title" type={titleFocused ? "text" : "hidden"} component={renderTextField} fullWidth={titleFocused} inputProps={{style: titleStyle}} />
+      </GroupHeader>
+      <div style={{margin: '0px 16px 8px 16px'}}>
+        <Field name="author" component={renderTextField} label="Author" fullWidth onBlur={evt => {
           // update hash
           const hash = window.location.hash.substr(1)
           if (hash) {
             const data = URLON.parse(window.location.hash.substr(1))
-            window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.title', metadata.title))
+            window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.author', metadata.author))
           } else {
             window.location.hash = URLON.stringify({ metadata })
           }
-        }} inputProps={{style: titleStyle}} />
-      </GroupHeader>
-			<div style={{margin: '0px 16px 8px 16px'}}>
-				<Field name="author" component={renderTextField} label="Author" fullWidth onBlur={evt => {
-					// update hash
-					const hash = window.location.hash.substr(1)
-					if (hash) {
-						const data = URLON.parse(window.location.hash.substr(1))
-						window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.author', metadata.author))
-					} else {
-						window.location.hash = URLON.stringify({ metadata })
-					}
-				}} />
-			</div>
-			<ExpansionPanel>
-				<ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
-					<Typography>Abstract</Typography>
-				</ExpansionPanelSummary>
-				<ExpansionPanelDetails>
-					<Field name="abstract" component={renderTextField} multiline fullWidth onBlur={evt => {
-						// update hash
-						const hash = window.location.hash.substr(1)
-						if (hash) {
-							const data = URLON.parse(window.location.hash.substr(1))
-							window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.abstract', metadata.abstract))
-						} else {
-							window.location.hash = URLON.stringify({ metadata })
-						}
-					}} />
-				</ExpansionPanelDetails>
-			</ExpansionPanel>
+        }} />
+      </div>
+      <ExpansionPanel onMouseEnter={() => setAbstractFocus(true)}
+                      onMouseLeave={() => {
+                        setAbstractFocus(false)
+                        setTimeout(() =>
+                          renderMathInElement(document.getElementById("abstract"), {
+                            delimiters: [
+                              {left: "$$", right: "$$", display: true},
+                              {left: "\\[", right: "\\]", display: true},
+                              {left: "$", right: "$", display: false},
+                              {left: "\\(", right: "\\)", display: false}
+                            ]
+                          }),
+                        0)
+                      }}>
+        <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Abstract</Typography>
+        </ExpansionPanelSummary>
+        <ExpansionPanelDetails>
+          {!abstractFocused && <RenderedAbstract id="abstract">{metadata.abstract}</RenderedAbstract>}
+          <Field name="abstract" type={abstractFocused ? "text" : "hidden"} component={renderTextField} multiline={abstractFocused} fullWidth={abstractFocused} onBlur={evt => {
+            // update hash
+            const hash = window.location.hash.substr(1)
+            if (hash) {
+              const data = URLON.parse(window.location.hash.substr(1))
+              window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.abstract', metadata.abstract))
+            } else {
+              window.location.hash = URLON.stringify({ metadata })
+            }
+          }} />
+        </ExpansionPanelDetails>
+      </ExpansionPanel>
     </Group>
     {groups.map((generators, dimension) =>
       <Group key={dimension}>
@@ -125,10 +144,14 @@ export default connect(
       author: state.form.metadata ? state.form.metadata.values.author : "",
       abstract: state.form.metadata ? state.form.metadata.values.abstract : "",
     },
-    metadata: state.form.metadata ? state.form.metadata.values : {}
+    metadata: state.form.metadata ? state.form.metadata.values : {},
+    titleFocused: state.focus.title,
+    abstractFocused: state.focus.abstract
   }),
   dispatch => ({
-    onAddGenerator: () => dispatch({ type: "signature/create-zero-cell" })
+    onAddGenerator: () => dispatch({ type: "signature/create-zero-cell" }),
+    setTitleFocus: (focus) => dispatch({ type: "focus/set-title-focus", payload: { focus }}),
+    setAbstractFocus: (focus) => dispatch({ type: "focus/set-abstract-focus", payload: { focus }})
   })
 )(reduxForm({
   form: "metadata"
@@ -160,6 +183,17 @@ const GroupContent = styled.div`
   padding-top: 16px;
   padding-bottom: 16px;
 `;
+
+const RenderedTitle = styled.div`
+  font-size: 1.3em;
+  padding-top: 3.5px;
+  padding-bottom: 5px;
+`
+
+const RenderedAbstract = styled.div`
+  padding-top: 6px;
+  padding-bottom: 7px;
+`
 
 const titleStyle = {
   fontSize: "1.3em"

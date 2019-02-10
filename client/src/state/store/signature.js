@@ -66,11 +66,14 @@ export const createGenerator = (state, source, target, id) => {
   // Choose the colour
   let color = cellColors[num_generators % cellColors.length];
 
+  // Toggle whether this generator is focused (moused over)
+  const focused = false
+
   // Construct the generator object
   let generator = new Core.Generator({ id, source, target });
 
   // Set the appropriate data
-  state = dotProp.set(state, `signature.generators.${id}`, { name, generator, color });
+  state = dotProp.set(state, `signature.generators.${id}`, { name, generator, color, focused });
 
   return state;
 };
@@ -125,6 +128,12 @@ export default (state = initialSignature, action) => {
 
       let id = getFreshId(state);
       state = createGenerator(state, null, null, id);
+      break
+
+    } case 'signature/set-focus': {
+      const { id, focus, cmd } = action.payload
+      state = dotProp.set(state, `signature.generators.${id}.focused`, focus)
+      break
 
     }
   }
