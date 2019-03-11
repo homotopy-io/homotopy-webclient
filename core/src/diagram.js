@@ -1288,8 +1288,7 @@ export class Diagram {
 
     } else { // Recursive expansion on singular slice, 2018-11-HIO-4
 
-      //throw "not yet implemented recursive expansion on singular slices";
-
+      console.log('Recursive expansion at ' + JSON.stringify(location));
       let slice = this.getSlice(location[0]);
       let recursive = slice.getExpansionLimit({ location: location.slice(1), direction, generators });
 

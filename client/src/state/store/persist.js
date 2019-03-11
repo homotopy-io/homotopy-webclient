@@ -9,9 +9,13 @@ import URLON from 'urlon'
 export const initialPersist = null
 
 export default (state = initialPersist, action) => {
+
   const serializer = new Core.SerializeCyclic();
+
   switch (action.type) {
+
     case 'persist/deserialize': {
+      
       const hash = window.location.hash.substr(1)
       const initialMetadata = {
         title: "Untitled Project",
@@ -44,10 +48,14 @@ export default (state = initialPersist, action) => {
         return stateWithMetadata(state)
       }
     }
+
     // If we just loaded a new state, integrate it into the Redux state
     case 'persist/loaded':
+
       return { ...state, ...action.payload };
+
     case 'persist/serialize': {
+
       const t0 = performance.now();
 
       // Prepare part of the state ready to be serialized
