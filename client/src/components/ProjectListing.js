@@ -60,7 +60,6 @@ export const ProjectListing = ({
                     checked={project.public}
                     onChange={evt => {
                       const readable = evt.target.checked
-                      firestore.update({ collection: "projects", doc: project.id }, {public: readable})
                       const blob = firebase.storage().ref().child(`${uid}/${project.id}/0.proof`)
                       blob.updateMetadata({
                         customMetadata: {public: readable}
