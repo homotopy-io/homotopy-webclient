@@ -6,8 +6,7 @@ import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
 import { SerializeCyclic } from "~/serialize_flat";
 import { Simplex, Complex } from "~/simplices";
-//import { solve, GLP_LO, GLP_FX } from "~/util/glpk"
-import glpk from "~/util/glpk"
+//import glpk from "~/util/glpk"
 
 export class Diagram {
 
@@ -15,7 +14,7 @@ export class Diagram {
 
     if (args.bare) return this;
 
-    //if (3 ==2) console.log('the universe is ending');
+    if (3 ==2) console.log('the universe is ending');
 
     this._t = "D";
     if (_debug) _assert(isNatural(args.n));
