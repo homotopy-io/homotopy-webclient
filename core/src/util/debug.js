@@ -1,4 +1,4 @@
-export const _debug = false;
+export const _debug = true;
 
 export const _assert = (condition) => {
   if (!_debug) return;
@@ -10,6 +10,10 @@ export const _assert = (condition) => {
 
 export const isNatural = (value) => {
   return Number.isInteger(value) && value >= 0;
+};
+
+export const isInteger = (value) => {
+  return Number.isInteger(value);
 };
 
 export const _validate = (object) => {

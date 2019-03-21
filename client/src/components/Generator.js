@@ -25,10 +25,13 @@ export const Generator = ({
   <Wrapper onMouseEnter={() => setFocus(true)}
            onMouseLeave={() => {
             setFocus(false)
-            const nameInput = document.getElementById(`generator-${id}-input`).value
-            if (name !== nameInput)
+            const nameInput = document.getElementById(`generator-${id}-input`).value;
+            if (name !== nameInput) {
               onRename(nameInput)
-            setTimeout(() =>
+            }
+            setTimeout(() => {
+              /*
+              if (!renderMathInElement) return;
               renderMathInElement(document.getElementById(`generator-${id}`), {
                 delimiters: [
                   {left: "$$", right: "$$", display: true},
@@ -36,7 +39,9 @@ export const Generator = ({
                   {left: "$", right: "$", display: false},
                   {left: "\\(", right: "\\)", display: false}
                 ]
-              }),
+              })
+              */
+            },
             0)
            }}>
     <Preview onClick={onSelect}>
