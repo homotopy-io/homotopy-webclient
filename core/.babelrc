@@ -28,5 +28,8 @@
         }]
       ]
     }
-  }  
+  },
+  "ignore": [
+    "src/util/glpk.js"
+  ]
 }
