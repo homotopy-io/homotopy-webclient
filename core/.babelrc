@@ -30,6 +30,6 @@
     }
   },
   "ignore": [
-    "src/util/glpk.js"
+    "_src/util/glpk.js"
   ]
 }

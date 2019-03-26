@@ -22,7 +22,10 @@ module.exports = merge(common, {
     globalObject: "this"
   },
   devServer: {
-    hot: true
+    hot: true,
+    watchOptions: {
+      ignored: ['glpk.js']
+    }
   },
   devtool: "eval-source-map"
 });

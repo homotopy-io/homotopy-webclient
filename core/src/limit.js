@@ -3080,26 +3080,38 @@ export class Limit /*extends Array*/ {
   }
 
   // Take a regular point in the extended coordinate system and flow it backward
-  flowBackwardRegularPoint(point) {
+  flowBackwardRegularPoints(points) {
+
+    if (points.length == 0) return [];
+    if (points[0].length == 0) return points.map(point => point.slice());
+
     if (_debug) {
-      _assert(point instanceof Array);
+      _assert(points instanceof Array);
+      /*
       _assert(this.n >= point.length);
       for (let i=0; i<point.length; i++) {
         _assert(isInteger(point[i]));
         _assert(point[i] >= -1);
         _assert(point[i] % 2 == 0); // everything should be regular
       }
+      */
     }
-    if (this.components.length == 0) return point.slice(); // identity limits don't change the point
-    if (point.length == 0) return [];
-    let [first, ...rest] = point;
-    if (first < 0) return point.slice(); // boundary points don't change
-    if (first > this.source_size * 2) return point.slice();
+
+    if (this.components.length == 0) return points.map(point => point.slice()); // identity limits don't change the point
+    if (this.n == 0) return points.map(point => point.slice());
     let monotone = this.getMonotone().getAdjoint();
-    let first_adjusted = first/2;
-    let flow_first = 2*monotone.applyAdjusted(first_adjusted);
-    let flow_point = [flow_first, ...rest];
-    return flow_point;
+    let sublimits = [];
+    let identity_sublimit = new Limit({ n: this.n, components: [] });
+    let flowed_points = points.map(point => {
+      let [first, ...rest] = point;
+      // boundary points don't change
+      if (first < 0) return point.slice(); 
+      let first_adjusted = first/2;
+      let flow_first = 2 * monotone.applyAdjusted(first_adjusted);
+      let flow_point = [flow_first, ...rest];
+      return flow_point;
+    });
+    return flowed_points;
   }
 
   extendedSubLimit(height, source_diagram) {

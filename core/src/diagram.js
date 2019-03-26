@@ -6,7 +6,7 @@ import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
 import { SerializeCyclic } from "~/serialize_flat";
 import { Simplex, Complex } from "~/simplices";
-//import glpk from "~/util/glpk"
+import glpk from "~/util/glpk"
 
 export class Diagram {
 
@@ -1883,12 +1883,12 @@ export class Diagram {
   }
 
   /* Get all the points in the diagram */
-  getAllPoints(dimension) {
+  getAllPointsWithBoundaryFlag(dimension) {
     if (dimension == 0) return [[]];
     let names = [];
     if (dimension == 1) {
       for (let i=-1; i<2+2*this.data.length; i++) {
-        names.push([i]);
+        names.push([i, i == -1 || i == 1 + 2 * this.data.length]);
       }
       return names;
     }
@@ -1896,7 +1896,7 @@ export class Diagram {
     for (let i=-1; i<2+2*this.data.length; i++) {
       let adjusted = this.adjustHeight(i);
       let slice = slices[adjusted];
-      let slice_names = slice.getAllPoints(dimension - 1);
+      let slice_names = slice.getAllPointsWithBoundaryFlag(dimension - 1);
       let prefixed_slice_names = slice_names.map(name => [i, ...name]);
       names.push(prefixed_slice_names);
     }
@@ -2019,11 +2019,9 @@ export class Diagram {
 
     console.log(dimension);
 
-    console.log('broken');
-
     // For a 0-dimensional layout, the unique point has no coordinates
     if (dimension == 0 && true) {
-      return { layout: { '': [] }, freeze: { '': [] } }
+      return { layout: { '': [] }, boundary: { '': [] } }
     }
 
     // Get the distance constraints, which ensure all elements are suitably spaced
@@ -2160,13 +2158,13 @@ export class Diagram {
     let solution = glpk.solve({ name: 'LP', objective, subjectTo }, glpk.GLP_MSG_ALL);
 
     // Layout recursively
-    let { layout, freeze } = this.layout(dimension - 1);
+    let { layout, boundary } = this.layout(dimension - 1);
 
     // Build the full layout coordinates of every point
-    let all_points = this.getAllPoints(dimension);
+    let all_points = this.getAllPointsWithBoundaryFlag(dimension);
     let full_layout_all = {};
     for (let i=0; i<all_points.length; i++) {
-      let point = all_points[i].slice();
+      let point = all_points[i].slice(0, dimension);
       let full_name = point.join(',');
       point.pop();
       let full_layout = layout[point.join(',')].slice();
@@ -2175,18 +2173,18 @@ export class Diagram {
       full_layout_all[full_name] = full_layout;
     }
 
-    // Build the full freeze data for every point
-    let full_freeze = {};
+    // Build the full boundary data for every point
+    let full_boundary = {};
     for (let i=0; i<all_points.length; i++) {
-      let point = all_points[i].slice();
+      let point = all_points[i].slice(0, dimension);
+      let flag = all_points[i][dimension];
       let full_name = point.join(',');
-      point.pop();
-      let freeze_data = [...freeze[point.join(',')], false];
-      if (point[0] == 1) freeze_data[dimension - 1] = true;
-      full_freeze[full_name] = freeze_data;
+      let sub_point = point.slice(0, point.length - 1);
+      let boundary_data = [...boundary[sub_point.join(',')], flag];
+      full_boundary[full_name] = boundary_data;
     }
 
-    return { layout: full_layout_all, freeze: full_freeze };
+    return { layout: full_layout_all, boundary: full_boundary };
       
   }
 
@@ -2247,8 +2245,8 @@ export class Diagram {
 
     let identity_limit = new Limit({ n: this.n - 1, components: [] });
 
-    // Get the top-level constraints
-    let top_level_constraints = [];
+    // Get the top-level singular constraints
+    let top_level_singular_constraints = [];
     for (let i=-1; i<this.data.length + 1; i++) {
       //if (i == this.data.length) continue;
       //if (i == -1) continue;
@@ -2300,8 +2298,70 @@ export class Diagram {
         let label = labels[j];
         let data = lookup[label];
         //if (data.below.length == 1 && data.above.length == 1) continue;
-        if (data.below.length > 0) top_level_constraints.push([prefix + label, data.below]);
-        if (data.above.length > 0) top_level_constraints.push([prefix + label, data.above]);
+        if (data.below.length > 0) top_level_singular_constraints.push([prefix + label, data.below]);
+        if (data.above.length > 0) top_level_singular_constraints.push([prefix + label, data.above]);
+      }
+    }
+
+    // Get all the regular points
+    let slice_regular_points = [];
+    for (let i=0; i<=this.data.length * 2; i++) {
+      slice_regular_points.push(slices[i].getRegularPoints(dimension - 1));
+    }
+
+    // Get the top-level regular constraints
+    let top_level_regular_constraints = [];
+    for (let i=0; i<this.data.length + 1; i++) {
+      //if (i == this.data.length) continue;
+      //if (i == -1) continue;
+
+      // Prepare lookup table
+      let regular_height = 2 * i;
+      let adjusted = this.adjustHeight(regular_height);
+      let prefix = regular_height.toString() + ',';
+      let lookup = {};
+      let regular_height_points = slice_regular_points[adjusted];
+      let labels = [];
+      for (let j=0; j<regular_height_points.length; j++) {
+        let point = regular_height_points[j];
+        let label = point.join(',');
+        labels.push(label);
+        lookup[label] = { below: [], above: [] };
+      }
+
+      // Flow backward regular points from singular slice below
+      let singular_below = regular_height - 1;
+      let backward_limit = (i == 0) ? identity_limit : this.data[i - 1].backward_limit;
+      let singular_below_adjusted = this.adjustHeight(singular_below);
+      let flow_backward = backward_limit.flowBackwardRegularPoints(slice_regular_points[singular_below_adjusted]);
+      let singular_below_regular_points = slice_regular_points[singular_below_adjusted];
+      let singular_below_prefix = singular_below.toString() + ',';
+      for (let j=0; j<singular_below_regular_points.length; j++) {
+        let flowed = flow_backward[j];
+        let label = flowed.join(',');
+        lookup[label].below.push(singular_below_prefix + singular_below_regular_points[j].join(','));
+      }
+
+      // Flow forward regular points from singular slice above
+      let singular_above = regular_height + 1;
+      let forward_limit = (i == this.data.length) ? identity_limit : this.data[i].forward_limit;
+      let singular_above_adjusted = this.adjustHeight(singular_above);
+      let flow_forward = forward_limit.flowBackwardRegularPoints(slice_regular_points[singular_above_adjusted]);
+      let singular_above_regular_points = slice_regular_points[singular_above_adjusted];
+      let singular_above_prefix = singular_above.toString() + ',';
+      for (let j=0; j<singular_above_regular_points.length; j++) {
+        let flowed = flow_forward[j];
+        let label = flowed.join(',');
+        lookup[label].above.push(singular_above_prefix + singular_above_regular_points[j].join(','));
+      }
+
+      // Prepare the constraints
+      for (let j=0; j<labels.length; j++) {
+        let label = labels[j];
+        let data = lookup[label];
+        //if (data.below.length == 1 && data.above.length == 1) continue;
+        if (data.below.length > 0) top_level_regular_constraints.push([prefix + label, data.below]);
+        if (data.above.length > 0) top_level_regular_constraints.push([prefix + label, data.above]);
       }
     }
 
@@ -2324,7 +2384,11 @@ export class Diagram {
     }
 
     // Build and return the final list of constraints
-    let constraints = [...top_level_constraints, ...slice_constraints.flat()];
+    let constraints = [
+      ...top_level_singular_constraints,
+      ...top_level_regular_constraints,
+      ...slice_constraints.flat()
+    ];
     return constraints;
   }
 

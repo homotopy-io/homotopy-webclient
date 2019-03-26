@@ -8,7 +8,830 @@ import { _assert, _debug, isNatural } from "../../../core/src/util/debug"; // th
     https://en.wikipedia.org/wiki/B%C3%A9zier_triangle
 */
 
+export class Loop {
 
+  constructor({ complex, layout, boundary, dimension }) {
+    _assert(complex instanceof Core.Complex);
+    this.complex = complex;
+    this.layout = { ...layout };
+
+    if (dimension <= 3) {
+      this.prepare3(boundary);
+    } else if (dimension == 4) {
+      this.prepare4(boundary);
+    } else {
+      console.log('Invalid complex dimension');
+      debugger;
+    }
+  }
+
+  prepare3(boundary) {
+
+    // Need to know all vertices, faces and edges
+    // For each vertex, need to know its edges
+    // For each edge, need to know its vertices and faces
+    // For each face, need to know its vertices
+    let vertices = {};
+    let edges = {};
+    let faces = {};
+
+    // The stuff to actually draw, with its type
+    let draw_vertices = [];
+    let draw_edges = [];
+    let draw_triangles = [];
+
+    let complex = this.complex;
+
+    for (let i=0; i<complex.simplices.length; i++) {
+
+      let simplex = complex.simplices[i];
+
+      if (simplex.point_names.length == 1) {
+
+        Loop.addNewVertex(vertices, simplex.point_names[0], 0);
+        draw_vertices.push({ vertex: simplex.point_names[0], id: simplex.id });
+
+      } else if (simplex.point_names.length == 2) {
+
+        let edge_name = Loop.getEdgeName(simplex.point_names);
+        Loop.addEdge(edges, simplex.point_names, edge_name, 1);
+        let [point_1_name, point_2_name] = simplex.point_names;
+        Loop.addNewVertex(vertices, point_1_name, 1);
+        Loop.addNewVertex(vertices, point_2_name, 1);
+        vertices[point_1_name].edges[edge_name] = true;
+        vertices[point_2_name].edges[edge_name] = true;
+        draw_edges.push({ vertices: simplex.point_names, id: simplex.id });
+        
+      } else if (simplex.point_names.length == 3) {
+
+        let ns = simplex.point_names;
+        let face_name = Loop.getFaceName(ns);
+        let edge_1_name = Loop.getEdgeName([ns[0], ns[1]]);
+        let edge_2_name = Loop.getEdgeName([ns[0], ns[2]]);
+        let edge_3_name = Loop.getEdgeName([ns[1], ns[2]]);
+        Loop.addEdge(edges, [ns[0], ns[1]], edge_1_name, 2);
+        Loop.addEdge(edges, [ns[0], ns[2]], edge_2_name, 2);
+        Loop.addEdge(edges, [ns[1], ns[2]], edge_3_name, 2);
+        edges[edge_1_name].faces.add(face_name);
+        edges[edge_2_name].faces.add(face_name);
+        edges[edge_3_name].faces.add(face_name);
+        Loop.addNewVertex(vertices, ns[0], 2);
+        Loop.addNewVertex(vertices, ns[1], 2);
+        Loop.addNewVertex(vertices, ns[2], 2);
+        vertices[ns[0]].edges[edge_1_name] = true;
+        vertices[ns[0]].edges[edge_2_name] = true;
+        vertices[ns[1]].edges[edge_1_name] = true;
+        vertices[ns[1]].edges[edge_3_name] = true;
+        vertices[ns[2]].edges[edge_2_name] = true;
+        vertices[ns[2]].edges[edge_3_name] = true;
+        faces[face_name] = { vertices: ns, id: simplex.id, dimension: 2 /*, edges: [edge_1_name, edge_2_name, edge_3_name]*/ };
+        draw_triangles.push({ vertices: simplex.point_names, id: simplex.id });
+
+      }
+    }
+
+    // Add boundary flags for vertices and edges
+    for (const edge_name in edges) {
+      let edge_data = edges[edge_name];
+      //edge_data.boundary = (edge_data.faces.size == 1);
+      let b1 = boundary[edge_data.vertices[0]];
+      let b2 = boundary[edge_data.vertices[0]];
+      edge_data.boundary = (b1[0] && b2[0]) || (b1[1] && b2[1]);
+    }
+    for (const vertex_name in vertices) {
+      let vertex_data = vertices[vertex_name];
+      //vertex_data.boundary = Object.keys(vertex_data.edges).map(edge_name => edges[edge_name]).some(edge_data => edge_data.boundary);
+      let b = boundary[vertex_name];
+      vertex_data.boundary = b[0] || b[1];
+      vertex_data.extremal = b[0] && b[1];
+    }
+
+    this.vertices = vertices;
+    this.edges = edges;
+    this.faces = faces;
+    this.draw_vertices = draw_vertices;
+    this.draw_edges = draw_edges;
+    this.draw_triangles = draw_triangles;
+  }
+
+  static addNewVertex(vertices, name, dimension) {
+    if (_debug) {
+      _assert(vertices instanceof Object);
+      _assert(typeof name === 'string');
+    }
+    if (!vertices[name]) {
+      vertices[name] = { edges: {}, dimension };
+    } else {
+      vertices[name].dimension = Math.min(vertices[name].dimension, dimension);
+    }
+  }
+
+  static addEdge(edges, edge_vertex_names, edge_name, dimension) {
+    if (!edges[edge_name]) {
+      edges[edge_name] = { vertices: edge_vertex_names, faces: new Set(), dimension };
+    } else {
+      edges[edge_name].dimension = Math.min(edges[edge_name].dimension, dimension);
+    }
+  }
+
+  prepare4(boundary) {
+
+    let vertices = {}; // edges, extra_vertex
+    let edges = {};    // vertices, faces, extra_vertex
+    let faces = {};    // vertices, extra_vertex
+    let draw_instants = [];
+    let draw_points = [];
+    let draw_edges = [];
+    let draw_triangles = [];
+    let draw_triangle_fillers = [];
+    let complex = this.complex;
+
+    for (let i=0; i<complex.simplices.length; i++) {
+
+      let simplex = complex.simplices[i];
+      let names = simplex.point_names;
+      let points = names.map(name => this.layout[name]);
+
+      // Instanton
+      if (names.length == 1) {
+        draw_instants.push(names[0]);
+      }
+
+      // Moving vertex
+      else if (names.length == 2) {
+        draw_points.push(names);
+        Loop.addNewVertex(vertices, names[0]);
+        Loop.addNewVertex(vertices, names[1]);
+      }
+      
+      // Growing edge or shrinking edge
+      else if (names.length == 3) {
+
+        // Shrinking edge
+        if (points[0][0] == points[1][0]) {
+          let edge_point_names = [names[0], names[1]];
+          let edge_name = Loop.getEdgeName(edge_point_names);
+          Loop.addEdge(edges, edge_point_names, edge_name);
+          Loop.addNewVertex(vertices, names[0]);
+          Loop.addNewVertex(vertices, names[1]);
+          vertices[names[0]].edges[edge_name] = true;
+          vertices[names[1]].edges[edge_name] = true;
+          draw_edges.push({ edge_vertex_names: edge_point_names, extra_vertex_name: names[2] });
+        }
+
+        // Growing edge
+        else if (points[1][0] == points[2][0]) {
+          let edge_point_names = [names[1], names[2]];
+          let edge_name = Loop.getEdgeName(edge_point_names);
+          Loop.addEdge(edges, edge_point_names, edge_name);
+          Loop.addNewVertex(vertices, names[1]);
+          Loop.addNewVertex(vertices, names[2]);
+          vertices[names[1]].edges[edge_name] = true;
+          vertices[names[2]].edges[edge_name] = true;
+          draw_edges.push({ edge_vertex_names: edge_point_names, extra_vertex_name: names[0] });
+        }
+        
+      // Growing triangle, shrinking triangle, or interposed tetrahedron
+      } else if (names.length == 4) {
+
+        // Shrinking triangle
+        if ((points[0][0] == points[1][0]) && (points[0][0] == points[2][0])) {
+          let face_name = Loop.addNewFace(vertices, edges, faces, [names[0], names[1], names[2]])
+          draw_triangles.push({ face_vertex_names: [names[0], names[1], names[2]], extra_vertex_name: names[3] });
+        }
+
+        // Growing triangle
+        else if ((points[1][0] == points[2][0]) && (points[2][0] == points[3][0])) {
+          let face_name = Loop.addNewFace(vertices, edges, faces, [names[1], names[2], names[3]]);
+          draw_triangles.push({ face_vertex_names: [names[1], names[2], names[3]], extra_vertex_name: names[0] });
+        }
+
+        // Interposed triangles
+        else {
+          if (_debug) {
+            _assert(points[0][0] == points[1][0]);
+            _assert(points[2][0] == points[3][0]);
+          }
+          let source_names = points[0][0] < points[2][0] ? [names[0], names[1]] : [names[2], names[3]];
+          let target_names = points[0][0] < points[2][0] ? [names[2], names[3]] : [names[0], names[1]];
+          let tetrahedron = { source_names, target_names };
+          draw_triangle_fillers.push(tetrahedron);
+        }
+
+      }
+    }
+
+    // Add boundary flags for vertices and edges
+    for (const edge_name in edges) {
+      let edge_data = edges[edge_name];
+      edge_data.boundary = (edge_data.faces.size == 1);
+    }
+    for (const vertex_name in vertices) {
+      let vertex_data = vertices[vertex_name];
+      vertex_data.boundary = Object.keys(vertex_data.edges).map(edge_name => edges[edge_name]).some(edge_data => edge_data.boundary);
+      let boundary_data = boundary[vertex_name];
+      vertex_data.extremal = boundary_data[1] && boundary_data[2];
+    }
+
+    this.vertices = vertices;
+    this.edges = edges;
+    this.faces = faces;
+    this.draw_instants = draw_instants;
+    this.draw_points = draw_points;
+    this.draw_edges = draw_edges;
+    this.draw_triangles = draw_triangles;
+    this.draw_triangle_fillers = draw_triangle_fillers;
+
+
+        // Sanity check on the face/edge relations
+    for (const edge_name in this.edges) {
+      let xedge_data = this.edges[edge_name];
+      let xpoint_1 = xedge_data.vertices[0];
+      let xpoint_2 = xedge_data.vertices[1];
+      let xface_array = [...xedge_data.faces];
+      for (let i=0; i<xface_array.length; i++) {
+        let xface_name = xface_array[i];
+        let xface = this.faces[xface_name];
+        if (xface.vertices.indexOf(xpoint_1) < 0) {
+          console.log({xpoint_1, xface});
+          debugger;
+        }
+        if (xface.vertices.indexOf(xpoint_2) < 0) {
+          console.log({xpoint_2, xface});
+          debugger;
+        }
+      }
+    }
+  }
+
+  static addNewFace(vertices, edges, faces, point_names) {
+    let ns = point_names;
+    let face_name = Loop.getFaceName(ns);
+    let edge_1_name = Loop.getEdgeName([ns[0], ns[1]]);
+    let edge_2_name = Loop.getEdgeName([ns[0], ns[2]]);
+    let edge_3_name = Loop.getEdgeName([ns[1], ns[2]]);
+    Loop.addEdge(edges, [ns[0], ns[1]], edge_1_name);
+    Loop.addEdge(edges, [ns[0], ns[2]], edge_2_name);
+    Loop.addEdge(edges, [ns[1], ns[2]], edge_3_name);
+    edges[edge_1_name].faces.add(face_name);
+    edges[edge_2_name].faces.add(face_name);
+    edges[edge_3_name].faces.add(face_name);
+    Loop.addNewVertex(vertices, ns[0]);
+    Loop.addNewVertex(vertices, ns[1]);
+    Loop.addNewVertex(vertices, ns[2]);
+    vertices[ns[0]].edges[edge_1_name] = true;
+    vertices[ns[0]].edges[edge_2_name] = true;
+    vertices[ns[1]].edges[edge_1_name] = true;
+    vertices[ns[1]].edges[edge_3_name] = true;
+    vertices[ns[2]].edges[edge_2_name] = true;
+    vertices[ns[2]].edges[edge_3_name] = true;
+    faces[face_name] = { vertices: ns };
+    return face_name;
+  }
+
+  subdivide(dimension) {
+    if (dimension <= 3) {
+      this.subdivide3();
+    } else if (dimension == 4) {
+      this.subdivide4();
+    } else {
+      console.log("Can't subdivide this geometry");
+    }
+  }
+
+  // Perform loop subdivision in the Warren style
+  // http://www.cs.cmu.edu/afs/cs/academic/class/15462-s14/www/lec_slides/Subdivision.pdf
+  subdivide4() {
+
+    let vertices = {};
+    let edges = {};
+    let faces = {};
+    let layout = { ...this.layout };
+
+    // Loop over every original edge, subdividing it
+    for (const edge_name in this.edges) {
+      let edge_data = this.edges[edge_name];
+      let sub_name = Loop.getEdgeSubdivisionName(edge_data.vertices);
+      let [point_1_name, point_2_name] = edge_data.vertices;
+      let point_1 = this.layout[point_1_name];
+      let point_2 = this.layout[point_2_name];
+      if (edge_data.faces.size != 2) {
+        let points = edge_data.vertices.map(name => this.layout[name]);
+        let sub_point = Loop.getVectorConvexSum(points, [0.5, 0.5]);
+        layout[sub_name] = sub_point;
+      } else {
+        let face_array = [...edge_data.faces];
+        let face_1_name = face_array[0];
+        let face_2_name = face_array[1];
+        let face_1_data = this.faces[face_1_name];
+        let face_2_data = this.faces[face_2_name];
+        let extra_vertex_names = [...face_1_data.vertices, ...face_2_data.vertices].filter(name => {
+          return (name != point_1_name && name != point_2_name);
+        });
+        if (extra_vertex_names.length != 2) {
+          console.log('extra_vertex_names.length = ' + extra_vertex_names.length);
+          console.log(face_array);
+          console.log(extra_vertex_names);
+        }
+        _assert(extra_vertex_names.length == 2);
+        let extra_points = extra_vertex_names.map(name => this.layout[name])
+        let new_point = Loop.getVectorConvexSum([point_1, point_2, ...extra_points], [0.375, 0.375, 0.125, 0.125]);
+        layout[sub_name] = new_point;
+      }
+      let edge_1_name = Loop.getEdgeName([point_1_name, sub_name]);
+      let edge_2_name = Loop.getEdgeName([sub_name, point_2_name]);
+      let point_1_data = this.vertices[point_1_name];
+      let point_2_data = this.vertices[point_2_name];
+      if (!vertices[point_1_name]) vertices[point_1_name] = { edges: {}, boundary: point_1_data.boundary, extremal: this.vertices[point_1_name].extremal };
+      if (!vertices[point_2_name]) vertices[point_2_name] = { edges: {}, boundary: point_2_data.boundary, extremal: this.vertices[point_2_name].extremal };
+      vertices[sub_name] = { edges: {}, boundary: point_1_data.boundary && point_2_data.boundary, extremal: false };
+      vertices[point_1_name].edges[edge_1_name] = true;
+      vertices[sub_name].edges[edge_1_name] = true;
+      vertices[sub_name].edges[edge_2_name] = true;
+      vertices[point_2_name].edges[edge_2_name] = true;
+      edges[edge_1_name] = { vertices: [point_1_name, sub_name], faces: new Set(), boundary: edge_data.boundary };
+      edges[edge_2_name] = { vertices: [sub_name, point_2_name], faces: new Set(), boundary: edge_data.boundary };
+    }
+
+    // Loop over every original vertex, adjusting its position
+    for (const vertex_name in this.vertices) {
+
+      let vertex_data = this.vertices[vertex_name];
+      let vertex_edges = Object.keys(vertex_data.edges);
+      // Get the neighbouring boundary vertices
+      let neighbouring_vertices = vertex_edges
+        .map(edge_name => this.edges[edge_name].vertices)
+        .flat().filter(name => name != vertex_name);
+
+      // Extremal vertices don't change position
+      if (vertex_data.extremal) {
+
+        layout[vertex_name] = this.layout[vertex_name];
+
+      // Boundary vertices are attracted to neighbouring boundary vertices
+      } else if (vertex_data.boundary) {
+
+        // Get the neighbouring boundary vertices
+        let neighbouring_boundary_vertices = neighbouring_vertices
+          .filter(vertex_name => this.vertices[vertex_name].boundary);
+        _assert(neighbouring_boundary_vertices.length >= 2);
+        let points = [vertex_name, ...neighbouring_boundary_vertices].map(name => this.layout[name]);
+        let weights = [3/4];
+        let neighbour_weight = 1/(4 * neighbouring_boundary_vertices.length);
+        while (weights.length < points.length) {
+          weights.push(neighbour_weight);
+        }
+        let new_point = Loop.getVectorConvexSum(points, weights);
+        layout[vertex_name] = new_point;
+
+      // Use the loop weighting rule
+      } else {
+
+        if (neighbouring_vertices.length < 3) {
+          layout[vertex_name] = this.layout[vertex_name];
+        } else {
+
+          // Use the standard loop coordinate update rule, in the Warren version
+          let beta = (neighbouring_vertices.length == 3)
+            ? (3 / 16)
+            : (3 / (8 * neighbouring_vertices.length));
+
+          let points = [vertex_name, ...neighbouring_vertices].map(name => this.layout[name]);
+          let weights = new Array(neighbouring_vertices.length + 1).fill(beta);
+          weights[0] = 1 - (neighbouring_vertices.length * beta);
+          let new_point = Loop.getVectorConvexSum(points, weights);
+          layout[vertex_name] = new_point;
+
+        }
+
+      }
+
+    }
+
+    // Loop over every original face, creating 4 new faces
+    // See 2019-1-homotopy.io-94
+    for (const face_name in this.faces) {
+      let face_data = this.faces[face_name];
+      let [p1, p2, p3] = face_data.vertices;
+      let e1c = Loop.getEdgeSubdivisionName([p1, p2]);
+      let e2c = Loop.getEdgeSubdivisionName([p2, p3]);
+      let e3c = Loop.getEdgeSubdivisionName([p1, p3]);
+      let e4_name = Loop.getEdgeName([p1, e1c]);
+      let e5_name = Loop.getEdgeName([e1c, p2]);
+      let e6_name = Loop.getEdgeName([p2, e2c]);
+      let e7_name = Loop.getEdgeName([e2c, p3]);
+      let e8_name = Loop.getEdgeName([p1, e3c]);
+      let e9_name = Loop.getEdgeName([e3c, p3]);
+      let e10_name = Loop.getEdgeName([e1c, e2c]);
+      let e11_name = Loop.getEdgeName([e1c, e3c]);
+      let e12_name = Loop.getEdgeName([e2c, e3c]);
+      let f1_name = Loop.getFaceName([e1c, p2, e2c]);
+      let f2_name = Loop.getFaceName([e2c, e3c, p3]);
+      let f3_name = Loop.getFaceName([p1, e1c, e3c]);
+      let f4_name = Loop.getFaceName([e1c, e2c, e3c]);
+
+      // Create new edges in the middle of the face
+      edges[e10_name] = { vertices: [e1c, e2c], faces: new Set([f1_name, f4_name]), boundary: false };
+      edges[e11_name] = { vertices: [e1c, e3c], faces: new Set([f3_name, f4_name]), boundary: false };
+      edges[e12_name] = { vertices: [e2c, e3c], faces: new Set([f2_name, f4_name]), boundary: false };
+
+      // Add the new faces to the boundary edges
+      edges[e4_name].faces.add(f3_name);
+      edges[e5_name].faces.add(f1_name);
+      edges[e6_name].faces.add(f1_name);
+      edges[e7_name].faces.add(f2_name);
+      edges[e9_name].faces.add(f2_name);
+      edges[e8_name].faces.add(f3_name);
+
+      // Add the new faces
+      faces[f1_name] = { vertices: [e1c, p2, e2c] };
+      faces[f2_name] = { vertices: [e2c, e3c, p3] };
+      faces[f3_name] = { vertices: [p1, e1c, e3c] };
+      faces[f4_name] = { vertices: [e1c, e2c, e3c] };
+
+    }
+
+    // Now subdivide the drawing data
+
+    // Preserve every instant & point
+
+    // Subdivide the drawn edges
+    let draw_edges = [];
+    for (let i=0; i<this.draw_edges.length; i++) {
+      let edge_data = this.draw_edges[i];
+      let [n1, n2] = edge_data.edge_vertex_names;
+      let s = Loop.getEdgeSubdivisionName(edge_data.edge_vertex_names);
+      draw_edges.push(
+        { edge_vertex_names: [n1, s], extra_vertex_name: edge_data.extra_vertex_name },
+        { edge_vertex_names: [s, n1], extra_vertex_name: edge_data.extra_vertex_name }
+      );
+    }
+
+    // Subdivide the drawn triangles
+    let draw_triangles = [];
+    for (let i=0; i<this.draw_triangles.length; i++) {
+      let tri_data = this.draw_triangles[i];
+      let [n1, n2, n3] = tri_data.face_vertex_names;
+      let n12 = Loop.getEdgeSubdivisionName([n1, n2]);
+      let n23 = Loop.getEdgeSubdivisionName([n2, n3]);
+      let n13 = Loop.getEdgeSubdivisionName([n1, n3]);
+      let extra_vertex_name = tri_data.extra_vertex_name;
+      draw_triangles.push(
+        { face_vertex_names: [n1 , n12, n13], extra_vertex_name },
+        { face_vertex_names: [n12, n2 , n23], extra_vertex_name },
+        { face_vertex_names: [n23, n13, n3 ], extra_vertex_name },
+        { face_vertex_names: [n12, n23, n13], extra_vertex_name }
+      );
+    }
+
+    // Subdivide the triangle fillers
+    let draw_triangle_fillers = [];
+    for (let i=0; i<this.draw_triangle_fillers.length; i++) {
+      let filler_data = this.draw_triangle_fillers[i];
+      let sn = filler_data.source_names;
+      let tn = filler_data.target_names;
+      let old_edge_1c = Loop.getEdgeSubdivisionName(sn);
+      let old_edge_2c = Loop.getEdgeSubdivisionName(tn);
+      let new_tet_1 = { source_names: [sn[0], old_edge_1c], target_names: [tn[0], old_edge_2c] };
+      let new_tet_2 = { source_names: [sn[0], old_edge_1c], target_names: [old_edge_2c, tn[1]] };
+      let new_tet_3 = { source_names: [old_edge_1c, sn[1]], target_names: [tn[0], old_edge_2c] };
+      let new_tet_4 = { source_names: [old_edge_1c, sn[1]], target_names: [old_edge_2c, tn[1]] };
+      draw_triangle_fillers.push(new_tet_1, new_tet_2, new_tet_3, new_tet_4);
+    }
+
+    // Retain the subdivided data
+    this.vertices = vertices;
+    this.edges = edges;
+    this.faces = faces;
+    //this.draw_instants = draw_instants; unchanged
+    //this.draw_points = draw_points; unchanged
+    this.draw_edges = draw_edges;
+    this.draw_triangles = draw_triangles;
+    this.draw_triangle_fillers = draw_triangle_fillers;
+    this.layout = layout;
+
+    // Sanity check on the face/edge relations
+    for (const edge_name in this.edges) {
+      let xedge_data = this.edges[edge_name];
+      let xpoint_1 = xedge_data.vertices[0];
+      let xpoint_2 = xedge_data.vertices[1];
+      let xface_array = [...xedge_data.faces];
+      for (let i=0; i<xface_array.length; i++) {
+        let xface_name = xface_array[i];
+        let xface = this.faces[xface_name];
+        if (xface.vertices.indexOf(xpoint_1) < 0) {
+          console.log({xpoint_1, xface});
+          debugger;
+        }
+        if (xface.vertices.indexOf(xpoint_2) < 0) {
+          console.log({xpoint_2, xface});
+          debugger;
+        }
+      }
+    }
+
+
+
+  }
+
+  // Perform loop subdivision in the Warren style
+  // http://www.cs.cmu.edu/afs/cs/academic/class/15462-s14/www/lec_slides/Subdivision.pdf
+  subdivide3() {
+
+    let vertices = {};
+    let edges = {};
+    let faces = {};
+    let layout = { ...layout };
+    let draw_edges = [];
+    let draw_triangles = [];
+
+    // Loop over every original edge, subdividing it
+    for (const edge_name in this.edges) {
+      let edge_data = this.edges[edge_name];
+      let sub_name = Loop.getEdgeSubdivisionName(edge_data.vertices);
+      let [point_1_name, point_2_name] = edge_data.vertices;
+      let point_1 = this.layout[point_1_name];
+      let point_2 = this.layout[point_2_name];
+
+      if (edge_data.dimension == 1) {
+
+        let points = edge_data.vertices.map(name => this.layout[name]);
+        let sub_point = Loop.getVectorConvexSum(points, [0.5, 0.5]);
+        layout[sub_name] = sub_point;
+
+      } else if (edge_data.dimension == 2) {
+
+        if (edge_data.faces.size == 2) {
+          let face_array = [...edge_data.faces];
+          let face_1_name = face_array[0];
+          let face_2_name = face_array[1];
+          let face_1_data = this.faces[face_1_name];
+          let face_2_data = this.faces[face_2_name];
+          let extra_vertex_names = [...face_1_data.vertices, ...face_2_data.vertices].filter(name => {
+            return (name != point_1_name && name != point_2_name);
+          });
+          _assert(extra_vertex_names.length == 2);
+          let extra_points = extra_vertex_names.map(name => this.layout[name])
+          let new_point = Loop.getVectorConvexSum([point_1, point_2, ...extra_points], [0.375, 0.375, 0.125, 0.125]);
+          layout[sub_name] = new_point;
+        } else {
+          _assert(edge_data.boundary); // shouldn't happen -- never nonmanifold in generic position
+          let points = edge_data.vertices.map(name => this.layout[name]);
+          let sub_point = Loop.getVectorConvexSum(points, [0.5, 0.5]);
+          layout[sub_name] = sub_point;
+        }
+      } else _assert(false);
+
+      let edge_1_name = Loop.getEdgeName([point_1_name, sub_name]);
+      let edge_2_name = Loop.getEdgeName([sub_name, point_2_name]);
+      let point_1_data = this.vertices[point_1_name];
+      let point_2_data = this.vertices[point_2_name];
+      if (!vertices[point_1_name]) vertices[point_1_name] = { edges: {}, boundary: point_1_data.boundary, extremal: point_1_data.extremal, dimension: point_1_data.dimension };
+      if (!vertices[point_2_name]) vertices[point_2_name] = { edges: {}, boundary: point_2_data.boundary, extremal: point_2_data.extremal, dimension: point_2_data.dimension };
+      vertices[sub_name] = { edges: {}, boundary: point_1_data.boundary && point_2_data.boundary, dimension: edge_data.dimension };
+      vertices[point_1_name].edges[edge_1_name] = true;
+      vertices[sub_name].edges[edge_1_name] = true;
+      vertices[sub_name].edges[edge_2_name] = true;
+      vertices[point_2_name].edges[edge_2_name] = true;
+      edges[edge_1_name] = { vertices: [point_1_name, sub_name], faces: new Set(), boundary: edge_data.boundary, dimension: edge_data.dimension };
+      edges[edge_2_name] = { vertices: [sub_name, point_2_name], faces: new Set(), boundary: edge_data.boundary, dimension: edge_data.dimension };
+    }
+
+    // Loop over every original vertex, adjusting its position, and adding the appropriate faces
+    for (const vertex_name in this.vertices) {
+
+      let vertex_data = this.vertices[vertex_name];
+      let vertex_edges = Object.keys(vertex_data.edges);
+
+      // Get the neighbouring vertices
+      let neighbouring_vertices = vertex_edges
+        .map(edge_name => this.edges[edge_name].vertices)
+        .flat().filter(name => name != vertex_name);
+
+      if (vertex_data.dimension == 0) {
+
+        // Never move diagram vertices
+        layout[vertex_name] = this.layout[vertex_name]
+
+      } else if (vertex_data.dimension == 1) {
+
+        // If it's a boundary vertex, don't move it
+        if (vertex_data.boundary) {
+
+          layout[vertex_name] = this.layout[vertex_name];
+
+        } else {
+
+          // Get the neighbouring 1d vertices
+          let neighbouring_1d_vertices = neighbouring_vertices
+            .filter(vertex_name => this.vertices[vertex_name].dimension <= 1);
+
+          // There should be exactly 2 of them
+          _assert(neighbouring_1d_vertices.length == 2);
+
+          let points = [vertex_name, ...neighbouring_1d_vertices].map(name => this.layout[name]);
+          let weights = [3/4, 1/8, 1/8];
+          let new_point = Loop.getVectorConvexSum(points, weights);
+          layout[vertex_name] = new_point;
+
+        }
+
+      } else if (vertex_data.dimension == 2) {
+
+        // Extremal vertices are right at the corners and don't get moved at all
+        if (vertex_data.extremal) {
+
+          layout[vertex_name] = this.layout[vertex_name];
+
+        } else if (vertex_data.boundary) {
+
+          // Get the neighbouring boundary vertices
+          let neighbouring_boundary_vertices = neighbouring_vertices
+            .filter(vertex_name => this.vertices[vertex_name].boundary);
+          _assert(neighbouring_boundary_vertices.length >= 2);
+          let points = [vertex_name, ...neighbouring_boundary_vertices].map(name => this.layout[name]);
+          let weights = [3/4];
+          let neighbour_weight = 1/(4 * neighbouring_boundary_vertices.length);
+          while (weights.length < points.length) {
+            weights.push(neighbour_weight);
+          }
+          let new_point = Loop.getVectorConvexSum(points, weights);
+          layout[vertex_name] = new_point;
+
+        } else {
+
+          // Use the standard loop coordinate update rule, in the Warren version
+          let beta = (neighbouring_vertices.length == 3)
+            ? (3 / 16)
+            : (3 / (8 * neighbouring_vertices.length));
+
+          let points = [vertex_name, ...neighbouring_vertices].map(name => this.layout[name]);
+          let weights = new Array(neighbouring_vertices.length + 1).fill(beta);
+          weights[0] = 1 - (neighbouring_vertices.length * beta);
+          let new_point = Loop.getVectorConvexSum(points, weights);
+          layout[vertex_name] = new_point;
+
+        }
+
+      } else _assert(false);
+
+
+    }
+
+    // Loop over every original face, creating 4 new faces
+    for (const face_name in this.faces) {
+      let face_data = this.faces[face_name];
+      let [p1, p2, p3] = face_data.vertices;
+      let p12 = Loop.getEdgeSubdivisionName([p1, p2]);
+      let p23 = Loop.getEdgeSubdivisionName([p2, p3]);
+      let p13 = Loop.getEdgeSubdivisionName([p1, p3]);
+      let e4_name = Loop.getEdgeName([p1, p12]);
+      let e5_name = Loop.getEdgeName([p12, p2]);
+      let e6_name = Loop.getEdgeName([p2, p23]);
+      let e7_name = Loop.getEdgeName([p23, p3]);
+      let e8_name = Loop.getEdgeName([p1, p13]);
+      let e9_name = Loop.getEdgeName([p13, p3]);
+      let e10_name = Loop.getEdgeName([p12, p23]);
+      let e11_name = Loop.getEdgeName([p12, p13]);
+      let e12_name = Loop.getEdgeName([p23, p13]);
+      let f1_name = Loop.getFaceName([p12, p2, p23]);
+      let f2_name = Loop.getFaceName([p23, p13, p3]);
+      let f3_name = Loop.getFaceName([p1, p12, p13]);
+      let f4_name = Loop.getFaceName([p12, p23, p13]);
+
+      // Create new edges in the middle of the face
+      edges[e10_name] = { vertices: [p12, p23], faces: new Set([f1_name, f4_name]), boundary: false, dimension: 2 };
+      edges[e11_name] = { vertices: [p12, p13], faces: new Set([f3_name, f4_name]), boundary: false, dimension: 2 };
+      edges[e12_name] = { vertices: [p23, p13], faces: new Set([f2_name, f4_name]), boundary: false, dimension: 2 };
+      //if (e10_name == '((0,0,1)-(-1,-1,1).S.)-((0,-1,1)-(-1,-1,1).S.).S.') debugger;
+      //if (e11_name == '((0,0,1)-(-1,-1,1).S.)-((0,-1,1)-(-1,-1,1).S.).S.') debugger;
+      //if (e12_name == '((0,0,1)-(-1,-1,1).S.)-((0,-1,1)-(-1,-1,1).S.).S.') debugger;
+
+      // Add the new faces to the boundary edges
+      edges[e4_name].faces.add(f3_name);
+      edges[e5_name].faces.add(f1_name);
+      edges[e6_name].faces.add(f1_name);
+      edges[e7_name].faces.add(f2_name);
+      edges[e9_name].faces.add(f2_name);
+      edges[e8_name].faces.add(f3_name);
+
+      // Add the new faces
+      faces[f1_name] = { vertices: [p12, p2, p23], dimension: 2 };
+      faces[f2_name] = { vertices: [p23, p13, p3], dimension: 2 };
+      faces[f3_name] = { vertices: [p1, p12, p13], dimension: 2 };
+      faces[f4_name] = { vertices: [p12, p23, p13], dimension: 2 };
+
+    }
+
+    // Update the data of edges to draw
+    for (let i=0; i<this.draw_edges.length; i++) {
+      let edge_data = this.draw_edges[i];
+      let [n1, n2] = edge_data.vertices;
+      let id = edge_data.id;
+      let s = Loop.getEdgeSubdivisionName(edge_data.vertices);
+      draw_edges.push(
+        { vertices: [n1, s], id },
+        { vertices: [s, n2], id }
+      );
+    }
+
+    // Update the data of triangles to draw
+    for (let i=0; i<this.draw_triangles.length; i++) {
+      let tri_data = this.draw_triangles[i];
+      let [p1, p2, p3] = tri_data.vertices;
+      let id = tri_data.id;
+      let p12 = Loop.getEdgeSubdivisionName([p1, p2]);
+      let p13 = Loop.getEdgeSubdivisionName([p1, p3]);
+      let p23 = Loop.getEdgeSubdivisionName([p2, p3]);
+      draw_triangles.push(
+        { vertices: [p12, p2, p23], id },
+        { vertices: [p23, p13, p3], id },
+        { vertices: [p1, p12, p13], id },
+        { vertices: [p12, p23, p13], id }
+      );
+    }
+
+    // Retain the subdivided data
+    this.layout = layout;
+    this.vertices = vertices;
+    this.edges = edges;
+    this.faces = faces;
+    this.draw_edges = draw_edges;
+    this.draw_triangles = draw_triangles;
+
+  }
+
+  static getEdgeName(points) {
+    if (_debug) {
+      _assert(points instanceof Array);
+      _assert(points.length == 2);
+      _assert(typeof points[0] === 'string');
+      _assert(typeof points[1] === 'string');
+    }
+    return '(' + points[0] + ')-(' + points[1] + ')';
+  }
+
+  static getEdgeSubdivisionName(points) {
+    if (_debug) {
+      _assert(points instanceof Array);
+      _assert(points.length == 2);
+      _assert(typeof points[0] === 'string');
+      _assert(typeof points[1] === 'string');
+    }
+    return '(' + points[0] + ')-(' + points[1] + ').S.';
+  }
+
+  static getFaceName(points) {
+    if (_debug) {
+      _assert(points instanceof Array);
+      _assert(points.length == 3);
+      _assert(typeof points[0] === 'string');
+      _assert(typeof points[1] === 'string');
+      _assert(typeof points[2] === 'string');
+    }
+    return '(' + points[0] + ')-(' + points[1] + ')-(' + points[2] + ')';
+  }
+
+  /* Get a mixture of the given points, controlled by a weight vector */  
+  static getVectorConvexSum(points, weights) {
+    if (_debug) {
+      _assert(points instanceof Array);
+      _assert(weights instanceof Array);
+      _assert(points.length == weights.length);
+      for (let i=0; i<points.length; i++) {
+        _assert(points[i] instanceof Array);
+        _assert(points[i].length == 3 || points[i].length == 4);
+        if (isNaN(weights[i])) debugger;
+        _assert(!isNaN(weights[i]));
+        _assert(weights[i] >= 0);
+        _assert(weights[i] <= 1);
+      }
+    }
+    let size = points[0].length;
+    if (size == 3) {
+      let vector = [0, 0, 0];
+      for (let i=0; i<points.length; i++) {
+        let point = points[i];
+        let weight = weights[i];
+        vector[0] += weight * point[0];
+        vector[1] += weight * point[1];
+        vector[2] += weight * point[2];
+      }
+      return vector;
+    } else { // size == 4
+      let vector = [points[0][0], 0, 0, 0]; // Hack, since the first vector is always constant
+      for (let i=0; i<points.length; i++) {
+        let point = points[i];
+        let weight = weights[i];
+        vector[1] += weight * point[1];
+        vector[2] += weight * point[2];
+        vector[3] += weight * point[3];
+      }
+      return vector;
+    }
+  }
+
+}
 
 /* This class holds a simplicial complex, along with a layout for it, and control points for the
    edges and triangles, making them cubic Bezier curves and patches respectively. This data is
@@ -519,7 +1342,7 @@ export class BezierTriangleSystem {
     let [control_name_1, control_name_2] = this.getEdgeControlNames(point_name_1, point_name_2);
 
     // If they are already defined (only need to check one), there's nothing to do
-    if (layout[control_name_1]) return;
+    if (layout[control_name_1]) return [layout[control_name_1], layout[control_name_2]];
 
     // Compute the control points
     let [control_point_1, control_point_2] = this.getEdgeControlPoints(point_1, point_2, freeze_1, freeze_2);
@@ -527,6 +1350,8 @@ export class BezierTriangleSystem {
     // Store the control points
     this.layoutStore(layout, control_name_1, control_point_1);
     this.layoutStore(layout, control_name_2, control_point_2);
+
+    return [control_point_1, control_point_2];
 
   }
 
@@ -546,16 +1371,16 @@ export class BezierTriangleSystem {
     }
 
     // Add edge control points
-    this.addEdgeControlPoints(layout, point_1, point_2, point_name_1, point_name_2, freeze_1, freeze_2, freeze_3);
-    this.addEdgeControlPoints(layout, point_1, point_3, point_name_1, point_name_3, freeze_1, freeze_2, freeze_3);
-    this.addEdgeControlPoints(layout, point_2, point_3, point_name_2, point_name_3, freeze_1, freeze_2, freeze_3);
+    let e1 = this.addEdgeControlPoints(layout, point_1, point_2, point_name_1, point_name_2, freeze_1, freeze_2, freeze_3);
+    let e2 = this.addEdgeControlPoints(layout, point_1, point_3, point_name_1, point_name_3, freeze_1, freeze_2, freeze_3);
+    let e3 = this.addEdgeControlPoints(layout, point_2, point_3, point_name_2, point_name_3, freeze_1, freeze_2, freeze_3);
 
     // Add triangle control point
-    this.addTriangleCentralControlPoint(layout, point_1, point_2, point_3, point_name_1, point_name_2, point_name_3);
+    this.addTriangleCentralControlPoint(layout, point_1, point_2, point_3, point_name_1, point_name_2, point_name_3, [...e1, ...e2, ...e3]);
 
   }
 
-  addTriangleCentralControlPoint(layout, point_1, point_2, point_3, point_name_1, point_name_2, point_name_3) {
+  addTriangleCentralControlPoint(layout, point_1, point_2, point_3, point_name_1, point_name_2, point_name_3, edge_controls) {
 
     if (_debug) {
       _assert(layout instanceof Object);
@@ -574,7 +1399,7 @@ export class BezierTriangleSystem {
     if (layout[control_name]) return;
 
     // Compute the control point
-    let control_point = this.getTriangleControlPoint(point_1, point_2, point_3);
+    let control_point = this.getTriangleControlPoint(point_1, point_2, point_3, edge_controls);
 
     // Store the control point
     this.layoutStore(layout, control_name, control_point);
@@ -607,27 +1432,67 @@ export class BezierTriangleSystem {
       _assert(freeze_2 instanceof Array);
     }
     let points = [point_1, point_2];
-    let control_1 = this.getVectorConvexSum(points, [0.75, 0.25]);
-    let control_2 = this.getVectorConvexSum(points, [0.25, 0.75]);
-    for (let i=0; i<freeze_1.length; i++) {
-      if (freeze_1[i]) {
-        control_1[i] = point_1[i]
-      }
-      if (freeze_2[i]) {
-        control_2[i] = point_2[i]
+    //let control_1 = this.getVectorConvexSum(points, [0.75, 0.25]);
+    //let control_2 = this.getVectorConvexSum(points, [0.25, 0.75]);
+    //let control_2 = this.getVectorConvexSum(points, [0.5, 0.5]);
+    let control_2 = point_2;
+
+    let control_1 = point_1.slice();
+    for (let d=0; d<point_1.length; d++) {
+      if (d < 2) {
+        control_1[d] = (point_1[d] + point_2[d]) / 2;
       }
     }
+
+    /*
+    // What's the highest changing dimension?
+    let control_1 = point_1.slice();
+    let d;
+    for (d=0; d<point_1.length; d++) {
+      control_1[d] = (point_1[d] + point_2[d])/2;
+      if (point_1[d] != point_2[d]) break;
+    }
+    for (; d<point_1.length; d++) {
+//      control_1[d] = (point_1[d] + point_2[d])/2;
+    }
+    */
+
+
+
+
+    /*
+    if (freeze_1.some(x => x)) {
+      for (let i=0; i<freeze_1.length; i++) {
+        if (!freeze_1[i]) {
+          control_1[i] = point_1[i]
+        }
+      }
+    }
+    if (freeze_2.some(x => x)) {
+      for (let i=0; i<freeze_2.length; i++) {
+        if (!freeze_2[i]) {
+          control_2[i] = point_2[i]
+        }
+      }
+    }
+    */
     return [control_1, control_2];
   }
 
-  getTriangleControlPoint(point_1, point_2, point_3) {
+  getTriangleControlPoint(point_1, point_2, point_3, edge_controls) {
     if (_debug) {
       _assert(point_1 instanceof Array);
       _assert(point_2 instanceof Array);
       _assert(point_3 instanceof Array);
     }
-    let points = [point_1, point_2, point_3];
-    return this.getVectorConvexSum(points, [1/3,1/3,1/3]);
+    //let points = [point_1, point_2, point_3];
+    //return this.getVectorConvexSum(points, [1/3,1/3,1/3]);
+    //return this.getVectorConvexSum(edge_controls, [1/6, 1/6, 1/6, 1/6, 1/6, 1/6]);
+    //return this.getVectorConvexSum(edge_controls, [1/3, 0, 1/3, 0, 1/3, 0]);
+    let all_points = [point_1, point_2, point_2, ...edge_controls];
+    //return this.getVectorConvexSum(all_points, [1/9,1/9,1/9,1/9,1/9,1/9,1/9,1/9,1/9]);
+    //return this.getVectorConvexSum(all_points, [1/6,1/6,1/6,1/6,0,1/6,0,1/6,0]);
+    return this.getVectorConvexSum(all_points, [0,0,0,1/2,0,1/2,0,0,0]);
   }
 
   /* Get a mixture of the given points, controlled by a weight vector */  
