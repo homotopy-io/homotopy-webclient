@@ -97,6 +97,9 @@ export class Loop {
       let b1 = boundary[edge_data.vertices[0]];
       let b2 = boundary[edge_data.vertices[0]];
       edge_data.boundary = (b1[0] && b2[0]) || (b1[1] && b2[1]);
+
+      // If we're not on the boundary but showing nonmanifold neighbourhood, must be something interesting happening
+      if (!edge_data.boundary && edge_data.faces.size != 2) edge_data.dimension = 1;
     }
     for (const vertex_name in vertices) {
       let vertex_data = vertices[vertex_name];
@@ -104,6 +107,10 @@ export class Loop {
       let b = boundary[vertex_name];
       vertex_data.boundary = b[0] || b[1];
       vertex_data.extremal = b[0] && b[1];
+      let vertex_edges = Object.keys(vertex_data.edges);
+      if (vertex_edges.some(edge_name => edges[edge_name].dimension == 1)) {
+        vertex_data.dimension = Math.min(1, vertex_data.dimension);
+      }
     }
 
     this.vertices = vertices;
@@ -529,9 +536,6 @@ export class Loop {
         }
       }
     }
-
-
-
   }
 
   // Perform loop subdivision in the Warren style
@@ -625,14 +629,22 @@ export class Loop {
           // Get the neighbouring 1d vertices
           let neighbouring_1d_vertices = neighbouring_vertices
             .filter(vertex_name => this.vertices[vertex_name].dimension <= 1);
-
-          // There should be exactly 2 of them
           _assert(neighbouring_1d_vertices.length == 2);
 
-          let points = [vertex_name, ...neighbouring_1d_vertices].map(name => this.layout[name]);
-          let weights = [3/4, 1/8, 1/8];
-          let new_point = Loop.getVectorConvexSum(points, weights);
-          layout[vertex_name] = new_point;
+          // There should be exactly 2 of them
+          if (neighbouring_1d_vertices.length != 2) {
+
+            // Singular, just leave it alone
+            layout[vertex_name] = this.layout[vertex_name];
+
+          } else {
+
+            let points = [vertex_name, ...neighbouring_1d_vertices].map(name => this.layout[name]);
+            let weights = [3/4, 1/8, 1/8];
+            let new_point = Loop.getVectorConvexSum(points, weights);
+            layout[vertex_name] = new_point;
+
+          }
 
         }
 

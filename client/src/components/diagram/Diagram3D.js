@@ -137,8 +137,8 @@ export class Diagram3D extends React.Component {
     let old_diagram = this.diagramToRender;
     let new_diagram = nextProps.diagram.getSlice(...nextProps.slice);
 
-    if (this.props.width != nextProps.width) return true;
-    if (this.props.height != nextProps.height) return true;
+    if (Math.abs(this.props.width - nextProps.width) > 5) return true;
+    if (Math.abs(this.props.height - nextProps.height) > 5) return true;
     if (this.props.projection != nextProps.projection) return true;
 
     //let old_diagram = this.props.diagram;

@@ -2021,7 +2021,7 @@ export class Diagram {
 
     // For a 0-dimensional layout, the unique point has no coordinates
     if (dimension == 0 && true) {
-      return { layout: { '': [] }, boundary: { '': [] } }
+      return { layout: { '': [] }, boundary: { '': [] }, singular: { '': [0] } }
     }
 
     // Get the distance constraints, which ensure all elements are suitably spaced
@@ -2158,7 +2158,7 @@ export class Diagram {
     let solution = glpk.solve({ name: 'LP', objective, subjectTo }, glpk.GLP_MSG_ALL);
 
     // Layout recursively
-    let { layout, boundary } = this.layout(dimension - 1);
+    let { layout, boundary, singular } = this.layout(dimension - 1);
 
     // Build the full layout coordinates of every point
     let all_points = this.getAllPointsWithBoundaryFlag(dimension);
