@@ -13,6 +13,9 @@ module.exports = merge(common, {
       favicon: "assets/favicon.ico"
     })
   ],
+  node: {
+    fs: 'empty'
+  },
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "[name].bundle.[contenthash].js",

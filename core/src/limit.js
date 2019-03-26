@@ -1,7 +1,8 @@
-import { _validate, _assert, _debug, isNatural, _propertylist } from "~/util/debug";
+import { _validate, _assert, _debug, isNatural, isInteger, _propertylist } from "~/util/debug";
 import { Generator } from "~/generator";
 import { Diagram } from "~/diagram";
 import { Monotone } from "~/monotone";
+import { Simplex } from "~/simplices"
 import * as ArrayUtil from "~/util/array";
 
 /*
@@ -3018,5 +3019,171 @@ export class Limit /*extends Array*/ {
     return [2 * (source_first_singular + 1), ...composed_limit.updateSliceBackward(rest)];
   }
 
+  // Take a singular point in the extended coordinate system and flow it forward
+  flowForwardSingularPoints(points) {
+
+    if (points.length == 0) return [];
+    if (points[0].length == 0) return points.map(point => point.slice());
+
+    // Verification
+    if (_debug) {
+      _assert(points instanceof Array);
+      for (let i=0; i<points.length; i++) {
+        _assert(points[i] instanceof Array);
+      }
+      let len = points[0].length;
+      for (let i=1; i<points.length; i++) {
+        _assert(points[i].length == len);
+      }
+      _assert(this.n >= len);
+      for (let j=0; j<points.length; j++) {
+        let point = points[j];
+        for (let i=0; i<point.length; i++) {
+          _assert(isInteger(point[i]));
+          _assert(point[i] >= -1);
+          _assert(Math.abs(point[i] % 2) == 1); // everything should be singular
+        }
+      }
+    }
+
+    // Logic
+    if (this.components.length == 0) return points.map(point => point.slice()); // identity limits don't change the point
+    if (this.n == 0) return points.map(point => point.slice());
+    let monotone = this.getMonotone();
+    let sublimits = [];
+    let identity_sublimit = new Limit({ n: this.n, components: [] });
+    
+    let flowed_points = points.map(point => {
+
+      let [first, ...rest] = point;
+
+      // boundary points don't change
+      if (first < 0) return point.slice(); 
+      let first_adjusted = (first - 1)/2;
+      let flow_first = 1 + 2 * monotone.applyAdjusted(first_adjusted);
+      let sublimit;
+      if (first < 0 || first > this.source_size * 2) {
+        sublimit = identity_sublimit;
+      } else {
+        if (sublimits[first_adjusted] === undefined) {
+          sublimits[first_adjusted] = this.subLimit(first_adjusted);
+        }
+        sublimit = sublimits[first_adjusted];
+      }
+      let flow_point = [flow_first, ...sublimit.flowForwardSingularPoints([rest])[0]];
+      return flow_point;
+  
+    });
+
+    return flowed_points;
+
+  }
+
+  // Take a regular point in the extended coordinate system and flow it backward
+  flowBackwardRegularPoints(points) {
+
+    if (points.length == 0) return [];
+    if (points[0].length == 0) return points.map(point => point.slice());
+
+    if (_debug) {
+      _assert(points instanceof Array);
+      /*
+      _assert(this.n >= point.length);
+      for (let i=0; i<point.length; i++) {
+        _assert(isInteger(point[i]));
+        _assert(point[i] >= -1);
+        _assert(point[i] % 2 == 0); // everything should be regular
+      }
+      */
+    }
+
+    if (this.components.length == 0) return points.map(point => point.slice()); // identity limits don't change the point
+    if (this.n == 0) return points.map(point => point.slice());
+    let monotone = this.getMonotone().getAdjoint();
+    let sublimits = [];
+    let identity_sublimit = new Limit({ n: this.n, components: [] });
+    let flowed_points = points.map(point => {
+      let [first, ...rest] = point;
+      // boundary points don't change
+      if (first < 0) return point.slice(); 
+      let first_adjusted = first/2;
+      let flow_first = 2 * monotone.applyAdjusted(first_adjusted);
+      let flow_point = [flow_first, ...rest];
+      return flow_point;
+    });
+    return flowed_points;
+  }
+
+  extendedSubLimit(height, source_diagram) {
+    if (height == -1 || height == source_diagram.data.length * 2 + 1) {
+      return new Limit({ n: this.n - 1, components: [] });
+    } else {
+      _assert(height % 2 == 1);
+      return this.subLimit((height - 1) / 2);
+    }
+  }
+
+  getScaffoldPointPairs({ source, target, dimension }) {
+    if (_debug) {
+      _assert(source instanceof Diagram);
+      _assert(target instanceof Diagram);
+      _assert(source.n == target.n);
+      _assert(source.n == this.n);
+      if (this.components.length > 0 && this.n > 0) _assert(this.source_size == source.data.length);
+      _assert(isNatural(dimension));
+      _assert(dimension <= this.n);
+    }
+
+    if (dimension == 0) {
+      let point_names = ['',''];
+      let id = source.getActionId([]);
+      return [new Simplex({ point_names, id })];
+    }
+
+    let source_slices = source.getSlices();
+    let target_slices = target.getSlices();
+    let monotone = this.getMonotone(source, target);
+    let adjoint = monotone.getAdjoint();
+    let edges = [];
+    let comma = (dimension == 1) ? '' : ',';
+
+    // Iterate over singular levels of source diagram
+    for (let source_singular=-1; source_singular<source.data.length + 1; source_singular++) {
+      let source_height = (2 * source_singular) + 1;
+      let source_adjusted = source.adjustHeight(source_height);
+      let source_slice = source_slices[source_adjusted];
+      let target_singular = monotone.applyAdjusted(source_singular);
+      let target_height = (2 * target_singular) + 1;
+      let target_adjusted = target.adjustHeight(target_height);
+      let target_slice = target_slices[target_adjusted];
+      let sublimit = this.extendedSubLimit(source_height, source);
+      let sublimit_edges = sublimit.getScaffoldPointPairs({source: source_slice, target: target_slice, dimension: dimension - 1 });
+      let source_prefix = source_height.toString() + comma;
+      let target_prefix = target_height.toString() + comma;
+      edges.push(sublimit_edges.map(edge => {
+        return new Simplex({ point_names: [source_prefix + edge.point_names[0], target_prefix + edge.point_names[1]], id: edge.id });
+      }));
+    }
+
+    // Iterate over regular levels of target diagram
+    for (let target_regular = 0; target_regular <= target.data.length; target_regular ++) {
+      let target_height = 2 * target_regular;
+      let target_slice = target_slices[target_height];
+      let source_regular = adjoint[target_regular];
+      let source_height = 2 * source_regular;
+      let sublimit = new Limit({ n: this.n - 1, components: [] });
+      let sublimit_edges = sublimit.getScaffoldPointPairs({ source: target_slice, target: target_slice, dimension: dimension - 1 });
+      let source_prefix = source_height.toString() + comma;
+      let target_prefix = target_height.toString() + comma;
+      edges.push(sublimit_edges.map(edge => {
+        return new Simplex({ point_names: [source_prefix + edge.point_names[0], target_prefix + edge.point_names[1]], id: edge.id });
+      }));
+    }
+
+    // Flatten and return the resulting list of pairs
+    return edges.flat();
+  }
+
+  
 }
 

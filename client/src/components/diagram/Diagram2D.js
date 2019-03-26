@@ -978,6 +978,8 @@ export class Diagram2D extends React.Component {
 
     let sGenerator = s.generator;
     let colour = highlight ? "#f1c40f" : this.getColour(sGenerator, this.diagram.n - 2);
+    let stroke_colour = colour;
+    //stroke_colour = '#fff';
     //let key = 'surface#' + s.point.join(":") + '#' + m.point.join(":") + '#' + t.point.join(":")';
     let key = 'surface#' + s.position.join(":")
       + '#' + m.position.join(":")
@@ -998,7 +1000,7 @@ export class Diagram2D extends React.Component {
     return (
       <path
         d={path}
-        stroke={/*'#fff'*/ colour}
+        stroke={stroke_colour}
         strokeWidth={1}
         vectorEffect={"non-scaling-stroke"}
         shapeRendering='crispEdges'
@@ -1017,6 +1019,11 @@ export class Diagram2D extends React.Component {
   render() {
 
     this.diagramToRender = this.props.diagram.getSlice(...this.props.slice);
+
+    //let dimension = this.props.dimension;
+    let dimension = this.diagramToRender.n;
+    let generators = this.props.generators;
+    //console.log(this.diagramToRender.simplices({ generators, dimension }).getByDimension());
 
     let t0 = performance.now();
 

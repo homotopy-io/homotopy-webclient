@@ -1,16 +1,20 @@
-import { _assert, _debug, isNatural, _propertylist } from "~/util/debug";
+import { _assert, _debug, isNatural, isInteger, _propertylist } from "~/util/debug";
 import * as ArrayUtil from "~/util/array";
 import { Limit, Content, LimitComponent } from "~/limit";
 // blah
 import { Generator } from "~/generator";
 import { Monotone } from "~/monotone";
 import { SerializeCyclic } from "~/serialize_flat";
+import { Simplex, Complex } from "~/simplices";
+import glpk from "~/util/glpk"
 
 export class Diagram {
 
   constructor(args) {
 
     if (args.bare) return this;
+
+    if (3 ==2) console.log('the universe is ending');
 
     this._t = "D";
     if (_debug) _assert(isNatural(args.n));
@@ -24,7 +28,8 @@ export class Diagram {
       if (_debug) _assert(args.data instanceof Array);
       this.source = args.source;
       this.data = Content.makeContentArray(args.data, this.n);
-      //Object.freeze(this.data);
+
+
 
       if (_debug) {
 
@@ -815,19 +820,6 @@ export class Diagram {
     if (extra.length == location.length) box.max[box.max.length - location.length]++;
     return box;
   }
-
-  /**
-   * Pad the diagram content to remain consistent with a higher source attachment.
-   */
-   /*
-  pad(depth, source_boundary) {
-    if (depth == 1) return;
-    let source = this.source;
-    //let source = this.source.pad(depth - 1, source_boundary);
-    let data = this.data.map(content => content.pad(depth - 1, source_boundary));
-    return new Diagram({ n: this.n, source, data });
-  }
-  */
 
   // Create the limit which contracts the a subdiagram at a given position, to a given id
   contractForwardLimit(id, position, subdiagram) {
@@ -1743,6 +1735,665 @@ export class Diagram {
 
     return new Diagram({ n: this.n, source, data });
   }
+
+  getSingularPointsWithId(dimension) {
+    if (_debug) {
+      _assert(isNatural(dimension));
+      _assert(dimension <= this.n);
+    }
+    if (dimension == 0) return [{ coordinates: [], id: this.getActionId([]) }];
+    let slices = this.getSlices();
+    let slices_singular = [];
+    for (let i=0; i<this.data.length + 2; i++) {
+      let height = (2 * i) - 1;
+      let adjusted = this.adjustHeight(height);
+      let slice = slices[adjusted];
+      let slice_singular = slice.getSingularPointsWithId(dimension - 1)
+        .map(point => { return {coordinates: [height, ...point.coordinates], id: point.id} });
+      slices_singular.push(slice_singular);
+    }
+    return slices_singular.flat();
+  }
+
+  getSingularPoints(dimension) {
+    if (_debug) {
+      _assert(isNatural(dimension));
+      _assert(dimension <= this.n);
+    }
+    if (dimension == 0) return [[]];
+    let slices = this.getSlices();
+    let slices_singular = [];
+    for (let i=0; i<this.data.length + 2; i++) {
+      let height = (2 * i) - 1;
+      let adjusted = this.adjustHeight(height);
+      let slice = slices[adjusted];
+      let slice_singular = slice.getSingularPoints(dimension - 1)
+        .map(point => [height, ...point]);
+      slices_singular.push(slice_singular);
+    }
+    return slices_singular.flat();
+  }
+
+  getRegularPoints(dimension) {
+    if (_debug) {
+      _assert(isNatural(dimension));
+      _assert(dimension <= this.n);
+    }
+    if (dimension == 0) return [[]];
+    let slices = this.getSlices();
+    let slices_regular = [];
+    for (let i=0; i<this.data.length + 1; i++) {
+      let height = 2 * i;
+      let slice = slices[height];
+      let slice_regular = slice.getRegularPoints(dimension - 1).map(point => [height, ...point]);
+      slices_regular.push(slice_regular);
+    }
+    return slices_regular.flat();
+  }
+
+  // Get a list of simplices, for a rendering of the given dimension
+  skeleton({ generators, dimension, max_simplex_size, need_scaffold_pairs }) {
+
+    if (_debug) {
+        _assert(isNatural(dimension));
+        _assert(dimension <= this.n);
+        _assert(isNatural(max_simplex_size));
+    }
+
+    // 0-dimensional diagrams have a single 1-simplex, with no coordinates
+    if (dimension == 0) {
+      let point_names = [''];
+      let id = this.getActionId([]);
+      let simplices = [new Simplex({point_names, id})];
+      let n = this.n;
+      let complex = new Complex({simplices, n, generators});
+      return { complex, scaffold_pairs: null };
+    }
+
+    // Get all the slices of the diagram
+    let slices = this.getSlices();
+    let simplices = [];
+
+    // Take the disjoint union of all the slices of the diagram
+    let complex = new Complex({ n: this.n, generators, simplices }); // start with an empty complex
+    for (let height=-1; height<=1+this.data.length*2; height++) {
+      let adjusted = this.adjustHeight(height);
+      let slice = slices[adjusted];
+      let slice_skeleton = slice
+        .skeleton({ generators, dimension: dimension - 1, max_simplex_size: max_simplex_size - 1 });
+      let slice_complex = slice_skeleton.complex.prependCoordinate(height);
+      complex = complex.addDisjointSimplices(slice_complex);
+    }
+
+    // For all pairs of adjacent heights, get the new edges
+    let scaffold_pairs = [];
+    for (let i=0; i<this.data.length + 1; i++) {
+      let regular_height = 2 * i;
+      let regular_slice = slices[regular_height];
+
+      // Edges to singular level below
+      let singular_below = slices[this.adjustHeight(regular_height - 1)];
+      let b = this.getBackwardLimitFromRegular(regular_height);
+      let b_edge_pairs = b.getScaffoldPointPairs({ source: regular_slice, target: singular_below, dimension: dimension - 1 });
+      let comma = dimension == 1 ? '' : ',';
+      let str_regular_height = regular_height.toString() + comma;
+      let str_regular_minus_1 = (regular_height - 1).toString() + comma;
+      b_edge_pairs = b_edge_pairs.map(edge => {
+        return new Simplex({ point_names: [str_regular_height + edge.point_names[0], str_regular_minus_1 + edge.point_names[1]], id: edge.id });
+      });
+      scaffold_pairs.push(b_edge_pairs);
+      complex = complex.addEdges(b_edge_pairs, max_simplex_size);
+
+      // Edges to singular level above
+      let singular_above = slices[this.adjustHeight(regular_height + 1)];
+      let f = this.getForwardLimitFromRegular(regular_height);
+      let f_edge_pairs = f.getScaffoldPointPairs({ source: regular_slice, target: singular_above, dimension: dimension - 1 });
+      let str_regular_plus_1 = (regular_height + 1).toString() + comma;
+      f_edge_pairs = f_edge_pairs.map(edge => {
+        return new Simplex({ point_names: [str_regular_height + edge.point_names[0], str_regular_plus_1 + edge.point_names[1]], id: edge.id });
+      });
+      scaffold_pairs.push(f_edge_pairs);
+      complex = complex.addEdges(f_edge_pairs, max_simplex_size);
+
+    }
+
+    return { complex, scaffold_pairs };
+  }
+
+  /* Gets all the names of all the points in the diagram */
+  getAllPointNames(dimension) {
+    if (dimension == 0) return [''];
+    let names = [];
+    if (dimension == 1) {
+      for (let i=-1; i<2+2*this.data.length; i++) {
+        names.push(i.toString());
+      }
+      return names;
+    }
+    let slices = this.getSlices();
+    for (let i=-1; i<2+2*this.data.length; i++) {
+      let adjusted = this.adjustHeight(i);
+      let slice = slices[adjusted];
+      let slice_names = slice.getAllPointNames(dimension - 1);
+      let prefix = i.toString() + ',';
+      let prefixed_slice_names = slice_names.map(name => prefix + name);
+      names.push(prefixed_slice_names);
+    }
+    return names.flat();
+  }
+
+  /* Get all the points in the diagram */
+  getAllPointsWithBoundaryFlag(dimension) {
+    if (dimension == 0) return [[]];
+    let names = [];
+    if (dimension == 1) {
+      for (let i=-1; i<2+2*this.data.length; i++) {
+        names.push([i, i == -1 || i == 1 + 2 * this.data.length]);
+      }
+      return names;
+    }
+    let slices = this.getSlices();
+    for (let i=-1; i<2+2*this.data.length; i++) {
+      let adjusted = this.adjustHeight(i);
+      let slice = slices[adjusted];
+      let slice_names = slice.getAllPointsWithBoundaryFlag(dimension - 1);
+      let prefixed_slice_names = slice_names.map(name => [i, ...name]);
+      names.push(prefixed_slice_names);
+    }
+    return names.flat();
+  }
+
+  /* Get an array of all the slices of the diagram */
+  getSlices() {
+    let d = this.source;
+    let array = [d];
+    for (let i=0; i<this.data.length; i++) {
+      let data = this.data[i];
+      d = data.forward_limit.rewrite_forward(d);
+      array.push(d);
+      d = data.backward_limit.rewrite_backward(d);
+      array.push(d);
+    }
+    return array;
+  }
+
+  /* Adjust height which is potentially out-of-bounds */
+  adjustHeight(height) {
+    if (_debug) {
+      _assert(isInteger(height));
+      _assert(height >= -1);
+      _assert(height <= 1 + 2 * this.data.length);
+    }
+    if (height == -1) return 0;
+    if (height == 1 + 2 * this.data.length) return 2 * this.data.length;
+    return height;
+  }
+
+  getForwardLimitFromRegular(height) {
+    if (_debug) {
+      _assert(isInteger(height));
+      _assert(height >= -1);
+      _assert(height <= 1 + 2 * this.data.length);
+      _assert(height % 2 == 0);
+    }
+    if (height == 2 * this.data.length) {
+      return new Limit({n: this.n - 1, components: []});
+      //return Monotone.getIdentity(slices[slices.length - 1].data.length - 1);
+    }
+    return this.data[height / 2].forward_limit;//.getMonotone(slices[height].data.length);
+  }
+
+  getBackwardLimitFromRegular(height) {
+    if (_debug) {
+      _assert(isInteger(height));
+      _assert(height >= -1);
+      _assert(height <= 1 + 2 * this.data.length);
+      _assert(height % 2 == 0);
+    }
+    if (height == 0) {
+      return new Limit({n: this.n - 1, components: []});
+      //return Monotone.getIdentity(slices[0].data.length - 1);
+    }
+    return this.data[(height / 2) - 1].backward_limit;//.getMonotone(slices[height].data.length);
+  }
+
+  getForwardLimitToSingular(height) {
+    return this.getForwardLimitFromRegular(height - 1);
+  }
+
+  getBackwardLimitToSingular(height) {
+    return this.getBackwardLimitFromRegular(height + 1);
+  }
+
+  // Get the deep source points as strings
+  getDeepSourcePoints(dimension) {
+    if (dimension == 0) return [];
+    if (dimension == 1) return ['-1'];
+    let points = [];
+    let slices = this.getSlices();
+    for (let i=-1; i<2*this.data.length+2; i++) {
+      let adjusted = this.adjustHeight(i);
+      let slice = slices[adjusted];
+      let slice_dsp = slice.getDeepSourcePoints(dimension - 1);
+      let prefix = i.toString() + ',';
+      let prefixed_slice_dsp = slice_dsp.map(point => prefix + point);
+      points.push(prefixed_slice_dsp);
+    }
+    return points.flat();
+  }
+
+
+  // Get the deep target points as strings
+  getDeepTargetPoints(dimension) {
+    if (dimension == 0) return [];
+    if (dimension == 1) return [ (2 * this.data.length + 1).toString() ];
+    let slices = this.getSlices();
+    let points = [];
+    if (dimension == 1) {
+      for (let i=-1; i<2*this.data.length+2; i++) {
+        let adjusted = this.adjustHeight(i);
+        let slice = slices[adjusted];
+        let slice_max_coordinate = 2 * slice.data.length + 1;
+        points.push(slice_max_coordinate.toString());
+      }
+      return points;
+    }
+    for (let i=-1; i<2*this.data.length+2; i++) {
+      let adjusted = this.adjustHeight(i);
+      let slice = slices[adjusted];
+      let slice_dsp = slice.getDeepTargetPoints(dimension - 1);
+      let prefix = i.toString() + ',';
+      let prefixed_slice_dsp = slice_dsp.map(point => prefix + point);
+      points.push(prefixed_slice_dsp);
+    }
+    return points.flat();
+  }
+
+  // Get a layout of this diagram, assuming a rendering of the given dimension
+  layout(dimension) {
+    if (_debug) {
+      _assert(isNatural(dimension));
+      _assert(dimension <= 4);
+      _assert(dimension >= 0);
+    }
+
+    console.log(dimension);
+
+    // For a 0-dimensional layout, the unique point has no coordinates
+    if (dimension == 0 && true) {
+      return { layout: { '': [] }, boundary: { '': [] }, singular: { '': [0] } }
+    }
+
+    // Get the distance constraints, which ensure all elements are suitably spaced
+    let distance_constraint_data = this.getDistanceConstraintData(dimension);
+    let distance_constraints = distance_constraint_data.map((constraint, index) => {
+      let name = 'distance_' + index;
+      let name_1 = constraint[0].join(',');
+      let name_2 = constraint[1].join(',');
+      let vars = [ { name: name_1, coef: -1.0 }, { name: name_2, coef: 1.0 } ];
+      let bnds = { type: glpk.GLP_LO, lb: 1.0, ub: 0.0 }; // ub is ignored
+      return { name, vars, bnds };
+    });
+
+    // Get the average depth constraints
+    let average_constraint_data = this.getAverageConstraintData(dimension);
+    /*
+    let average_constraints = average_constraint_data.map((data, index) => {
+      let [centre, points] = data;
+      let name = 'average_' + index;
+      let central_var = { name: centre, coef: 1.0 };
+      let boundary_vars = points.map(point => {
+        return { name: point, coef: -1.0/points.length }
+      });
+      let bnds = { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 };
+      return { name, vars: [central_var, ...boundary_vars], bnds };
+    });
+    */
+    // We minimize the absolute value of the difference between the mean
+    // and the centre, encoding this absolute value problem as a linear
+    // programming problem using a standard trick:
+    // https://optimization.mccormick.northwestern.edu/index.php/Optimization_with_absolute_values
+    let average_constraints = [];
+    let auxiliary_variables = [];
+    for (let i=0; i<average_constraint_data.length; i++) {
+      let [centre, points] = average_constraint_data[i];
+      let aux_name = 'average_' + i;
+      let aux_term = { name: aux_name, coef: 1.0 };
+      auxiliary_variables.push(aux_name);
+
+      // First constraint
+      {
+        let name = aux_name + '_constraint_1';
+        let sum_term = points.map(point => {
+          return { name: point, coef: +1.0/points.length };
+        });
+        let centre_term = { name: centre, coef: -1.0 };
+        let bnds = { type: glpk.GLP_LO, lb: 0.0, ub: 0.0 };
+        let vars = [ aux_term, centre_term, ...sum_term ];
+        average_constraints.push({ name, vars, bnds });
+      }
+
+      // Second constraint
+      {
+        let name = aux_name + '_constraint_2';
+        let sum_term = points.map(point => {
+          return { name: point, coef: -1.0/points.length };
+        });
+        let centre_term = { name: centre, coef: +1.0 };
+        let bnds = { type: glpk.GLP_LO, lb: 0.0, ub: 0.0 };
+        let vars = [ aux_term, centre_term, ...sum_term ];
+        average_constraints.push({ name, vars, bnds });
+      }
+
+      // Third constraint (auxiliary variable is positive)
+      {
+        let name = aux_name + '_constraint_3';
+        let bnds = { type: glpk.GLP_LO, lb: 0.0, ub: 0.0 };
+        let vars = [ aux_term ];
+        average_constraints.push({ name, vars, bnds });
+      }
+    }
+    
+    // All the deep source points have depth 0
+    let deep_source = this.getDeepSourcePoints(dimension);
+    let constraints_deep_source = deep_source.map((point, index) => {
+      let name = 'deep_source_' + index;
+      let vars = [ { name: point, coef: 1.0 } ];
+      let bnds = { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 };
+      return { name, vars, bnds };
+    });
+
+    // All the deep target points are equal
+    let deep_target = this.getDeepTargetPoints(dimension);
+    let constraints_deep_target = deep_target.slice(1).map((point, index) => {
+      let name = 'deep_target_' + index;
+      let vars = [ { name: point, coef: 1.0 }, { name: deep_target[0], coef: -1.0 } ];
+      let bnds = { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 };
+      return { name, vars, bnds };
+    });
+
+    // Corresponding points in bottom 2 slices have the same depths
+    let source_points = this.source.getAllPointNames(dimension - 1);
+    let constraints_fixed_source = source_points.map((point, index) => {
+      let name = 'fixed_source_' + index;
+      let vars = [ { name: '-1,' + point, coef: 1.0 }, { name: '0,' + point, coef: -1.0 } ];
+      let bnds = { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 };
+      return { name, vars, bnds};
+    });
+
+    // Corresponding points in top 2 slices have the same depths
+    let target_points = this.getTarget().getAllPointNames(dimension - 1);
+    let target_prefix = (this.data.length * 2 + 1).toString() + ',';
+    let sub_target_prefix = (this.data.length * 2).toString() + ',';
+    let constraints_fixed_target = target_points.map((point, index) => {
+      let name = 'fixed_target_' + index;
+      let vars = [ { name: target_prefix + point, coef: 1.0 }, { name: sub_target_prefix + point, coef: -1.0 } ];
+      let bnds = { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 };
+      return { name, vars, bnds};
+    });
+
+    // Objective function asks for the overall depth of the diagram to be
+    // minimized, as well as the auxiliary variables.
+    let aux_weight = .1;
+    let aux_objectives = auxiliary_variables.map(name => {
+      return { name, coef: aux_weight };
+    });
+    let objective = {
+      direction: glpk.GLP_MIN,
+      name: 'obj',
+      vars: [ { name: deep_target[0], coef: 1.0 }, ...aux_objectives ]
+    };
+
+    // Gather together all constraints
+    let subjectTo = [
+      ...average_constraints,
+      ...distance_constraints,
+      ...constraints_deep_source,
+      ...constraints_deep_target,
+      ...constraints_fixed_source,
+      ...constraints_fixed_target
+    ];
+
+    // Solve the constraint problem
+    let solution = glpk.solve({ name: 'LP', objective, subjectTo }, glpk.GLP_MSG_ALL);
+
+    // Layout recursively
+    let { layout, boundary, singular } = this.layout(dimension - 1);
+
+    // Build the full layout coordinates of every point
+    let all_points = this.getAllPointsWithBoundaryFlag(dimension);
+    let full_layout_all = {};
+    for (let i=0; i<all_points.length; i++) {
+      let point = all_points[i].slice(0, dimension);
+      let full_name = point.join(',');
+      point.pop();
+      let full_layout = layout[point.join(',')].slice();
+      let last_layout = solution.result.vars[full_name];
+      full_layout.push(last_layout);
+      full_layout_all[full_name] = full_layout;
+    }
+
+    // Build the full boundary data for every point
+    let full_boundary = {};
+    for (let i=0; i<all_points.length; i++) {
+      let point = all_points[i].slice(0, dimension);
+      let flag = all_points[i][dimension];
+      let full_name = point.join(',');
+      let sub_point = point.slice(0, point.length - 1);
+      let boundary_data = [...boundary[sub_point.join(',')], flag];
+      full_boundary[full_name] = boundary_data;
+    }
+
+    return { layout: full_layout_all, boundary: full_boundary };
+      
+  }
+
+  // Get the distance constraints, in the form of pairs of points that must
+  // be at least distance 1 from each other in the highest dimension
+  getDistanceConstraintData(dimension) {
+
+    let constraints = [];
+
+    // In dimension 0, no points, so no constraints
+    if (dimension == 0) {
+      // Nothing to do
+    }
+
+    // In dimension 1, constraints given by a chain
+    else if (dimension == 1) {
+      for (let i=-1; i<2*this.data.length+1; i++) {
+        constraints.push([[i], [i+1]]);
+      }
+    }
+
+    // In higher dimension, just take the union of constraints in each
+    // slice, and pad with the appropriate coordinate.
+    else {
+      let slices = this.getSlices();
+      for (let i=-1; i<2*this.data.length+2; i++) {
+        let adjusted = this.adjustHeight(i);
+        let slice = slices[adjusted];
+        let recursive = slice.getDistanceConstraintData(dimension - 1);
+        constraints.push(...recursive.map(constraint => {
+          return [[i, ...constraint[0]], [i, ...constraint[1]]];
+        }));
+      }
+    }
+
+    return constraints;
+  }
+
+  // Get the average constraints, in the form of pairs of lists of points
+  // which will be weakly required to have the same mean
+  getAverageConstraintData(dimension) {
+    if (_debug) {
+      _assert(isNatural(dimension));
+      _assert(dimension >= 0);
+    }
+
+    if (dimension < 2) {
+      return []; // no constraints
+    }
+
+    let slices = this.getSlices();
+
+    // Get all the singular points
+    let slice_singular_points = [];
+    for (let i=0; i<=this.data.length * 2; i++) {
+      slice_singular_points.push(slices[i].getSingularPoints(dimension - 1));
+    }
+
+    let identity_limit = new Limit({ n: this.n - 1, components: [] });
+
+    // Get the top-level singular constraints
+    let top_level_singular_constraints = [];
+    for (let i=-1; i<this.data.length + 1; i++) {
+      //if (i == this.data.length) continue;
+      //if (i == -1) continue;
+
+      // Prepare lookup table
+      let singular_height = 2 * i + 1;
+      let adjusted = this.adjustHeight(singular_height);
+      let prefix = singular_height.toString() + ',';
+      let lookup = {};
+      let singular_height_points = slice_singular_points[adjusted];
+      let labels = [];
+      for (let j=0; j<singular_height_points.length; j++) {
+        let point = singular_height_points[j];
+        let label = point.join(',');
+        labels.push(label);
+        lookup[label] = { below: [], above: [] };
+      }
+
+      // Flow forward points from regular slice below
+      if (i > -1) {
+        let regular_below = singular_height - 1;
+        let forward_limit = (i == this.data.length) ? identity_limit : this.data[i].forward_limit;
+        let flow_forward = forward_limit.flowForwardSingularPoints(slice_singular_points[regular_below]);
+        let regular_below_singular_points = slice_singular_points[regular_below];
+        let regular_below_prefix = regular_below.toString() + ',';
+        for (let j=0; j<regular_below_singular_points.length; j++) {
+          let flowed = flow_forward[j];
+          let label = flowed.join(',');
+          lookup[label].below.push(regular_below_prefix + regular_below_singular_points[j].join(','));
+        }
+      }
+
+      // Flow backward points from regular slice above
+      if (i < this.data.length) {
+        let regular_above = singular_height + 1;
+        let backward_limit = (i == -1) ? identity_limit : this.data[i].backward_limit;
+        let flow_backward = backward_limit.flowForwardSingularPoints(slice_singular_points[regular_above]);
+        let regular_above_singular_points = slice_singular_points[regular_above];
+        let regular_above_prefix = regular_above.toString() + ',';
+        for (let j=0; j<regular_above_singular_points.length; j++) {
+          let flowed = flow_backward[j];
+          let label = flowed.join(',');
+          lookup[label].above.push(regular_above_prefix + regular_above_singular_points[j].join(','));
+        }
+      }
+
+      // Prepare the constraints
+      for (let j=0; j<labels.length; j++) {
+        let label = labels[j];
+        let data = lookup[label];
+        //if (data.below.length == 1 && data.above.length == 1) continue;
+        if (data.below.length > 0) top_level_singular_constraints.push([prefix + label, data.below]);
+        if (data.above.length > 0) top_level_singular_constraints.push([prefix + label, data.above]);
+      }
+    }
+
+    // Get all the regular points
+    let slice_regular_points = [];
+    for (let i=0; i<=this.data.length * 2; i++) {
+      slice_regular_points.push(slices[i].getRegularPoints(dimension - 1));
+    }
+
+    // Get the top-level regular constraints
+    let top_level_regular_constraints = [];
+    for (let i=0; i<this.data.length + 1; i++) {
+      //if (i == this.data.length) continue;
+      //if (i == -1) continue;
+
+      // Prepare lookup table
+      let regular_height = 2 * i;
+      let adjusted = this.adjustHeight(regular_height);
+      let prefix = regular_height.toString() + ',';
+      let lookup = {};
+      let regular_height_points = slice_regular_points[adjusted];
+      let labels = [];
+      for (let j=0; j<regular_height_points.length; j++) {
+        let point = regular_height_points[j];
+        let label = point.join(',');
+        labels.push(label);
+        lookup[label] = { below: [], above: [] };
+      }
+
+      // Flow backward regular points from singular slice below
+      let singular_below = regular_height - 1;
+      let backward_limit = (i == 0) ? identity_limit : this.data[i - 1].backward_limit;
+      let singular_below_adjusted = this.adjustHeight(singular_below);
+      let flow_backward = backward_limit.flowBackwardRegularPoints(slice_regular_points[singular_below_adjusted]);
+      let singular_below_regular_points = slice_regular_points[singular_below_adjusted];
+      let singular_below_prefix = singular_below.toString() + ',';
+      for (let j=0; j<singular_below_regular_points.length; j++) {
+        let flowed = flow_backward[j];
+        let label = flowed.join(',');
+        lookup[label].below.push(singular_below_prefix + singular_below_regular_points[j].join(','));
+      }
+
+      // Flow forward regular points from singular slice above
+      let singular_above = regular_height + 1;
+      let forward_limit = (i == this.data.length) ? identity_limit : this.data[i].forward_limit;
+      let singular_above_adjusted = this.adjustHeight(singular_above);
+      let flow_forward = forward_limit.flowBackwardRegularPoints(slice_regular_points[singular_above_adjusted]);
+      let singular_above_regular_points = slice_regular_points[singular_above_adjusted];
+      let singular_above_prefix = singular_above.toString() + ',';
+      for (let j=0; j<singular_above_regular_points.length; j++) {
+        let flowed = flow_forward[j];
+        let label = flowed.join(',');
+        lookup[label].above.push(singular_above_prefix + singular_above_regular_points[j].join(','));
+      }
+
+      // Prepare the constraints
+      for (let j=0; j<labels.length; j++) {
+        let label = labels[j];
+        let data = lookup[label];
+        //if (data.below.length == 1 && data.above.length == 1) continue;
+        if (data.below.length > 0) top_level_regular_constraints.push([prefix + label, data.below]);
+        if (data.above.length > 0) top_level_regular_constraints.push([prefix + label, data.above]);
+      }
+    }
+
+    // Get the slice weak constraints
+    let regular_constraint = true;
+    let singular_constraint = true;
+    let slice_constraints = [];
+    for (let i=-1; i<=2*this.data.length + 1; i++) {
+      if (Math.abs(i % 2) == 0 && !regular_constraint) continue;
+      if (Math.abs(i % 2) == 1 && !singular_constraint) continue;
+      let adjusted = this.adjustHeight(i);
+      let weak_slice_constraint = slices[adjusted].getAverageConstraintData(dimension - 1);
+      let prefix = i.toString() + ',';
+      let processed = weak_slice_constraint.map(constraint => {
+        let new_label = prefix + constraint[0];
+        let new_points = constraint[1].map(point => prefix + point);
+        return [new_label, new_points];
+      });
+      slice_constraints.push(processed);
+    }
+
+    // Build and return the final list of constraints
+    let constraints = [
+      ...top_level_singular_constraints,
+      ...top_level_regular_constraints,
+      ...slice_constraints.flat()
+    ];
+    return constraints;
+  }
+
+
+
 }
 
 function sub_content(content, subcontent, position) {

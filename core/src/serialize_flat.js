@@ -5,12 +5,6 @@ import { Generator } from "~/generator";
 
 /* Serializes a cyclic class-aware Javascript object, and allow the serialization to be efficiently updated */
 
-/*
-  To do:
-  - Only persist an object in memory if it's frozen
-  - Persist frozen status direcly, not via _t lookup
-*/
-
 export class SerializeCyclic {
 
   constructor(args) {

@@ -1,4 +1,4 @@
-import { _assert, _debug, _validate, isNatural, _propertylist } from "~/util/debug";
+import { _assert, _debug, _validate, isNatural, isInteger, _propertylist } from "~/util/debug";
 import { DirectedQuotientGraph } from "~/directed_graph";
 
 export class Monotone extends Array {
@@ -32,6 +32,20 @@ export class Monotone extends Array {
       m.grow();
     }
     return m;
+  }
+
+  applyAdjusted(height) {
+    if (_debug) {
+      _assert(isInteger(height));
+      _assert(height >= -1);
+      _assert(height <= this.length);
+    }
+    if (height == -1) return -1;
+    if (height == this.length) {
+      return this.target_size;
+    } else {
+      return this[height];
+    }
   }
 
   grow() {
@@ -436,7 +450,7 @@ export class Monotone extends Array {
   }
 
   // If this monotone represents the forward function of singular levels,
-  // build the adjoint, which represents the backward function of regular levels
+  // build the 'adjoint', which represents the backward function of regular levels
   getAdjoint() {
     let regular = [];
     let level = 0;

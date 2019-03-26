@@ -12,6 +12,10 @@ export const isNatural = (value) => {
   return Number.isInteger(value) && value >= 0;
 };
 
+export const isInteger = (value) => {
+  return Number.isInteger(value);
+};
+
 export const _validate = (object) => {
   if (!_debug) return;
   if (!object.validate) {
