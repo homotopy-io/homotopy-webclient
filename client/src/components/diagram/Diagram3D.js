@@ -536,7 +536,6 @@ export class Diagram3D extends React.Component {
     for (let i=0; i<ids.length; i++) {
       let id = ids[i];
       let geometry = triangle_geometries[id];
-      console.log({id, geometry});
       geometry.mergeVertices();
       geometry.computeVertexNormals();
       let material = this.getMaterial(generators[id]);
