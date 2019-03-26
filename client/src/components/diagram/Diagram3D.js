@@ -48,6 +48,7 @@ export class Diagram3D extends React.Component {
     this.objects = [];
     this.materials = new Map();
     this.diagramRef = React.createRef();
+    this.allow_animate = false;
   }
 
   changedGUI() {
@@ -99,7 +100,7 @@ export class Diagram3D extends React.Component {
     this.diagramRef.current.appendChild(this.renderer.domElement);
 
     // Create point light
-    let point_light_strength = 0xBBBBBB;
+    let point_light_strength = 0x777777;
     this.camera.add(this.createPointLight(point_light_strength, +20, +20, +20));
     //this.scene.add(this.createPointLight(point_light_strength, -20, -20, +20));
     //this.scene.add(this.createPointLight(point_light_strength, +20, -20, -20));
@@ -183,7 +184,8 @@ export class Diagram3D extends React.Component {
 
     // Maybe we need to animate
     let { diagram, dimension, slice, generators } = this.props;
-    if ((slice.length > 0)
+    if (this.allow_animate
+      && (slice.length > 0)
       && (oldProps.slice.length == slice.length)
       && (slice.every((slice_coordinate, index) => {
         return ((index == slice.length - 1) || (slice_coordinate == oldProps.slice[index]));
@@ -330,7 +332,7 @@ export class Diagram3D extends React.Component {
     this.materials.clear();
     
     // If there are no slices, we can't animate, so just render the scene uniquely
-    if (this.props.slice.length == 0) {
+    if (this.props.slice.length == 0 || !this.allow_animate) {
       this.buildSceneUnique();
       this.animated = false;
     } else {

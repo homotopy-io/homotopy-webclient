@@ -541,7 +541,7 @@ export class Loop {
     let vertices = {};
     let edges = {};
     let faces = {};
-    let layout = { ...layout };
+    let layout = { ...this.layout };
     let draw_edges = [];
     let draw_triangles = [];
 
