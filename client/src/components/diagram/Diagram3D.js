@@ -423,6 +423,7 @@ export class Diagram3D extends React.Component {
       loop.subdivide(dimension);
     }
     */
+
     loop.subdivide(dimension);
     loop.subdivide(dimension);
     loop.subdivide(dimension);
@@ -1319,6 +1320,7 @@ export class Diagram3D extends React.Component {
   }
 
   getGenerator(point) {
+    debugger;
     let diagram = this.diagram;
     let id = Core.Geometry.idAt(diagram, point);
     return this.props.generators[id];

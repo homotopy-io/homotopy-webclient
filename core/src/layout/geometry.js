@@ -37,8 +37,9 @@ export const idAt = (diagram, point) => {
 */
 
 export const idAt = (diagram, point) => {
+  debugger;
   _assert(diagram);
-  return diagram.getActionId(point);
+  return diagram.getActionId(point, generators);
   
 }
 

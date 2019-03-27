@@ -206,9 +206,9 @@ export class Diagram2D extends React.Component {
     //return this.props.diagram.getSlice(...this.props.slice);
   }
 
-  getGenerator(point) {
+  getGenerator(point, generators) {
     //let type = Core.Geometry.idAt(this.diagram, point);
-    let id = this.diagram.getActionId(point);
+    let id = this.diagram.getActionId(point, generators);
     //let id = type.id;
     return this.props.generators[id];
   }
@@ -421,23 +421,23 @@ export class Diagram2D extends React.Component {
     return this.coordsToObject([y,x]);
   }
 
-  preparePoints(points_raw) {
+  preparePoints(points_raw, generators) {
     if (this.props.dimension == 0) {
-      return this.preparePoints0d(points_raw)
+      return this.preparePoints0d(points_raw, generators)
     } else if (this.props.dimension == 1) {
-      return this.preparePoints1d(points_raw);
+      return this.preparePoints1d(points_raw, generators);
     } else if (this.props.dimension == 2) {
-      return this.preparePoints2d(points_raw);
+      return this.preparePoints2d(points_raw, generators);
     } else _assert(false);
   }
 
-  preparePoints0d(points_raw) {
+  preparePoints0d(points_raw, generators) {
     let points = [];
     for (let i=0; i<points_raw.length; i++) {
       let point = points_raw[i];
       if (_debug) _assert(point.length == 0);
       let ref = '';
-      let generator = this.getGenerator(point);
+      let generator = this.getGenerator(point, generators);
       let position = this.getPosition(point);
       let slice = [];
       let nontrivial = true;
@@ -446,7 +446,7 @@ export class Diagram2D extends React.Component {
     return points;
   }
 
-  preparePoints1d(points_raw) {
+  preparePoints1d(points_raw, generators) {
 
     let points = [];
 
@@ -456,7 +456,7 @@ export class Diagram2D extends React.Component {
       if (_debug) _assert(point.length == 1);
 
       let ref = point.join(',').toString();
-      let generator = this.getGenerator(point);
+      let generator = this.getGenerator(point, generators);
       let position = this.getPosition(point);
 
       // Compute some logical data about the point
@@ -482,7 +482,7 @@ export class Diagram2D extends React.Component {
     return points;
   }
 
-  preparePoints2d(points_raw) {
+  preparePoints2d(points_raw, generators) {
 
     let points = [];
 
@@ -518,7 +518,7 @@ export class Diagram2D extends React.Component {
         _assert(point[1] >= -1);
       }
       let ref = point.join(',').toString();
-      let generator = this.getGenerator(point);
+      let generator = this.getGenerator(point, generators);
       let position = this.getPosition(point);
 
       // Compute some logical data about the point
@@ -1035,7 +1035,7 @@ export class Diagram2D extends React.Component {
     let points_raw = this.props.layout.points;
 
     // Prepare points
-    let points = this.preparePoints(points_raw);
+    let points = this.preparePoints(points_raw, generators);
     /*
     for (let i=0; i<points_raw.length; i++) {
       points.push(this.preparePoint(points_raw[i]));

@@ -1108,7 +1108,20 @@ export class Limit /*extends Array*/ {
     return monotone;
   }
 
-  // For each singular height, computes whether its neighbourhood is nontrivial
+  // List singular points in the target with nontrivial neighbourhood under this limit
+  getSingularNeighbourhood(dimension) {
+    let classification = {};
+    let offset = 0;
+    for (let i = 0; i < this.components.length; i++) {
+      let component = this.components[i];
+      singular_classification[component.first - offset] = true;
+      offset += component.getLast() - component.first - 1;
+    }
+    return singular_classification;
+
+  }
+
+  // For each singular height in the target, computes whether its neighbourhood is nontrivial
   analyzeSingularNeighbourhoods() {
     var singular_classification = [];
     let offset = 0;
@@ -3123,7 +3136,7 @@ export class Limit /*extends Array*/ {
     }
   }
 
-  getScaffoldPointPairs({ source, target, dimension }) {
+  getScaffoldPointPairs({ generators, source, target, dimension }) {
     if (_debug) {
       _assert(source instanceof Diagram);
       _assert(target instanceof Diagram);
@@ -3136,7 +3149,7 @@ export class Limit /*extends Array*/ {
 
     if (dimension == 0) {
       let point_names = ['',''];
-      let id = source.getActionId([]);
+      let id = source.getActionId([], generators);
       return [new Simplex({ point_names, id })];
     }
 
@@ -3157,7 +3170,7 @@ export class Limit /*extends Array*/ {
       let target_adjusted = target.adjustHeight(target_height);
       let target_slice = target_slices[target_adjusted];
       let sublimit = this.extendedSubLimit(source_height, source);
-      let sublimit_edges = sublimit.getScaffoldPointPairs({source: source_slice, target: target_slice, dimension: dimension - 1 });
+      let sublimit_edges = sublimit.getScaffoldPointPairs({ generators, source: source_slice, target: target_slice, dimension: dimension - 1 });
       let source_prefix = source_height.toString() + comma;
       let target_prefix = target_height.toString() + comma;
       edges.push(sublimit_edges.map(edge => {
@@ -3172,7 +3185,7 @@ export class Limit /*extends Array*/ {
       let source_regular = adjoint[target_regular];
       let source_height = 2 * source_regular;
       let sublimit = new Limit({ n: this.n - 1, components: [] });
-      let sublimit_edges = sublimit.getScaffoldPointPairs({ source: target_slice, target: target_slice, dimension: dimension - 1 });
+      let sublimit_edges = sublimit.getScaffoldPointPairs({ generators, source: target_slice, target: target_slice, dimension: dimension - 1 });
       let source_prefix = source_height.toString() + comma;
       let target_prefix = target_height.toString() + comma;
       edges.push(sublimit_edges.map(edge => {

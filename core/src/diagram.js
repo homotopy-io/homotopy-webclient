@@ -379,15 +379,43 @@ export class Diagram {
     */
   }
 
+  // Get the highest-dimensional id that appears in the diagram.
+  // Can be computationally expensive.
+  // If there are multiple distinct such, choose the one closest to the origin.
+  getMaxId(generators) {
+    if (this.n == 0) return this.id;
+    let slices = this.getSlices();
+    let best_id;
+    let best_n = -1;
+    for (let i=0; i<slices.length; i++) {
+
+      let new_id = slices[i].getMaxId(generators);
+      _assert(typeof new_id === 'string');
+      let new_n = generators[new_id].generator.n;
+      if (new_n > best_n) {
+        best_id = new_id;
+        best_n = new_n;
+      }
+
+    }
+
+    _assert(typeof best_id === 'string');
+    return best_id;
+
+  }
+
   // Get the 0-diagram of 'leftmost action' at the given height (ANC-2018-2-2)
-  getActionId(position) {
+  getActionId(position, generators) {
     if (this.n == 0) return this.id;
     if (typeof position === 'number') position = [position];
     if (position.length == 0) {
+      return this.getMaxId(generators);
+      /*
       if (this.data.length == 0) position = [0];
       else position = [1];
+      */
     }
-    if (this.data.length == 0) return this.source.getActionId(position.slice(1)); // is this necessary?
+    if (this.data.length == 0) return this.source.getActionId(position.slice(1), generators); // is this necessary?
     if (_debug) _assert(position.length > 0);
     let [slice, ...rest] = position;
     slice = Math.max(slice, 0);
@@ -395,7 +423,7 @@ export class Diagram {
     
     // Recursive case
     if (rest.length > 0) {
-      return this.getSlice(slice).getActionId(rest);
+      return this.getSlice(slice).getActionId(rest, generators);
     }
 
     // Base case
@@ -422,7 +450,7 @@ export class Diagram {
 
     // Regular subdiagram
     if (slice % 2 == 0) {
-      return this.getSlice(slice).getActionId([]);
+      return this.getSlice(slice).getActionId([], generators);
     }
 
     // Singular subdiagram, take the first nontrivial component
@@ -430,7 +458,7 @@ export class Diagram {
     let forward_targets = this.data[level].forward_limit.getComponentTargets();
     let backward_targets = this.data[level].backward_limit.getComponentTargets();
     if (forward_targets.length + backward_targets.length == 0) {
-        return this.source.getActionId(0);
+        return this.source.getActionId(0, generators);
     }
     let t;
     if (forward_targets.length == 0 || backward_targets.length == 0) {
@@ -438,7 +466,7 @@ export class Diagram {
     } else {
         t = Math.min(forward_targets[0], backward_targets[0]);
     }
-    return this.getSlice(slice).getActionId(2 * t + 1);
+    return this.getSlice(slice).getActionId(2 * t + 1, generators);
   }
 
   // Get apparent wire depths for displaying homotopies
@@ -1736,19 +1764,19 @@ export class Diagram {
     return new Diagram({ n: this.n, source, data });
   }
 
-  getSingularPointsWithId(dimension) {
+  getSingularPointsWithId(dimension, generators) {
     if (_debug) {
       _assert(isNatural(dimension));
       _assert(dimension <= this.n);
     }
-    if (dimension == 0) return [{ coordinates: [], id: this.getActionId([]) }];
+    if (dimension == 0) return [{ coordinates: [], id: this.getActionId([], generators) }];
     let slices = this.getSlices();
     let slices_singular = [];
     for (let i=0; i<this.data.length + 2; i++) {
       let height = (2 * i) - 1;
       let adjusted = this.adjustHeight(height);
       let slice = slices[adjusted];
-      let slice_singular = slice.getSingularPointsWithId(dimension - 1)
+      let slice_singular = slice.getSingularPointsWithId(dimension - 1, generators)
         .map(point => { return {coordinates: [height, ...point.coordinates], id: point.id} });
       slices_singular.push(slice_singular);
     }
@@ -1803,7 +1831,7 @@ export class Diagram {
     // 0-dimensional diagrams have a single 1-simplex, with no coordinates
     if (dimension == 0) {
       let point_names = [''];
-      let id = this.getActionId([]);
+      let id = this.getActionId([], generators);
       let simplices = [new Simplex({point_names, id})];
       let n = this.n;
       let complex = new Complex({simplices, n, generators});
@@ -1834,7 +1862,7 @@ export class Diagram {
       // Edges to singular level below
       let singular_below = slices[this.adjustHeight(regular_height - 1)];
       let b = this.getBackwardLimitFromRegular(regular_height);
-      let b_edge_pairs = b.getScaffoldPointPairs({ source: regular_slice, target: singular_below, dimension: dimension - 1 });
+      let b_edge_pairs = b.getScaffoldPointPairs({ generators, source: regular_slice, target: singular_below, dimension: dimension - 1 });
       let comma = dimension == 1 ? '' : ',';
       let str_regular_height = regular_height.toString() + comma;
       let str_regular_minus_1 = (regular_height - 1).toString() + comma;
@@ -1847,7 +1875,7 @@ export class Diagram {
       // Edges to singular level above
       let singular_above = slices[this.adjustHeight(regular_height + 1)];
       let f = this.getForwardLimitFromRegular(regular_height);
-      let f_edge_pairs = f.getScaffoldPointPairs({ source: regular_slice, target: singular_above, dimension: dimension - 1 });
+      let f_edge_pairs = f.getScaffoldPointPairs({ generators, source: regular_slice, target: singular_above, dimension: dimension - 1 });
       let str_regular_plus_1 = (regular_height + 1).toString() + comma;
       f_edge_pairs = f_edge_pairs.map(edge => {
         return new Simplex({ point_names: [str_regular_height + edge.point_names[0], str_regular_plus_1 + edge.point_names[1]], id: edge.id });
@@ -1858,6 +1886,46 @@ export class Diagram {
     }
 
     return { complex, scaffold_pairs };
+  }
+
+  // For each point to the given depth, give an integer indicating the dimension of the submanifold where the point lives
+  getSingularClassification(dimension) {
+
+    // Base case
+    if (dimension == 0) {
+      if (this.data.length > 0) return { '': this.n };
+      else if (this.n == 0) return { '': 0 };
+      else return this.source.getSingularClassification(0);
+    }
+
+    // Recursive case
+    let slices = this.getSlices();
+    let sub_classification = slices.map(slice => slice.getSingularClassification(dimension - 1));
+    let classification = {};
+    let comma = dimension == 1 ? '' : ',';
+    for (let i=0; i < this.data.length + 1; i++) {
+      let singular_height = (2 * i) - 1;
+      let adjusted = this.adjustHeight(singular_height);
+      let prefix = i.toString() + comma;
+      if (i == -1) {
+        // Extra source singular level
+        let sub = sub_classification[0];
+        for (const point in sub) {
+          let new_point = prefix + point;
+          classification[new_point] = sub[point];
+        }
+      } else if (i == 2 * this.data.length + 1) {
+        // Extra target singular level
+        let sub = sub_classification[2 * this.data.length];
+        for (const point in sub) {
+          let new_point = prefix + point;
+          classification[new_point] = sub[point];
+        }
+      } else {
+        // Interior singular level
+      }
+    }
+
   }
 
   /* Gets all the names of all the points in the diagram */
