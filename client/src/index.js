@@ -37,6 +37,10 @@ Rx.fromEvent(document, "keydown")
       case "h": return store.dispatch({ type: 'workspace/make-theorem' });
       case "d": return store.dispatch({ type: 'workspace/behead' });
       case "o": return store.dispatch({ type: 'workspace/contract' });
+      case "p": return store.dispatch({ type: 'workspace/increase-projection' });
+      case "P": return store.dispatch({ type: 'workspace/decrease-projection' });
+      case "j": return store.dispatch({ type: 'workspace/decrease-slice' });
+      case "k": return store.dispatch({ type: 'workspace/increase-slice' });
     }
   });
 

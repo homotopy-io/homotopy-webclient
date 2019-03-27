@@ -309,12 +309,46 @@ export default (state = initialWorkspace, action) => {
       state = dotProp.set(state, "workspace.slice", updateSlices(state));
       break;
 
+    } case 'workspace/increase-projection': {
+
+      console.log("Increase projection")
+      const projection = getProjection(state)
+      state = dotProp.set(state, "workspace.projection", Math.min(projection+1, state.workspace.diagram.n))
+      state = dotProp.set(state, "workspace.slice", updateSlices(state))
+      break
+
+    } case 'workspace/decrease-projection': {
+
+      console.log("Decrease projection")
+      const projection = getProjection(state)
+      state = dotProp.set(state, "workspace.projection", Math.max(projection-1, 0))
+      state = dotProp.set(state, "workspace.slice", updateSlices(state))
+      break
+
     } case 'workspace/set-slice': {
 
       let { index, height } = action.payload;
       state = dotProp.set(state, `workspace.slice.${index}`, height);
       state = dotProp.set(state, "workspace.slice", updateSlices(state));
       break;
+
+    } case 'workspace/increase-slice': {
+
+      const currentSlice = getSlice(state)
+      const index = currentSlice.length - 1
+      const sliceBounds = getSliceBounds(state)
+      const lastSliceMax = sliceBounds[index]
+      state = dotProp.set(state, `workspace.slice.${index}`, Math.min(currentSlice[index]+1, lastSliceMax+1))
+      state = dotProp.set(state, "workspace.slice", updateSlices(state))
+      break
+
+    } case 'workspace/decrease-slice': {
+
+      const currentSlice = getSlice(state)
+      const index = currentSlice.length - 1
+      state = dotProp.set(state, `workspace.slice.${index}`, Math.max(currentSlice[index]-1, -1))
+      state = dotProp.set(state, "workspace.slice", updateSlices(state))
+      break
 
     } case 'workspace/clear-boundary': {
 
