@@ -26,7 +26,7 @@ const ActionToolStyle = {
 };
 
 export const ButtonTool = ({
-  onSource, onTarget, onIdentity, onClear, onRestrict, onTheorem, onBehead,
+  onSource, onTarget, onIdentity, onClear, onRestrict, onTheorem, onBehead, onContract,
   source, target, diagram, slice
 }) => {
   return (
@@ -42,6 +42,7 @@ export const ButtonTool = ({
           <Button disabled={!diagram || slice.length == 0} style={ActionButtonStyle} variant="contained" onClick={onRestrict}> <u>R</u>estrict </Button>
           <Button disabled={!diagram} style={ActionButtonStyle} variant="contained" onClick={onTheorem}> T<u>h</u>eorem </Button>
           <Button disabled={!diagram || diagram.n == 0 || diagram.data.length == 0} style={ActionButtonStyle} variant="contained" onClick={onBehead}> Behea<u>d</u> </Button>
+          <Button disabled={!diagram || slice.length != 0} style={ActionButtonStyle} variant="contained" onClick={onContract}> C<u>o</u>ntract </Button>
         </MuiThemeProvider>
       </div>
   </Tool>
@@ -64,6 +65,7 @@ export default connect(
     onRestrict: () => dispatch({ type: 'workspace/restrict-diagram' }),
     onTheorem: () => dispatch({ type: 'workspace/make-theorem'}),
     onBehead: () => dispatch({ type: 'workspace/behead' }),
+    onContract: () => dispatch({ type: 'workspace/contract' }),
   })
 )(ButtonTool);
 
