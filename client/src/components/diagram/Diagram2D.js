@@ -979,7 +979,7 @@ export class Diagram2D extends React.Component {
     let sGenerator = s.generator;
     let colour = highlight ? "#f1c40f" : this.getColour(sGenerator, this.diagram.n - 2);
     let stroke_colour = colour;
-    //stroke_colour = '#fff';
+    stroke_colour = '#fff';
     //let key = 'surface#' + s.point.join(":") + '#' + m.point.join(":") + '#' + t.point.join(":")';
     let key = 'surface#' + s.position.join(":")
       + '#' + m.position.join(":")

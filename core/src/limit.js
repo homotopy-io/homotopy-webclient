@@ -3136,6 +3136,94 @@ export class Limit /*extends Array*/ {
     }
   }
 
+  // Get the full relation on source and target points
+  getAllPointPairs({ source, target, dimension }) {
+
+    if (_debug) {
+      _assert(source instanceof Diagram);
+      _assert(target instanceof Diagram);
+      _assert(source.n == target.n);
+      _assert(source.n == this.n);
+      if (this.components.length > 0 && this.n > 0) _assert(this.source_size == source.data.length);
+      _assert(isNatural(dimension));
+      _assert(dimension <= this.n);
+    }
+
+    if (dimension == 0) {
+      return [['','']];
+    }
+
+    let source_slices = source.getSlices();
+    let target_slices = target.getSlices();
+    let monotone = this.getMonotone(source, target);
+    let adjoint = monotone.getAdjoint();
+    let pairs = [];
+    let comma = (dimension == 1) ? '' : ',';
+
+    // Iterate over singular levels of source diagram
+    for (let source_singular=-1; source_singular<source.data.length + 1; source_singular++) {
+
+      let source_height = (2 * source_singular) + 1;
+      let source_adjusted = source.adjustHeight(source_height);
+      let source_slice = source_slices[source_adjusted];
+      let target_singular = monotone.applyAdjusted(source_singular);
+      let target_height = (2 * target_singular) + 1;
+      let target_adjusted = target.adjustHeight(target_height);
+      let target_slice = target_slices[target_adjusted];
+      let sublimit = this.extendedSubLimit(source_height, source);
+      let sublimit_pairs = sublimit.getAllPointPairs({ source: source_slice, target: target_slice, dimension: dimension - 1 });
+      let source_prefix = source_height.toString() + comma;
+      let target_prefix = target_height.toString() + comma;
+      pairs.push(sublimit_pairs.map(pair => {
+        return [source_prefix + pair[0], target_prefix + pair[1]];
+      }));
+
+      // Possibly also act on regular height just above
+      if (source_singular == source.data.length) continue; // too high, no regular level above this
+      if (target_singular != monotone.applyAdjusted(source_singular + 1)) continue; // no trapped regular level
+      let backward_limit = source.data[source_singular].backward_limit;
+      let composed_sublimit = sublimit.compose(backward_limit);
+      let trapped_regular = source_slices[source_adjusted + 1];
+      let composed_sublimit_pairs = composed_sublimit.getAllPointPairs({ source: trapped_regular, target: target_slice, dimension: dimension - 1 });
+      let composed_source_prefix = (source_height + 1).toString() + ',';
+      pairs.push(composed_sublimit_pairs.map(pair => {
+        return [composed_source_prefix + pair[0], target_prefix + pair[1]];
+      }));
+
+    }
+
+    // Iterate over regular levels of target diagram
+    for (let target_regular = 0; target_regular <= target.data.length; target_regular ++) {
+
+      let target_height = 2 * target_regular;
+      let target_slice = target_slices[target_height];
+      let source_regular = adjoint[target_regular];
+      let source_height = 2 * source_regular;
+      let sublimit = new Limit({ n: this.n - 1, components: [] });
+      let sublimit_pairs = sublimit.getAllPointPairs({ source: target_slice, target: target_slice, dimension: dimension - 1 });
+      let source_prefix = source_height.toString() + comma;
+      let target_prefix = target_height.toString() + comma;
+      pairs.push(sublimit_pairs.map(pair => {
+        return [source_prefix + pair[0], target_prefix + pair[1]];
+      }));
+
+      // Possibly also act on singular height just above
+      if (target_regular == target.data.length) continue; // too high, can't trap a singular level above this
+      if (adjoint[target_regular] != adjoint[target_regular + 1]) continue; // no trapped singular level
+      let forward_limit = target.data[target_regular].forward_limit;
+      let forward_limit_pairs = forward_limit.getAllPointPairs({ source: target_slice, target: target_slices[target_height + 1], dimension: dimension - 1 });
+      let new_target_prefix = (target_height + 1).toString() + comma;
+      pairs.push(forward_limit_pairs.map(pair => {
+        return [source_prefix + pair[0], new_target_prefix + pair[1]];
+      }));
+
+    }
+
+    // Flatten and return the resulting list of pairs
+    return pairs.flat();
+
+  }
+  
   getScaffoldPointPairs({ generators, source, target, dimension }) {
     if (_debug) {
       _assert(source instanceof Diagram);
@@ -3196,7 +3284,6 @@ export class Limit /*extends Array*/ {
     // Flatten and return the resulting list of pairs
     return edges.flat();
   }
-
   
 }
 

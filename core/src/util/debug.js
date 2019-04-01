@@ -1,4 +1,4 @@
-export const _debug = false;
+export const _debug = true;
 
 export const _assert = (condition) => {
   if (!_debug) return;

@@ -61,37 +61,42 @@ export class Diagram3D extends React.Component {
 
   componentDidMount() {
     let { width, height } = this.props;
-    //this.gui = new dat.GUI();
 
-    // Add style controls
-    /*
-    this.subdivide = 0;           this.gui.add(this, 'subdivide', 0, 3).step(1).onChange(this.buildScene.bind(this));
-    this.draw_controls = true;    this.gui.add(this, 'draw_controls').onChange(this.changedGUI.bind(this));
-    this.wireframe = true;        this.gui.add(this, 'wireframe').onChange(this.changedGUI.bind(this));
-    this.triangles = true;        this.gui.add(this, 'triangles').onChange(this.changedGUI.bind(this));
-    this.transparent = false;     this.gui.add(this, 'transparent').onChange(this.buildScene.bind(this));
-    this.flatShading = true;      this.gui.add(this, 'flatShading').onChange(this.changedGUI.bind(this));
-    this.polygonOffsetFactor = 1; this.gui.add(this, 'polygonOffsetFactor', 0, 3).step(1).onChange(this.buildScene.bind(this));
-    this.polygonOffsetUnits = 1;  this.gui.add(this, 'polygonOffsetUnits', 0, 3).step(1).onChange(this.buildScene.bind(this));
-    */
-
-    this.subdivide = 0;
+    this.subdivide = 3;
     this.draw_controls = true;
-    this.wireframe = true;
+    this.wireframe = false;
     this.triangles = true;
     this.transparent = false;
-    this.flatShading = true;
+    this.flatShading = false;
     this.polygonOffsetFactor = 1;
     this.polygonOffsetUnits = 1;
+    this.opacity = 1;
 
+    let allow_gui = true;
+    if (allow_gui) {
+      this.gui = this.gui || new dat.GUI();
+      this.gui.add(this, 'subdivide', 0, 3).step(1).onChange(this.buildScene.bind(this));
+      this.gui.add(this, 'draw_controls').onChange(this.changedGUI.bind(this));
+      this.gui.add(this, 'wireframe').onChange(this.changedGUI.bind(this));
+      this.gui.add(this, 'triangles').onChange(this.changedGUI.bind(this));
+      this.gui.add(this, 'transparent').onChange(this.buildScene.bind(this));
+      this.gui.add(this, 'opacity', 0, 1).onChange(this.buildScene.bind(this));
+      this.gui.add(this, 'flatShading').onChange(this.changedGUI.bind(this));
+      this.gui.add(this, 'polygonOffsetFactor', 0, 3).step(1).onChange(this.buildScene.bind(this));
+      this.gui.add(this, 'polygonOffsetUnits', 0, 3).step(1).onChange(this.buildScene.bind(this));
+    }
 
     // Create scene
     this.scene = new THREE.Scene();
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
-    this.camera.position.set(0, 0, -10);
+    this.camera.position.set(5, 7, 20);
     this.camera.lookAt(new THREE.Vector3());
+    //this.camera.rotation.set(3, 0, 90 * Math.PI / 180);
+    //this.camera.rotation.x += 90 * Math.PI / 180;
+    new THREE.Matrix4().makeRotationZ( -Math.PI / 2 ).multiplyVector3( this.camera.up );
+    //this.camera.updateProjectionMatrix();
     this.scene.add(this.camera);
 
     // Create renderer
@@ -137,6 +142,13 @@ export class Diagram3D extends React.Component {
     let old_diagram = this.diagramToRender;
     let new_diagram = nextProps.diagram.getSlice(...nextProps.slice);
 
+    let old_diagram_before_final_slice = this.diagramBeforeFinalSlice;
+    let new_diagram_before_final_slice = null;
+    if (nextProps.slice.length > 0) {
+      new_diagram_before_final_slice = nextProps.diagram.getSlice(...nextProps.slice.slice(0, nextProps.slice.length - 1));
+    }
+
+
     if (Math.abs(this.props.width - nextProps.width) > 5) return true;
     if (Math.abs(this.props.height - nextProps.height) > 5) return true;
     if (this.props.projection != nextProps.projection) return true;
@@ -145,12 +157,13 @@ export class Diagram3D extends React.Component {
     //let new_diagram = nextProps.diagram;
     if (old_diagram && !new_diagram) return true;
     if (!old_diagram && new_diagram) return true;
-    if (!old_diagram.equals(new_diagram)) return true;
-    //if (!this.props.diagram.equals(nextProps.diagram)) return true;
-    if (this.props.slice.length != nextProps.slice.length) return true;
-    for (let i=0; i<this.props.slice.length; i++) {
-      if (this.props.slice[i] != nextProps.slice[i]) return true;
+    if (!!old_diagram_before_final_slice != !!new_diagram_before_final_slice) return true;
+    if (old_diagram_before_final_slice) {
+      if (!old_diagram_before_final_slice.equals(new_diagram_before_final_slice)) return true;
+    } else {
+      if (!old_diagram.equals(new_diagram)) return true;
     }
+    //if (!this.props.diagram.equals(nextProps.diagram)) return true;
     // Check for each generator used in the diagram if its parameters have changed
     for (let id of Object.keys(this.props.generators)) {
       if (!new_diagram.usesId(id)) continue;
@@ -158,6 +171,15 @@ export class Diagram3D extends React.Component {
       let g_new = nextProps.generators[id];
       if (g_old.name != g_new.name) return true;
       if (g_old.color != g_new.color) return true;
+    }
+    if (this.props.slice.length != nextProps.slice.length) return true;
+    for (let i=0; i<this.props.slice.length; i++) {
+      if (this.props.slice[i] != nextProps.slice[i]) {
+        if (i == this.props.slice.length - 1) {
+          this.trigger_animation = true;
+        }
+        return true;
+      }
     }
     return false;
 
@@ -184,13 +206,15 @@ export class Diagram3D extends React.Component {
 
     // Maybe we need to animate
     let { diagram, dimension, slice, generators } = this.props;
-    if (this.allow_animate
+    if (this.allow_animate && this.trigger_animation) {
+      /*
       && (slice.length > 0)
       && (oldProps.slice.length == slice.length)
       && (slice.every((slice_coordinate, index) => {
         return ((index == slice.length - 1) || (slice_coordinate == oldProps.slice[index]));
       }))
       && diagram.equals(oldProps.diagram)) {
+        */
 
       // It looks like we should be animating the animate_slice parameter
       requestAnimationFrame(this.tick.bind(this));
@@ -200,6 +224,7 @@ export class Diagram3D extends React.Component {
       let last_slice = slice[slice.length - 1];
       this.animate_sign = this.animate_slice < last_slice ? +1 : -1;
       this.animate_final = false;
+      this.trigger_animation = false;
       return;
     }
 
@@ -284,8 +309,7 @@ export class Diagram3D extends React.Component {
     if (!this.materials.has(id)) {
       let material = new THREE.MeshPhongMaterial({
         color: new THREE.Color(generator.color),
-        side: THREE.DoubleSide,
-        flatShading: false
+        side: THREE.DoubleSide
       });
       this.materials.set(id, material);
     }
@@ -404,6 +428,26 @@ export class Diagram3D extends React.Component {
     return result;
   }
 
+  getVertexIndexAnimate(buffer, source_data, target_data, point_1_str, point_2_str) {
+    if (_debug) {
+      _assert(typeof point_1_str === 'string');
+      _assert(typeof point_2_str === 'string');
+      _assert(source_data);
+      _assert(target_data);
+      _assert(source_data.loop.layout[point_1_str]);
+      _assert(target_data.loop.layout[point_2_str]);
+    }
+    let ref = point_1_str + ':' + point_2_str;
+    let result = buffer.vertex_lookup[ref];
+    if (result === undefined) {
+      result = buffer.vertex_count;
+      buffer.vertex_lookup[ref] = result;
+      buffer.vertex_points[buffer.vertex_count] = { point_1: source_data.loop.layout[point_1_str], point_2: target_data.loop.layout[point_2_str] };
+      buffer.vertex_count++;
+    }
+    return result;
+  }
+
   buildSceneUnique() {
 
     // Prepare the simplices
@@ -418,24 +462,9 @@ export class Diagram3D extends React.Component {
     let loop = new Loop({ complex, layout, boundary, dimension });
 
     // Subdivide some number of times
-    /*
     for (let i=0; i<this.subdivide; i++) {
       loop.subdivide(dimension);
     }
-    */
-
-    loop.subdivide(dimension);
-    loop.subdivide(dimension);
-    loop.subdivide(dimension);
-
-
-    //bezier = bezier.subdivide();
-    //let { complex, layout } = bezier;
-
-    // Declare the geometries
-    //let point_geometries = {};
-    //let line_geometries = {};
-    //let triangle_geometries = {}; // triangle geometries by material
 
     // Draw the vertices
     for (let i=0; i<loop.draw_vertices.length; i++) {
@@ -540,6 +569,8 @@ export class Diagram3D extends React.Component {
       geometry.mergeVertices();
       geometry.computeVertexNormals();
       let material = this.getMaterial(generators[id]);
+      material.transparent = this.transparent;
+      material.opacity = this.opacity;
       let mesh = new THREE.Mesh(geometry, material);
       this.scene.add(mesh);
       this.objects.push(mesh);
@@ -615,27 +646,68 @@ export class Diagram3D extends React.Component {
     _assert(diagram instanceof Core.Diagram);
     let dimension = Math.min(diagram.n, 4);
     let generators = this.props.generators;
-    let skeleton = diagram.skeleton({ generators, dimension, max_simplex_size: 4 });
-    let complex = skeleton.complex.trimInvisible();
-    let { layout, boundary } = diagram.layout(dimension);
-    let loop = new Loop({ complex, layout, boundary });
 
-    // Subdivide some number of times
+    // Get the slices and the pairing data
+    let slices = diagram.getSlices();
+    let point_pairs = [];
+    let limits = [];
+    let identity_limit = new Core.Limit({ n: diagram.n - 1, components: [] });
+    for (let i=-1; i<diagram.data.length + 1; i++) {
+      if (i == -1) {
+        limits.push(identity_limit);
+        point_pairs.push(identity_limit.getAllPointPairs({ source: slices[0], target: slices[0], dimension: dimension - 1 }));
+      } else if (i == diagram.data.length) {
+        limits.push(identity_limit);
+        point_pairs.push(identity_limit.getAllPointPairs({ target: slices[slices.length - 1], source: slices[slices.length - 1], dimension: dimension - 1 }));
+      } else {
+        let data = diagram.data[i];
+        limits.push(data.forward_limit);
+        limits.push(data.backward_limit);
+        point_pairs.push(data.forward_limit.getAllPointPairs({ source: slices[2 * i], target: slices[2 * i + 1], dimension: dimension - 1 }));
+        point_pairs.push(data.backward_limit.getAllPointPairs({ source: slices[2 * i + 2], target: slices[2 * i + 1], dimension: dimension - 1 }));
+      }
+    }
+
+    // For each slice, lay it out and get its simplicial complex
+    let slice_data = [];
+    for (let i=0; i<slices.length; i++) {
+      let slice_skeleton = slices[i].skeleton({ generators, dimension: dimension - 1, max_simplex_size: 3 });
+      let slice_complex = slice_skeleton.complex.trimInvisible();
+      let slice_layout_boundary = slices[i].layout(dimension - 1);
+      let slice_loop = new Loop({ complex: slice_complex, layout: slice_layout_boundary.layout, boundary: slice_layout_boundary.boundary, dimension: dimension - 1 });
+      slice_data.push({
+        complex: slice_complex,
+        boundary: slice_layout_boundary.boundary,
+        loop: slice_loop
+      });
+    }
+
+    // Subdivide
+    // NOT YET
+    /*
     for (let i=0; i<this.subdivide; i++) {
       loop.subdivide();
     }
     layout = loop.layout;
+    */
+
+    for (let j=0; j<0; j++) {
+
+      for (let i=0; i<point_pairs.length; i++) {
+        let first_slice_data = slice_data[diagram.adjustHeight(i - 1)];
+        let second_slice_data = slice_data[diagram.adjustHeight(i)];
+        if (i % 2 == 0) [first_slice_data, second_slice_data] = [second_slice_data, first_slice_data];
+        point_pairs[i] = this.subdividePointPairs(point_pairs[i], first_slice_data, second_slice_data);
+      }
+      for (let i=0; i<slices.length; i++) {
+        slice_data[i].loop.subdivide(dimension - 1);
+      }
+    }
 
     // Build vertex buffers
     this.buffers = [];
-    for (let i=0; i<diagram.data.length * 2 + 2; i++) {
-      this.buffers[i] = {
-        vertex_count: 0,
-        vertex_lookup: {},
-        vertex_points: [],
-        indices: [],
-        normals: [] // unused
-      };
+    for (let i=0; i<point_pairs.length; i++) {
+      this.buffers[i] = {};
     }
 
     // Turn this 4d data into movie data, see 3019-3-homotopy.io-25
@@ -645,106 +717,307 @@ export class Diagram3D extends React.Component {
     let triangles = [];
     let tri_num = 0;
 
-    // Faces
-    for (const triangle in loop.draw_triangles) {
-
-      let tri_data = loop.draw_triangles[triangle];
-      let names = tri_data.face_vertex_names;
-      let points = names.map(name => layout[name]);
-      let extra_name = tri_data.extra_vertex_name;
-      let extra_point = layout[extra_name];
-      _assert(extra_point instanceof Array);
-      let first_frame = Math.min(extra_point[0], points[0][0]);
-      let buffer_index = first_frame;
-      let indices = this.buffers[buffer_index].indices;
-      let sorted_names = this.orderNames4d(layout, names);
-      
-      // Growing triangle
-      if (extra_point[0] < points[0][0]) {
-        indices.push(this.getVertexIndex({ layout, buffer_index, point_1_str: extra_name, point_2_str: sorted_names[0] }));
-        indices.push(this.getVertexIndex({ layout, buffer_index, point_1_str: extra_name, point_2_str: sorted_names[1] }));
-        indices.push(this.getVertexIndex({ layout, buffer_index, point_1_str: extra_name, point_2_str: sorted_names[2] }));
+    // Prepare the instants
+    for (let i=0; i<diagram.data.length; i++) {
+      let data = slice_data[2 * i + 1];
+      for (let j=0; j<data.loop.draw_vertices.length; j++) {
+        let vertex_data = data.loop.draw_vertices[j];
+        let generator = generators[vertex_data.id];
+        if (generator.n < diagram.n) continue;
+        let point = data.loop.layout[vertex_data.vertex];
+        let material = this.getMaterial(generator);
+        let mesh = this.createSphere(material, point);
+        instants.push({ mesh, point, time: 2 * i + 1 });
       }
-
-      // Shrinking triangle
-      else if (extra_point[0] > points[0][0]) {
-        indices.push(this.getVertexIndex({ layout, buffer_index, point_1_str: sorted_names[0], point_2_str: extra_name }));
-        indices.push(this.getVertexIndex({ layout, buffer_index, point_1_str: sorted_names[1], point_2_str: extra_name }));
-        indices.push(this.getVertexIndex({ layout, buffer_index, point_1_str: sorted_names[2], point_2_str: extra_name }));
-      }
-      
     }
 
-    // Interposed faces
-    for (let i=0; i<loop.draw_triangle_fillers.length; i++) {
-      let tet = loop.draw_triangle_fillers[i];
-      let sn = tet.source_names;
-      let tn = tet.target_names;
-      let sp = sn.map(name => layout[name]);
-      let tp = tn.map(name => layout[name]);
-      let local_buffer_index = Math.min(sp[0][0], tp[0][0]);
-      let indices = this.buffers[local_buffer_index].indices;
-      let t1_names_1 = [sn[0], sn[0], sn[1]];
-      let t1_names_2 = [tn[0], tn[1], tn[1]];
-      let t2_names_1 = [sn[0], sn[1], sn[1]];
-      let t2_names_2 = [tn[0], tn[0], tn[1]];
-      /*
-      if (sp[0][0] > tp[0][0]) {
-        [t1_names_1, t1_names_2] = [t1_names_2, t1_names_1];
-        [t2_names_1, t2_names_2] = [t2_names_2, t2_names_1];
+    // For each pair of heights, prepare the rendering data
+    for (let i=0; i<point_pairs.length; i++) {
+
+      let source_index = (i % 2 == 0) ? i : i - 1;
+      let target_index = (i % 2 == 0) ? i - 1 : i;
+      let source_index_adjusted = diagram.adjustHeight(source_index);
+      let target_index_adjusted = diagram.adjustHeight(target_index);
+      let limit = limits[i];
+      let pairs = point_pairs[i];
+      let buffer_first_index = Math.min(source_index, target_index) + 1;
+      let buffer_family = this.buffers[buffer_first_index];
+      let source_data = slice_data[source_index_adjusted];
+      let target_data = slice_data[target_index_adjusted];
+
+      // Collect forward and backward images under this relation
+      let forward = {};
+      let backward = {};
+      for (let j=0; j<pairs.length; j++) {
+        let [first, second] = pairs[j];
+        if (!forward[first]) forward[first] = new Set();
+        forward[first].add(second);
+        if (!backward[second]) backward[second] = new Set();
+        backward[second].add(first);
       }
-      */
-      let t1_sorted = this.orderNamesMixture4d(layout, t1_names_1, t1_names_2);
-      let t2_sorted = this.orderNamesMixture4d(layout, t2_names_1, t2_names_2);
-      indices.push(this.getVertexIndex({ layout, buffer_index: local_buffer_index, point_1_str: t1_sorted[0][0], point_2_str: t1_sorted[0][1] }));
-      indices.push(this.getVertexIndex({ layout, buffer_index: local_buffer_index, point_1_str: t1_sorted[1][0], point_2_str: t1_sorted[1][1] }));
-      indices.push(this.getVertexIndex({ layout, buffer_index: local_buffer_index, point_1_str: t1_sorted[2][0], point_2_str: t1_sorted[2][1] }));
-      indices.push(this.getVertexIndex({ layout, buffer_index: local_buffer_index, point_1_str: t2_sorted[0][0], point_2_str: t2_sorted[0][1] }));
-      indices.push(this.getVertexIndex({ layout, buffer_index: local_buffer_index, point_1_str: t2_sorted[1][0], point_2_str: t2_sorted[1][1] }));
-      indices.push(this.getVertexIndex({ layout, buffer_index: local_buffer_index, point_1_str: t2_sorted[2][0], point_2_str: t2_sorted[2][1] }));
+
+      // Render vertices
+      for (let vertex_index = 0; vertex_index < source_data.loop.draw_vertices.length; vertex_index ++) {
+        let vertex_data = source_data.loop.draw_vertices[vertex_index];
+        let n1 = vertex_data.vertex;
+        let n1_forward = forward[n1];
+        _assert(n1_forward.size == 1);
+        let n2 = n1_forward.values().next().value;
+        let material = this.getMaterial(generators[vertex_data.id]);
+        let p1 = source_data.loop.layout[n1];
+        let p2 = target_data.loop.layout[n2];
+        let mesh = this.createSphere(material, p1);
+        if (source_index < target_index) {
+          vertices.push({ mesh, first_frame: buffer_first_index - 1, point_start: p1, point_finish: p2 });
+        } else {
+          vertices.push({ mesh, first_frame: buffer_first_index - 1, point_start: p2, point_finish: p1 });
+        }
+
+      }
+
+
+      // Loop through triangles of source slice
+      let triangles_done = {};
+      for (let tri_index = 0; tri_index < source_data.loop.draw_triangles.length; tri_index++) {
+        let tri_data = source_data.loop.draw_triangles[tri_index];
+        let id = tri_data.id;
+        if (!buffer_family[id]) {
+          buffer_family[id] = {
+            vertex_lookup: {},
+            vertex_points: [],
+            indices: [],
+            vertex_count: 0
+          };
+        }
+        let buffer = buffer_family[id];
+        let indices = buffer.indices;
+        let s = tri_data.vertices;
+        let t;
+        let forward_sets = s.map(name => forward[name]);
+
+        // If any vertex pushes forward to nothing, something's gone wrong
+        if (forward_sets.some(elt => elt === undefined)) {
+          debugger;
+        }
+
+        // If every vertex pushes forward canonically, just do that
+        else if (forward_sets.every(set => set.size == 1)) {
+          t = forward_sets.map(set => set.values().next().value);
+        }
+
+        // If two vertices push forward canonically, search for the correct third vertex
+        else if (forward_sets.filter(set => set.size == 1).length == 2) {
+          let index = forward_sets.findIndex(set => set.size > 1);
+          let source_name = s[index];
+          let value = forward_sets[index];
+          let options = [...value];
+
+          /*
+          let permitted = options.filter(target_point => {
+            _assert(backward[target_point].size == 1);
+            return backward[target_point].values().next().value === source_name;
+          });
+          */
+
+          // Find out which of these options pushes forward to a valid triangle
+          t = forward_sets.map(set => set.values().next().value);
+          let possible_vertices = options.map(value => {
+            let vertices = t.slice();
+            vertices[index] = value;
+            return vertices;
+          });
+          let face_exists = possible_vertices.map(vertices => {
+            let face_name = Loop.getFaceName(vertices);
+            return target_data.loop.faces[face_name];
+          });
+          _assert(face_exists.filter(x => x).length <= 1); // should be just 1 valid triangle
+          if (face_exists.some(x => x)) {
+            let index = face_exists.findIndex(x => !!x);
+            t = possible_vertices[index];
+          } else {
+            //debugger; // not sure if this is possible
+            continue;
+          }
+
+          /*
+          if (permitted.length == 1) {
+            t = forward_sets.map(set => set.values().next().value);
+            t[index] = permitted[0];
+          } else {
+            continue; // probably wrong...
+          }
+          _assert(permitted.length == 1); // if this passes as expected, replace filter just above with find
+          */
+        }
+
+        // If only 1 or 0 vertices push forward canonically, ignore it
+        else {
+          // Do nothing, this triangle will be handled later
+          continue;
+        }
+
+        // Mark the triangle as handled
+        triangles_done[s.join(':')] = true;
+
+        // Prepare the triangle for animation
+        let change_order = this.negativeNormal3d(source_data.loop.layout, s);
+        let s_render = s.slice();
+        let t_render = t.slice();
+        if (change_order) {
+          [s_render[0], s_render[1]] = [s_render[1], s_render[0]];
+          [t_render[0], t_render[1]] = [t_render[1], t_render[0]];
+        }
+        if (source_index < target_index) {
+          indices.push(this.getVertexIndexAnimate(buffer, source_data, target_data, s_render[0], t_render[0]));
+          indices.push(this.getVertexIndexAnimate(buffer, source_data, target_data, s_render[1], t_render[1]));
+          indices.push(this.getVertexIndexAnimate(buffer, source_data, target_data, s_render[2], t_render[2]));
+        } else {
+          indices.push(this.getVertexIndexAnimate(buffer, target_data, source_data, t_render[0], s_render[0]));
+          indices.push(this.getVertexIndexAnimate(buffer, target_data, source_data, t_render[1], s_render[1]));
+          indices.push(this.getVertexIndexAnimate(buffer, target_data, source_data, t_render[2], s_render[2]));
+        }
+
+      }
+
+      // Loop through triangles of target slice
+      for (let tri_index2 = 0; tri_index2 < target_data.loop.draw_triangles.length; tri_index2++) {
+        let tri_data2 = target_data.loop.draw_triangles[tri_index2];
+        let id = tri_data2.id;
+        if (!buffer_family[id]) {
+          buffer_family[id] = {
+            vertex_lookup: {},
+            vertex_points: [],
+            indices: [],
+            vertex_count: 0
+          };
+        }
+        let buffer = buffer_family[id];
+        let indices = buffer.indices;
+        let t2 = tri_data2.vertices;
+        let s2;
+        let backward_sets2 = t2.map(name => backward[name]);
+
+        // If any vertex pushes backward to nothing, something's gone wrong
+        if (backward_sets2.some(elt => elt === undefined)) {
+          debugger;
+        }
+
+        // If every vertex pushes back canonically, just do that
+        else if (backward_sets2.every(set => set.size == 1)) {
+          s2 = backward_sets2.map(set => set.values().next().value);
+        }
+
+        // If two vertices push back canonically, search for the correct third vertex
+        else if (backward_sets2.filter(set => set.size == 1).length == 2) {
+          let index = backward_sets2.findIndex(set => set.size > 1);
+          let target_name = t2[index];
+          let value = backward_sets2[index];
+          let options = [...value];
+
+          /*
+          let permitted = options.filter(source_point => {
+            _assert(forward[source_point].size == 1);
+            return forward[source_point].values().next().value === target_name;
+          });
+          */
+
+          // Find which of these options gives a valid triangle
+          s2 = backward_sets2.map(set => set.values().next().value);
+          let possible_vertices2 = options.map(value => {
+            let vertices = s2.slice();
+            vertices[index] = value;
+            return vertices;
+          });
+          let face_exists2 = possible_vertices2.map(vertices => {
+            let face_name = Loop.getFaceName(vertices);
+            return source_data.loop.faces[face_name];
+          });
+          _assert(face_exists2.filter(x => x).length <= 1); // should be just 1 valid triangle
+          if (face_exists2.some(x => x)) {
+            let index = face_exists2.findIndex(x => !!x);
+            s2 = possible_vertices2[index];
+          } else {
+            //debugger; // not sure if this is possible
+            continue;
+          }
+
+
+          /*
+          if (permitted.length == 1) {
+            s2 = backward_sets2.map(set => set.values().next().value);
+            s2[index] = permitted[0];
+          } else {
+            continue;
+          }
+          */
+          //_assert(permitted.length == 1); // if this passes as expected, replace filter just above with find
+        }
+
+        // Otherwise do nothing
+        else continue;
+
+        // If this triangle has already been prepared for animation, do nothing
+        if (triangles_done[s2.join(':')]) continue;
+
+        // Prepare the triangle for animation
+        let change_order = this.negativeNormal3d(target_data.loop.layout, t2);
+        let s_render = s2.slice();
+        let t_render = t2.slice();
+        if (change_order) {
+          [s_render[0], s_render[1]] = [s_render[1], s_render[0]];
+          [t_render[0], t_render[1]] = [t_render[1], t_render[0]];
+        }
+        if (source_index < target_index) {
+          indices.push(this.getVertexIndexAnimate(buffer, source_data, target_data, s_render[0], t_render[0]));
+          indices.push(this.getVertexIndexAnimate(buffer, source_data, target_data, s_render[1], t_render[1]));
+          indices.push(this.getVertexIndexAnimate(buffer, source_data, target_data, s_render[2], t_render[2]));
+        } else {
+          indices.push(this.getVertexIndexAnimate(buffer, target_data, source_data, t_render[0], s_render[0]));
+          indices.push(this.getVertexIndexAnimate(buffer, target_data, source_data, t_render[1], s_render[1]));
+          indices.push(this.getVertexIndexAnimate(buffer, target_data, source_data, t_render[2], s_render[2]));
+        }
+
+      }
+
     }
 
     // Turn triangle index buffers into typed arrays
     for (let i=0; i<this.buffers.length; i++) {
-      let buffer = this.buffers[i];
-      buffer.vertices = new Float32Array(3 * buffer.vertex_count);
-      buffer.geometry = new THREE.BufferGeometry();
-      let geometry = buffer.geometry;
-      geometry.setIndex(buffer.indices);
-      geometry.addAttribute('position', new THREE.Float32BufferAttribute(buffer.vertices, 3));
-      buffer.geometry.attributes.position.dynamic = true;
 
-      // Triangle mesh      
-      let material = this.getMaterialOfColour('#d1940f');
-      buffer.mesh = new THREE.Mesh(geometry, material);
-      this.scene.add(buffer.mesh);
-      this.objects.push(buffer.mesh);
+      let buffer_family = this.buffers[i];
 
-      // Wireframe mesh
-      let wireframe_material = this.getMaterialOfColour('#ffffff');
-      buffer.wireframe_mesh = new THREE.Mesh(geometry, wireframe_material);
-      wireframe_material.wireframe = true;
-      wireframe_material.polygonOffset = true;
-      wireframe_material.polygonOffsetFactor = this.polygonOffsetFactor;
-      wireframe_material.polygonOffsetUnits = this.polygonOffsetUnits;
-      this.scene.add(buffer.wireframe_mesh);
-      this.objects.push(buffer.wireframe_mesh);
+      for (const id in buffer_family) {
+        let buffer = buffer_family[id];
+        buffer.vertices = new Float32Array(3 * buffer.vertex_count);
+        buffer.geometry = new THREE.BufferGeometry();
+        let geometry = buffer.geometry;
+        geometry.setIndex(buffer.indices);
+        geometry.addAttribute('position', new THREE.Float32BufferAttribute(buffer.vertices, 3));
+
+        // Triangle mesh      
+        let material = this.getMaterial(generators[id]);
+        buffer.mesh = new THREE.Mesh(geometry, material);
+        this.scene.add(buffer.mesh);
+        this.objects.push(buffer.mesh);
+
+        // Wireframe mesh
+        let wireframe_material = this.getMaterialOfColour('#ffffff');
+        buffer.wireframe_mesh = new THREE.Mesh(geometry, wireframe_material);
+        wireframe_material.wireframe = true;
+        wireframe_material.polygonOffset = true;
+        wireframe_material.polygonOffsetFactor = this.polygonOffsetFactor;
+        wireframe_material.polygonOffsetUnits = this.polygonOffsetUnits;
+        this.scene.add(buffer.wireframe_mesh);
+        this.objects.push(buffer.wireframe_mesh);
+
+      }
 
     }
 
-
-
     this.render_data = { instants, vertices, edges, triangles };
 
-    let t4 = performance.now();
-    /*
-    console.log('Prepared scene for animation (' + Math.floor(t1 - t0) + ' ms):'
-      + ' built complex (' + Math.floor(t1-t0) + ' ms),'
-      + ' reduced (' + Math.floor(t2-t1) + ' ms),'
-      + ' trimmed (' + Math.floor(t3-t2) + ' ms),'
-      + ' sequentialized (' + Math.floor(t4-t1) + ' ms)');
-    */
   }
+
 
   updateScene() {
 
@@ -757,46 +1030,49 @@ export class Diagram3D extends React.Component {
 
     // Only show the triangle mesh corresponding to our current stage
     for (let i=0; i<this.buffers.length; i++) {
-      let buffer = this.buffers[i];
-      buffer.mesh.material.flatShading = this.flatShading;
-      buffer.mesh.visible = (i == stage) && this.triangles;
-      buffer.wireframe_mesh.visible = (i == stage) && this.wireframe;
+      let buffer_family = this.buffers[i];
+      for (const id in buffer_family) {
+        let buffer = buffer_family[id];
+        buffer.mesh.material.flatShading = this.flatShading;
+        buffer.mesh.visible = (i == stage) && this.triangles;
+        buffer.wireframe_mesh.visible = (i == stage) && this.wireframe;
+      }
     }
 
     // Update the vertex coordinates for this triangle mesh
-    let buffer = this.buffers[stage];
-    let pairs = buffer.vertex_points;
-    let pos = 0;
-    //let vertex_buffer = buffer.vertices;
-    let vertex_buffer = buffer.geometry.attributes.position.array;
-    for (let i=0; i<pairs.length; i++) {
-      let { point_1, point_2 } = pairs[i];
-      vertex_buffer[pos++] = (g * point_1[1]) + (f * point_2[1]);
-      vertex_buffer[pos++] = (g * point_1[2]) + (f * point_2[2]);
-      vertex_buffer[pos++] = (g * point_1[3]) + (f * point_2[3]);
+    let buffer_family = this.buffers[stage];
+    for (const id in buffer_family) {
+      let buffer = buffer_family[id];
+      let pairs = buffer.vertex_points;
+      let pos = 0;
+      //let vertex_buffer = buffer.vertices;
+      let vertex_buffer = buffer.geometry.attributes.position.array;
+      for (let i=0; i<pairs.length; i++) {
+        let { point_1, point_2 } = pairs[i];
+        vertex_buffer[pos++] = (g * point_1[0]) + (f * point_2[0]);
+        vertex_buffer[pos++] = (g * point_1[1]) + (f * point_2[1]);
+        vertex_buffer[pos++] = (g * point_1[2]) + (f * point_2[2]);
+      }
+      buffer.geometry.attributes.position.needsUpdate = true;
+      buffer.geometry.computeVertexNormals();
     }
-    buffer.geometry.attributes.position.needsUpdate = true;
-    if (buffer.geometry.attributes.normal) {
-      //buffer.geometry.attributes.normal.needsUpdate = true;
-    }
-    //buffer.geometry.computeVertexNormals();
 
 
-
-    /*
-    for (let i=0; i<instants.length; i++) {
-      this.updateInstant(instants[i], t);
-    }
 
     for (let i=0; i<vertices.length; i++) {
       this.updateVertex(vertices[i], t);
     }
 
+    for (let i=0; i<instants.length; i++) {
+      this.updateInstant(instants[i], t);
+    }
+
+    /*
+
     for (let i=0; i<edges.length; i++) {
       this.updateEdge(edges[i], t);
     }
-    */
-    /*t
+
     for (let i=0; i<triangles.length; i++) {
       this.updateTriangle(triangles[i], t);
     }
@@ -813,7 +1089,7 @@ export class Diagram3D extends React.Component {
 
     // Set the 4d radius of the vertex
     let radius_4 = 0.4;
-    let d = Math.abs(t - instant.first_frame);
+    let d = Math.abs(t - instant.time);
 
     // If we're out of range, don't draw it
     if (d > radius_4) {
@@ -823,7 +1099,7 @@ export class Diagram3D extends React.Component {
 
     // Calculate it's size
     let scale = instant.mesh.scale;
-    let f = 2 * (radius_4 - d) / radius_4;
+    let f = 2.5 * (radius_4 - d) / radius_4;
     scale.x = f;
     scale.y = f;
     scale.z = f;
@@ -833,7 +1109,7 @@ export class Diagram3D extends React.Component {
 
   updateVertex(vertex, t) {
 
-    if (t < vertex.first_frame || t > vertex.last_frame) {
+    if (t < vertex.first_frame || t > vertex.first_frame + 1) {
       vertex.mesh.visible = false;
       return;
     }
@@ -886,29 +1162,10 @@ export class Diagram3D extends React.Component {
     v[2].x = point_3[0];
     v[2].y = point_3[1];
     v[2].z = point_3[2];
-    //console.log('Updated visible triangle');
     triangle.mesh.visible = true;
     geometry.verticesNeedUpdate = true;
-    //geometry.elementsNeedUpdate = true;
-    //geometry.morphTargetsNeedUpdate = true;
     geometry.uvsNeedUpdate = true;
     geometry.normalsNeedUpdate = true;
-    //geometry.colorsNeedUpdate = true;
-    //geometry.tangentsNeedUpdate = true; 
-   //triangle.mesh.geometry.computeFaceNormals();
-
-    /*
-    var geom = new THREE.Geometry();
-    let vectors = Diagram3D.to3VectorArray(simplex.points);        
-    geom.vertices.push(vectors[0]);
-    geom.vertices.push(vectors[1]);
-    geom.vertices.push(vectors[2]);
-    geom.faces.push(new THREE.Face3(0, 1, 2));
-    geom.computeFaceNormals();        
-    let mesh = new THREE.Mesh(geom, material);
-    this.scene.add(mesh);
-    this.objects.push(mesh);
-    */
 
   }
 
@@ -930,153 +1187,6 @@ export class Diagram3D extends React.Component {
   }
 
 
-  buildSceneUnique_OLD() {
-
-    // Prepare the simplices
-    let diagram = this.diagramToRender;
-    let dimension = Math.min(diagram.n, 3);
-    let generators = this.props.generators;
-    let complex = diagram.skeleton({ generators, dimension, max_simplex_size: 3 }).complex.trimInvisible();
-    console.log(complex.getByDimension());
-
-    let { layout, freeze } = diagram.layout(dimension);
-
-    let bezier = new BezierTriangleSystem({ complex, layout, freeze, construct_controls: true });
-    for (let i=0; i<this.subdivide; i++) {
-      bezier = bezier.subdivide();
-    }
-    //bezier = bezier.subdivide();
-    //let { complex, layout } = bezier;
-
-    // Declare the geometries
-    let point_geometry = new THREE.Geometry();
-    let line_geometry = new THREE.Geometry();
-    let triangle_geometries = {}; // triangle geometries by material
-
-    for (let simplex of bezier.complex.simplices) {
-      let generator = generators[simplex.id];
-      let material = this.getMaterial(generator);
-      if (!triangle_geometries[simplex.id]) {
-        triangle_geometries[simplex.id] = new THREE.Geometry();
-      }
-      let triangle_geometry = triangle_geometries[simplex.id];
-
-      // 1-simplices
-      if (simplex.point_names.length == 1) {
-        let sphere = new THREE.Mesh(new THREE.SphereGeometry(0.1, 32, 32), material);
-        let point = bezier.layout[simplex.point_names[0]];
-        let vector = Diagram3D.to3Vector(point)
-        sphere.position.set(vector.x, vector.y, vector.z);
-        this.scene.add(sphere);
-        this.objects.push(sphere);
-      }
-
-      // 2-simplices
-      else if (simplex.point_names.length == 2) {
-        let curve = new THREE.CurvePath();
-        let vertices = simplex.point_names.map(name => Diagram3D.to3Vector(bezier.layout[name]));
-        curve.add(new THREE.LineCurve3(...vertices));
-        let geometry = new THREE.TubeGeometry(curve, vertices.length, 0.05, 8, false, true);
-        let wire = new THREE.Mesh(geometry, material);
-        this.scene.add(wire);
-        this.objects.push(wire);
-      }
-
-      // 3-simplices
-      else if (simplex.point_names.length == 3) {
-        let vertices = simplex.point_names.map(name => Diagram3D.to3Vector(bezier.layout[name]));
-
-        let num = triangle_geometry.vertices.length;
-        let [v0, v1, v2] = this.orderVertices(vertices);
-        triangle_geometry.vertices.push(v0);
-        triangle_geometry.vertices.push(v1);
-        triangle_geometry.vertices.push(v2);
-        triangle_geometry.faces.push(new THREE.Face3(num, num+1, num+2));
-
-        // Add the control points to point_geometry
-        let [n1, n2, n3] = simplex.point_names;
-        if (complex.n == 3) {
-          let c1 = bezier.getEdgeControlNames(n1, n2).map(name => Diagram3D.to3Vector(bezier.layout[name]));
-          let c2 = bezier.getEdgeControlNames(n1, n3).map(name => Diagram3D.to3Vector(bezier.layout[name]));
-          let c3 = bezier.getEdgeControlNames(n2, n3).map(name => Diagram3D.to3Vector(bezier.layout[name]));
-          let p = Diagram3D.to3Vector(bezier.layout[bezier.getTriangleControlName(simplex.point_names)]);
-          point_geometry.vertices.push(...c1, ...c2, ...c3, p);
-          line_geometry.vertices.push(vertices[0], c1[0], vertices[1], c1[1], vertices[0], c2[0], vertices[2], c2[1], vertices[1], c3[0], vertices[2], c3[1]);
-        }
-
-      }
-
-    }
-
-
-    if (this.triangles) {
-
-      Object.entries(triangle_geometries).forEach(entry => {
-        let [id, triangle_geometry] = entry;
-        let generator = generators[id];
-        let material = this.getMaterial(generator);
-        material.transparent = this.transparent;
-        if (this.transparent) {
-          material.opacity = 0.5;
-          material.depthTest = false;
-          material.depthWrite = false;
-        }
-        triangle_geometry.mergeVertices();
-        //triangle_geometry.computeFaceNormals();
-        triangle_geometry.computeVertexNormals();
-        let mesh = new THREE.Mesh(triangle_geometry, material);
-        this.scene.add(mesh);
-        this.objects.push(mesh);
-      });
-
-    }
-
-    if (this.wireframe) {
-
-      Object.entries(triangle_geometries).forEach(entry => {
-        let [id, triangle_geometry] = entry;
-        let generator = generators[id];
-        let material = this.getMaterial(generator);
-        let material_wireframe = material.clone();
-        material_wireframe.wireframe = true;
-        material_wireframe.polygonOffset = true;
-        material_wireframe.polygonOffsetFactor = this.polygonOffsetFactor;
-        material_wireframe.polygonOffsetUnits = this.polygonOffsetUnits;
-        material_wireframe.color = new THREE.Color('#material_wireframe');
-        let mesh = new THREE.Mesh(triangle_geometry, material_wireframe);
-        this.scene.add(mesh);
-        this.objects.push(mesh);
-      });
-
-    }
-
-    if (this.draw_controls) {
-
-      let point_mat = new THREE.PointsMaterial({ color: 0x0000ff, size: 0.1 });
-      point_mat.polygonOffset = true;
-      point_mat.polygonOffsetFactor = 1;
-      point_mat.polygonOffsetUnits = 1;
-      let point_cloud = new THREE.Points(point_geometry, point_mat);
-      this.scene.add(point_cloud);
-      this.objects.push(point_cloud);
-
-      //let point_mat = new THREE.PointsMaterial({ color: 0x0000ff, size: 0.1 });
-      //point_mat.polygonOffset = true;
-      //point_mat.polygonOffsetFactor = 1;
-      //point_mat.polygonOffsetUnits = 1;
-      var line_mat = new THREE.LineBasicMaterial( {
-          color: 0x000000,
-          linewidth: 3,
-          linecap: 'round', //ignored by WebGLRenderer
-          linejoin:  'round' //ignored by WebGLRenderer
-      } );
-      let lines = new THREE.LineSegments(line_geometry, line_mat);
-      this.scene.add(lines);
-      this.objects.push(lines);
-    }
-
-  }
-
   // Reorder vertices to have normal with positive z coefficient using a cross-product test
   orderVertices(vertices) {
     let [v1, v2, v3] = vertices;
@@ -1089,6 +1199,16 @@ export class Diagram3D extends React.Component {
     } else {
       return [v2, v1, v3];
     }
+  }
+
+  // Reorder vertices to have normal with positive z coefficient using a cross-product test
+  negativeNormal3d(layout, names) {
+    let [v1, v2, v3] = names.map(name => layout[name]);
+    let ex = v2[0] - v1[0];
+    let ey = v2[1] - v1[1];
+    let fx = v3[0] - v1[0];
+    let fy = v3[1] - v1[1];
+    return (ex * fy < ey * fx);
   }
 
   // Reorder vertices to have normal with positive z coefficient using a cross-product test
@@ -1121,187 +1241,82 @@ export class Diagram3D extends React.Component {
     }
   }
 
-  buildScene_OLD() {
-    // Remove all previous objects from the scene
-    for (let object of this.objects) {
-      this.scene.remove(object);
+
+  subdividePointPairs(pairs, slice_1_data, slice_2_data) {
+
+    // Collect pairs into forward and backward data
+    let forward = {};
+    let backward = {};
+    for (let i=0; i<pairs.length; i++) {
+      let [n1, n2] = pairs[i];
+      if (!forward[n1]) forward[n1] = new Set();
+      forward[n1].add(n2);
+      if (!backward[n2]) backward[n2] = new Set();
+      backward[n2].add(n1);
     }
 
-    // Discard all the materials because they may have changed
-    this.materials.clear();
+    let new_pairs = pairs.slice();
+    for (const edge in slice_1_data.loop.edges) {
+      let edge_data = slice_1_data.loop.edges[edge];
+      let [n1, n2] = edge_data.vertices;
+      let sub_name = Loop.getEdgeSubdivisionName(edge_data.vertices);
+      let forward_sets = edge_data.vertices.map(name => forward[name]);
 
-    // In dimension 0, do nothing
-    if (this.props.dimension == 0) return;
-
-    // Create edge graph
-    let graph = new Graph(p => p.join(":"));
-    for (let { source, target, codim, dir } of this.props.layout.edges) {
-      graph.addEdge(source, target, { codim, dir });
-    }
-
-    // Obtain quads
-    let quads = [];
-
-    for (let [a, b, ab] of graph.edges()) {
-      for (let [c, ac] of graph.edgesFrom(a)) {
-        for (let [d, bd] of graph.edgesFrom(b)) {
-          let cd = graph.getEdge(c, d);
-
-          if (!cd || b.join(":") == c.join(":")) {
-            continue;
-          }
-
-          quads.push({ a, b, c, d, ab, ac, bd, cd });
+      // If these are both size 1, they should be the same. Use them to map the new edge.
+      if (forward_sets.every(set => set.size == 1)) {
+        let elements = forward_sets.map(set => set.values().next().value);
+        if (elements[0] == elements[1]) {
+          new_pairs.push([sub_name, elements[0]]);
+        } else {
+          let forward_sub = Loop.getEdgeSubdivisionName(elements);
+          new_pairs.push([sub_name, forward_sub]);
         }
+      } else if (forward_sets[0].size == 1) {
+        _assert(forward_sets[1].size > 1);
+        let f1 = forward_sets[0].values().next().value;
+        let forward_candidates = [...forward_sets[1]];
+        let match_candidates = forward_candidates.filter(name => {
+          let forward_edge = Loop.getEdgeName([fixed, name]);
+          return slice_2_data.loop.edges[forward_edge];
+        });
+        _assert(match_candidates.length == 1);
+        let f2 = match_candidates[0];
+        let f_sub_name = Loop.getEdgeSubdivisionName([f1, f2]);
+        new_pairs.push([sub_name, f_sub_name]);
+      } else if (forward_sets[1].size == 1) {
+        _assert(forward_sets[0].size > 1);
+        let f2 = forward_sets[1].values().next().value;
+        let forward_candidates = [...forward_sets[0]];
+        let match_candidates = forward_candidates.filter(name => {
+          let forward_edge = Loop.getEdgeName([name, f2]);
+          return slice_2_data.loop.edges[forward_edge];
+        });
+        _assert(match_candidates.length == 1);
+        let f1 = match_candidates[0];
+        let f_sub_name = Loop.getEdgeSubdivisionName([f1, f2]);
+        new_pairs.push([sub_name, f_sub_name]);
+      } else {
+        //continue;
+        _assert(false); // should not happen
       }
     }
 
-    let vertices = [];
-    let annotations = [];
-    let pointIndices = new Map();
-    let cells = [];
+    for (const edge2 in slice_2_data.loop.edges) {
+      let edge_data2 = slice_2_data.loop.edges[edge2];
+      let sub_name2 = Loop.getEdgeSubdivisionName(edge_data2.vertices);
+      let backward_sets2 = edge_data2.vertices.map(name => backward[name]);
 
-    for (let point of this.props.layout.points) {
-      let generator = this.getGenerator(point);
-
-      if (generator.generator.n >= this.props.dimension - 2) {
-        pointIndices.set(point.join(":"), vertices.length);
-        vertices.push(this.getPosition(point));
-        annotations.push(generator);
-      }
-    }
-
-    // Render quads
-    for (let quad of quads) {
-      let ordinary = (
-        quad.ab.codim == 0 &&
-        quad.cd.codim == 0 &&
-        quad.ac.codim == 1 &&
-        quad.bd.codim == 1
-      );
-
-      let expand = (
-        quad.ab.codim == 0 &&
-        quad.ac.codim == 0 &&
-        quad.bd.codim == 1 &&
-        quad.cd.codim == 1 &&
-        quad.bd.dir > 0
-      );
-
-      let contract = (
-        quad.ab.codim == 1 &&
-        quad.ac.codim == 1 &&
-        quad.bd.codim == 0 &&
-        quad.cd.codim == 0 &&
-        quad.ab.dir > 0
-      );
-
-      if (!ordinary && !expand && !contract) {
-        continue;
-      }
-
-      let { a, b, c, d } = quad;
-
-      let aGenerator = this.getGenerator(a);
-      if (aGenerator.generator.n < this.props.dimension - 2) {
-        continue;
-      }
-
-      if (ordinary) {
-        if (quad.ab.dir < 0) {
-          [a, b, c, d] = [b, a, d, c];
-        }
-
-        if (quad.ac.dir < 0) {
-          [a, b, c, d] = [c, d, a, b];
-        }
-
-      }
-
-      if (contract) {
-        if (quad.bd.dir > 0) {
-          [a, b, c, d] = [a, c, b, d];
+      // If these are both size 1, they should be the same. Use them to map the new edge.
+      if (backward_sets2.every(set => set.size == 1)) {
+        let elements = backward_sets2.map(set => set.values().next().value);
+        if (elements[0] == elements[1]) {
+          new_pairs.push([elements[0], sub_name2]);
         }
       }
 
-      if (expand) {
-        if (quad.ab.dir < 0) {
-          [a, b, c, d] = [d, b, c, a];
-        }
-      }
-
-      cells.push([
-        pointIndices.get(a.join(":")),
-        pointIndices.get(b.join(":")),
-        pointIndices.get(d.join(":")),
-        pointIndices.get(c.join(":"))
-      ]);
     }
 
-    let merge = (...generators) => {
-      generators.sort((a, b) => a.generator.n - b.generator.n);
-      return generators[0];
-    };
-
-    let surface = Surface.fromCells(vertices.map(v => [v.x, v.y, v.z]), cells, annotations);
-    surface = subdivideSurface(surface, merge, merge);
-    surface = subdivideSurface(surface, merge, merge);
-    surface = subdivideSurface(surface, merge, merge);
-    if (!surface) return;
-    
-    let groups = groupSurface(surface, (a, b) => a.generator.n == b.generator.n);
-
-    for (let group of groups) {
-      let generator = group.values().next().value.annotation;
-      let codimension = this.diagram.n - generator.generator.n;
-
-      if (codimension == 2) {
-        let filter = (...vs) => vs.some(v => group.has(v));
-
-        let bufferGeometry = new THREE.BufferGeometry();
-        bufferGeometry.setIndex(new THREE.BufferAttribute(indexBuffer(surface, filter), 3));
-        bufferGeometry.addAttribute("position", new THREE.BufferAttribute(vertexBuffer(surface), 3));
-        bufferGeometry.computeVertexNormals();
-        bufferGeometry.computeFaceNormals();
-
-        let geometry = new THREE.Geometry();
-        geometry.fromBufferGeometry(bufferGeometry);
-        geometry.computeVertexNormals();
-        geometry.computeFaceNormals();
-
-        let material = this.getMaterial(generator);
-
-        let mesh = new THREE.Mesh(geometry, material);
-        this.scene.add(mesh);
-        this.objects.push(mesh);
-      } else if (codimension == 1) {
-        let vertices = getWireVertices(surface, group, this.diagram.n);
-        let curve = new THREE.CurvePath();
-
-        for (let i = 0; i < vertices.length - 1; i++) {
-          curve.add(new THREE.LineCurve3(
-            new THREE.Vector3(...vertices[i].position),
-            new THREE.Vector3(...vertices[i + 1].position)
-          ));
-        }
-
-        let geometry = new THREE.TubeGeometry(curve, vertices.length, 0.05, 8, false, true);
-        let material = this.getMaterial(generator)
-        let wire = new THREE.Mesh(geometry, material);
-
-        this.scene.add(wire);
-        this.objects.push(wire);
-      } else if (codimension == 0) {
-        let sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(0.1, 32, 32),
-          this.getMaterial(generator)
-        );
-
-        sphere.position.set(...group.values().next().value.position);
-        this.scene.add(sphere);
-        this.objects.push(sphere);
-      }
-    }
+    return new_pairs;
 
   }
 

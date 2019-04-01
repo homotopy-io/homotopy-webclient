@@ -705,16 +705,16 @@ export class Loop {
       let e9_name = Loop.getEdgeName([p13, p3]);
       let e10_name = Loop.getEdgeName([p12, p23]);
       let e11_name = Loop.getEdgeName([p12, p13]);
-      let e12_name = Loop.getEdgeName([p23, p13]);
+      let e12_name = Loop.getEdgeName([p13, p23]);
       let f1_name = Loop.getFaceName([p12, p2, p23]);
-      let f2_name = Loop.getFaceName([p23, p13, p3]);
+      let f2_name = Loop.getFaceName([p13, p23, p3]);
       let f3_name = Loop.getFaceName([p1, p12, p13]);
-      let f4_name = Loop.getFaceName([p12, p23, p13]);
+      let f4_name = Loop.getFaceName([p12, p13, p23]);
 
       // Create new edges in the middle of the face
       edges[e10_name] = { vertices: [p12, p23], faces: new Set([f1_name, f4_name]), boundary: false, dimension: 2 };
       edges[e11_name] = { vertices: [p12, p13], faces: new Set([f3_name, f4_name]), boundary: false, dimension: 2 };
-      edges[e12_name] = { vertices: [p23, p13], faces: new Set([f2_name, f4_name]), boundary: false, dimension: 2 };
+      edges[e12_name] = { vertices: [p13, p23], faces: new Set([f2_name, f4_name]), boundary: false, dimension: 2 }; // CHANGED
       //if (e10_name == '((0,0,1)-(-1,-1,1).S.)-((0,-1,1)-(-1,-1,1).S.).S.') debugger;
       //if (e11_name == '((0,0,1)-(-1,-1,1).S.)-((0,-1,1)-(-1,-1,1).S.).S.') debugger;
       //if (e12_name == '((0,0,1)-(-1,-1,1).S.)-((0,-1,1)-(-1,-1,1).S.).S.') debugger;
@@ -729,9 +729,9 @@ export class Loop {
 
       // Add the new faces
       faces[f1_name] = { vertices: [p12, p2, p23], dimension: 2 };
-      faces[f2_name] = { vertices: [p23, p13, p3], dimension: 2 };
+      faces[f2_name] = { vertices: [p13, p23, p3], dimension: 2 };
       faces[f3_name] = { vertices: [p1, p12, p13], dimension: 2 };
-      faces[f4_name] = { vertices: [p12, p23, p13], dimension: 2 };
+      faces[f4_name] = { vertices: [p12, p13, p23], dimension: 2 };
 
     }
 
@@ -757,9 +757,9 @@ export class Loop {
       let p23 = Loop.getEdgeSubdivisionName([p2, p3]);
       draw_triangles.push(
         { vertices: [p12, p2, p23], id },
-        { vertices: [p23, p13, p3], id },
+        { vertices: [p13, p23, p3], id },
         { vertices: [p1, p12, p13], id },
-        { vertices: [p12, p23, p13], id }
+        { vertices: [p12, p13, p23], id }
       );
     }
 

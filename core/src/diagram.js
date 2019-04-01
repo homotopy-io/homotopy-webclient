@@ -2079,6 +2079,7 @@ export class Diagram {
 
   // Get a layout of this diagram, assuming a rendering of the given dimension
   layout(dimension) {
+
     if (_debug) {
       _assert(isNatural(dimension));
       _assert(dimension <= 4);
@@ -2105,25 +2106,16 @@ export class Diagram {
 
     // Get the average depth constraints
     let average_constraint_data = this.getAverageConstraintData(dimension);
-    /*
-    let average_constraints = average_constraint_data.map((data, index) => {
-      let [centre, points] = data;
-      let name = 'average_' + index;
-      let central_var = { name: centre, coef: 1.0 };
-      let boundary_vars = points.map(point => {
-        return { name: point, coef: -1.0/points.length }
-      });
-      let bnds = { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 };
-      return { name, vars: [central_var, ...boundary_vars], bnds };
-    });
-    */
+
     // We minimize the absolute value of the difference between the mean
     // and the centre, encoding this absolute value problem as a linear
     // programming problem using a standard trick:
     // https://optimization.mccormick.northwestern.edu/index.php/Optimization_with_absolute_values
     let average_constraints = [];
     let auxiliary_variables = [];
+
     for (let i=0; i<average_constraint_data.length; i++) {
+
       let [centre, points] = average_constraint_data[i];
       let aux_name = 'average_' + i;
       let aux_term = { name: aux_name, coef: 1.0 };
@@ -2162,7 +2154,7 @@ export class Diagram {
       }
     }
     
-    // All the deep source points have depth 0
+    // All the deep source points equal zero
     let deep_source = this.getDeepSourcePoints(dimension);
     let constraints_deep_source = deep_source.map((point, index) => {
       let name = 'deep_source_' + index;
@@ -2188,6 +2180,17 @@ export class Diagram {
       let bnds = { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 };
       return { name, vars, bnds};
     });
+
+    // Mean deep source and deep target is 0
+    /*
+    let constraints_centre_origin = [
+      //{ name: 'centre_origin', vars: [ { name: deep_source[0], coef: 1.0 }, { name: deep_target[0], coef: 1.0 } ], bnds: { type: glpk.GLP_FX, lb: 0.0, ub: 0.0 } }
+      //,
+      { name: 'negative_deep_target', vars: [ { name: deep_target[0], coef: 1.0 } ], bnds: { type: glpk.GLP_UP, lb: 0.0, ub: 0.0 } }
+      ,
+      { name: 'target_greater_than_source', vars: [ { name: deep_target[0], coef: 1.0 }, { name: deep_source[0], coef: -1.0 } ], bnds: { type: glpk.GLP_LO, lb: 0.0, ub: 0.0 } }
+    ];
+    */
 
     // Corresponding points in top 2 slices have the same depths
     let target_points = this.getTarget().getAllPointNames(dimension - 1);
@@ -2220,10 +2223,14 @@ export class Diagram {
       ...constraints_deep_target,
       ...constraints_fixed_source,
       ...constraints_fixed_target
+      //,...constraints_centre_origin
     ];
 
     // Solve the constraint problem
     let solution = glpk.solve({ name: 'LP', objective, subjectTo }, glpk.GLP_MSG_ALL);
+
+    // Get the depth
+    let depth = solution.result.vars[deep_target[0]];
 
     // Layout recursively
     let { layout, boundary, singular } = this.layout(dimension - 1);
@@ -2237,7 +2244,7 @@ export class Diagram {
       point.pop();
       let full_layout = layout[point.join(',')].slice();
       let last_layout = solution.result.vars[full_name];
-      full_layout.push(last_layout);
+      full_layout.push(last_layout - (depth / 2)); // normalize to be centred around the origin
       full_layout_all[full_name] = full_layout;
     }
 
