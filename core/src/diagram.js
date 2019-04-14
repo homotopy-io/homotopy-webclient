@@ -960,9 +960,46 @@ export class Diagram {
     return true;
   }
 
-  // Produce the Content object that contracts a diagram
+  homotopy3d(point, direction, generators) {
+
+    if (_debug) {
+      _assert(direction instanceof Array);
+      _assert(direction.length == 3);
+      _assert(point instanceof Array);
+      _assert(point.length == 2);
+    }
+
+    console.log('point: ' + JSON.stringify(point) + ', direction: ' + JSON.stringify(direction));
+
+    if (direction[1] != 0) {
+      let up = direction[1] == +1;
+      return this.homotopy(point, up ? 'nne' : 'ssw', generators);
+    }
+
+    else if (direction[2] != 0) {
+      let up = direction[2] == +1;
+      return this.homotopy(point, up ? 'ese' : 'wsw', generators);
+    }
+
+    // Handle a top-level homotopy
+    /*
+    if (direction[0] != 0) {
+      let up = (direction[0] == +1);
+      return this.homotopy(point, up ? 'nne' : 'ssw', generators);
+    }
+    */
+
+    return { error: "Can't perform homotopy on 3d diagram" };
+  }
+
+  // Produce the Content object that contracts or expands a diagram
   // 2018-11-HIO-2
   homotopy(point, compass, generators) {
+
+    // Handle 3d homotopies in a different routine
+    if (compass instanceof Array) {
+      return this.homotopy3d(point, compass, generators);
+    }
 
     // Convert from integer coordinates to regular/singular coordinates
     let location = point.map(x => ({ height: Math.floor(x / 2), regular: x % 2 == 0 }));
@@ -985,7 +1022,7 @@ export class Diagram {
 
       // Check for situation where there's nothing to do
       if (last_point.regular) {
-        console.log('Horizontal drag on a regular-regular patch, nothing to do');
+        return { error: 'Horizontal drag on regular-regular patch, nothing to do' };
         return;
       }
 
@@ -1414,6 +1451,7 @@ export class Diagram {
       // Recursive case
       let slice = this.getSlice(location[0]);
       let recursive = slice.getContractionLimit({ location: location.slice(1), tendency, generators });
+      if (recursive.error) return recursive;
       let first = height;
 
       if (location[0].regular) {

@@ -3,6 +3,8 @@ import styled from "styled-components";
 import Spinner from "react-spinkit";
 import * as THREE from "three";
 import OrbitControls from "three-orbit-controls";
+//import TrackballControls from "three-trackballcontrols";
+import TrackballControls from "~/util/trackballcontrols";
 import { connect } from "react-redux";
 import * as Core from "homotopy-core";
 import * as dat from "dat.gui";
@@ -91,13 +93,22 @@ export class Diagram3D extends React.Component {
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
-    this.camera.position.set(5, 7, 20);
+    let rotate_z = false;
+    if (rotate_z) {
+      this.camera.position.set(5, 7, 20);
+    } else {
+      this.camera.position.set(-7, 5, 20);
+    }
+
     this.camera.lookAt(new THREE.Vector3());
-    //this.camera.rotation.set(3, 0, 90 * Math.PI / 180);
-    //this.camera.rotation.x += 90 * Math.PI / 180;
-    new THREE.Matrix4().makeRotationZ( -Math.PI / 2 ).multiplyVector3( this.camera.up );
-    //this.camera.updateProjectionMatrix();
+    if (rotate_z) {
+      new THREE.Matrix4().makeRotationZ( -Math.PI / 2 ).multiplyVector3( this.camera.up );
+    }
     this.scene.add(this.camera);
+
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+    this.intersectMeshes = [];
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -117,17 +128,171 @@ export class Diagram3D extends React.Component {
     this.scene.add(this.ambientLight);
 
     // Create controls
-    this.controls = new (OrbitControls(THREE))(this.camera, this.renderer.domElement);
+    let use_orbit_controls = true;
+    if (use_orbit_controls) {
+      this.controls = new (OrbitControls(THREE))(this.camera, this.renderer.domElement);
+    } else {
+      this.controls = new TrackballControls(this.camera, this.renderer.domElement);
+      this.controls.dynamicDampingFactor = 0.5; // full damping
+      this.controls.rotateSpeed = 2;
+    }
     this.controls.addEventListener('change', (function() {
       if (this.animation_in_progress) return;
+      //this.update();
       this.renderSceneOnce();
     }).bind(this));
+
+    this.renderer.domElement.addEventListener('mousemove', this.onMouseMove.bind(this), false );
+
+    this.axes_helper = new THREE.AxesHelper(0.5);
+    this.axes_helper.visible = false;
+    this.scene.add(this.axes_helper);
+
+    /*
+    this.update = (function() {
+      requestAnimationFrame(this.update);
+      this.renderer.render(this.scene, this.camera);
+    }).bind(this);
+    */
 
     // Build the scene
     this.buildScene();
 
+    //this.update();
+
     // Start the rendering loop
     //this.startLoop();
+  }
+
+  onMouseMove(event) {
+
+    this.mouse.x = ( event.layerX / this.props.width ) * 2 - 1;
+    this.mouse.y = - ( event.layerY / this.props.height ) * 2 + 1;
+
+    if (event.shiftKey) {
+
+      // We're finished dragging, so wait for user to release the shift key
+      if (this.drag_completed) return;
+
+      if (!this.axes_helper.visible) return;
+
+      // We're dragging the surface. Work out in which direction.
+      if (this.mouseStartDrag == null) {
+        this.mouseStartDrag = this.mouse.clone();
+      }
+
+      // If we haven't dragged far enough, do nothing
+      let dx = this.mouseStartDrag.x - this.mouse.x;
+      let dy = this.mouseStartDrag.y - this.mouse.y;
+      let mouse_distance = 0.1;
+      if (dx * dx + dy * dy < mouse_distance * mouse_distance) {
+        //console.log(Math.sqrt(dx * dx + dy * dy));
+        return;
+      }
+
+      // Find the size contact points
+      let x_axis = new THREE.Vector3(0.5, 0, 0);
+      let y_axis = new THREE.Vector3(0, 0.5, 0);
+      let z_axis = new THREE.Vector3(0, 0, 0.5);
+      let helper = this.axes_helper.position.clone();
+      let helper_x_plus  = helper.clone().addScaledVector(x_axis, +1);
+      let helper_x_minus = helper.clone().addScaledVector(x_axis, -1);
+      let helper_y_plus  = helper.clone().addScaledVector(y_axis, +1);
+      let helper_y_minus = helper.clone().addScaledVector(y_axis, -1);
+      let helper_z_plus  = helper.clone().addScaledVector(z_axis, +1);
+      let helper_z_minus = helper.clone().addScaledVector(z_axis, -1);
+      let helpers = [helper_x_plus, helper_x_minus, helper_y_plus, helper_y_minus, helper_z_plus, helper_z_minus];
+      this.camera.updateMatrixWorld();
+      let project_helpers = helpers.map(vector => vector.clone().project(this.camera));
+      let normalized_helpers = project_helpers.map(vector => {
+        let dx = vector.x - this.mouseStartDrag.x;
+        let dy = vector.y - this.mouseStartDrag.y;
+        let l = Math.sqrt(dx * dx + dy * dy);
+        let r = mouse_distance / l;
+        return [this.mouseStartDrag.x + (dx * r), this.mouseStartDrag.y + (dy * r)];
+      });
+      let distances = normalized_helpers.map(h => {
+        let dx = h[0] - this.mouse.x;
+        let dy = h[1] - this.mouse.y;
+        return Math.sqrt(dx * dx + dy * dy);
+      });
+
+      // Work out in which of 6 directions we dragged
+      let min = Math.min(...distances);
+      let direction;
+      if (distances[0] == min) {
+        direction = [1, 0, 0];
+      } else if (distances[1] == min) {
+        direction = [-1, 0, 0];
+      } else if (distances[2] == min) {
+        direction = [0, 1, 0];
+      } else if (distances[3] == min) {
+        direction = [0, -1, 0];
+      } else if (distances[4] == min) {
+        direction = [0, 0, 1];
+      } else {
+        direction = [0, 0, -1];
+      }
+
+      // Find the nearest logical point to our start drag
+      this.raycaster.setFromCamera( this.mouseStartDrag, this.camera );
+      let point = this.raycaster.intersectObjects(this.intersectMeshes)[0].point;
+      let nearest_position = null;
+      let sq_distance = Number.POSITIVE_INFINITY;
+      for (const position in this.originalLayout) {
+        let coords = this.originalLayout[position];
+        let dx = coords[0] - point.x;
+        let dy = coords[1] - point.y;
+        let dz = coords[2] - point.z;
+        let this_sq_distance = dx * dx + dy * dy + dz * dz;
+        if (this_sq_distance < sq_distance) {
+          sq_distance = this_sq_distance;
+          nearest_position = position;
+        }
+      }
+      _assert(nearest_position);
+      this.props.onHomotopy3d(nearest_position.split(',').map(x => Number(x)), direction);
+      this.drag_completed = true;
+      return;
+    }
+
+    // Shift key is not down
+    this.drag_completed = false;
+    this.mouseStartDrag = null;
+    
+    this.raycaster.setFromCamera( this.mouse, this.camera );
+    let intersections = this.raycaster.intersectObjects(this.intersectMeshes);
+    if (intersections.length == 0) {
+      if (this.axes_helper.visible) {
+        this.axes_helper.visible = false;
+        this.intersectionTriangleMesh.visible = false;
+        this.renderSceneOnce();
+      }
+      return;
+    }
+    let i = intersections[0];
+    let vertices = i.object.geometry.vertices;
+    let face = i.face;
+    let tri_vertices = this.intersectionTriangleGeometry.vertices;
+    tri_vertices[0].x = vertices[face.a].x;
+    tri_vertices[0].y = vertices[face.a].y;
+    tri_vertices[0].z = vertices[face.a].z;
+    tri_vertices[1].x = vertices[face.b].x;
+    tri_vertices[1].y = vertices[face.b].y;
+    tri_vertices[1].z = vertices[face.b].z;
+    tri_vertices[2].x = vertices[face.c].x;
+    tri_vertices[2].y = vertices[face.c].y;
+    tri_vertices[2].z = vertices[face.c].z;
+    this.axes_helper.position.x = i.point.x;
+    this.axes_helper.position.y = i.point.y;
+    this.axes_helper.position.z = i.point.z;
+    this.intersectionTriangleGeometry.verticesNeedUpdate = true;
+    this.axes_helper.visible = true;
+    this.intersectionTriangleMesh.visible = true;
+    this.renderSceneOnce();
+
+    //this.intersectionTriangleGeometry.vertices.push(...this.intersectTriangle);
+
   }
 
   createPointLight(colour, x, y, z) {
@@ -460,6 +625,7 @@ export class Diagram3D extends React.Component {
     let { layout, boundary } = diagram.layout(dimension);
 
     let loop = new Loop({ complex, layout, boundary, dimension });
+    this.originalLayout = { ...layout };
 
     // Subdivide some number of times
     for (let i=0; i<this.subdivide; i++) {
@@ -563,6 +729,7 @@ export class Diagram3D extends React.Component {
 
     // Render the geometries as meshes
     let ids = Object.keys(triangle_geometries);
+    this.intersectMeshes = [];
     for (let i=0; i<ids.length; i++) {
       let id = ids[i];
       let geometry = triangle_geometries[id];
@@ -574,7 +741,29 @@ export class Diagram3D extends React.Component {
       let mesh = new THREE.Mesh(geometry, material);
       this.scene.add(mesh);
       this.objects.push(mesh);
+      this.intersectMeshes.push(mesh)
     }
+
+    // Intersection data
+    this.intersectTriangle = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    this.intersectionTriangleGeometry = new THREE.Geometry();
+    this.intersectionTriangleGeometry.vertices.push(...this.intersectTriangle);
+    this.intersectionTriangleGeometry.faces.push(new THREE.Face3(0, 1, 2));
+    let intersect_material = this.getMaterialOfColour('#ffffff');
+    intersect_material.wireframe = true;
+    intersect_material.polygonOffset = true;
+    intersect_material.polygonOffsetFactor = 1;
+    intersect_material.polygonOffsetUnits = 1;
+    intersect_material.color = new THREE.Color('#ffffff');
+    this.intersectionTriangleMesh = new THREE.Mesh(this.intersectionTriangleGeometry, intersect_material);
+    this.scene.add(this.intersectionTriangleMesh);
+    this.objects.push(this.intersectionTriangleMesh);
+
+    // Relayout original points
+    for (let point in this.originalLayout) {
+      this.originalLayout[point] = loop.layout[point];
+    }
+
 
 /*
     if (this.triangles) {

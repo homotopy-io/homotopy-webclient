@@ -19,6 +19,7 @@ export const Workspace = ({
   renderer,
   onSelectCell,
   onHomotopy,
+  onHomotopy3d,
   projection
 }) => {
   let Diagram = renderer == 2 ? Diagram2D : Diagram3D;
@@ -35,6 +36,7 @@ export const Workspace = ({
           interactive
           onSelect={onSelectCell}
           onHomotopy={onHomotopy}
+          onHomotopy3d={onHomotopy3d}
         />
       }
     </Wrapper>
@@ -52,7 +54,8 @@ export default connect(
   }),
   dispatch => ({
     onSelectCell: (points) => dispatch({ type: 'workspace/select-cell', payload: { points } }),
-    onHomotopy: (point, direction) => dispatch({ type: 'workspace/homotopy', payload: { point, direction } })
+    onHomotopy: (point, direction) => dispatch({ type: 'workspace/homotopy', payload: { point, direction } }),
+    onHomotopy3d: (point, direction) => dispatch({ type: 'workspace/homotopy3d', payload: { point, direction } })
   })
 )(Workspace);
 

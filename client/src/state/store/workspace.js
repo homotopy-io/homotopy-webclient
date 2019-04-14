@@ -206,7 +206,8 @@ export default (state = initialWorkspace, action) => {
       state = dotProp.set(state, "workspace.slice", updateSlices(state));
       break;
 
-    } case 'workspace/homotopy': {
+    } case 'workspace/homotopy3d':
+      case 'workspace/homotopy': {
 
       let { point, direction } = action.payload;
       let { diagram, slice, notifications } = state.workspace;
