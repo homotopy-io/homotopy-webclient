@@ -445,7 +445,7 @@ export class Diagram3D extends React.Component {
   render() {
     this.diagramToRender = this.props.diagram.getSlice(...this.props.slice);
     return (
-      <DiagramContainer innerRef={this.diagramRef} />
+      <DiagramContainer ref={this.diagramRef} />
     );
   }
 

@@ -15,8 +15,8 @@ import projectReducer from '~/state/store/project'
 import { reducer as form, change } from 'redux-form'
 import { reducer as modal } from 'redux-modal'
 
-import { reactReduxFirebase, firebaseReducer } from 'react-redux-firebase'
-import { reduxFirestore, firestoreReducer } from 'redux-firestore'
+import { firebaseReducer } from 'react-redux-firebase'
+import { firestoreReducer, createFirestoreInstance } from 'redux-firestore'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/firestore'
@@ -94,17 +94,19 @@ const reactReduxFirebaseConfig = {
   enableLogging: true
 }
 
+export const rrfProps = {
+  firebase,
+  config: reactReduxFirebaseConfig,
+  createFirestoreInstance
+};
+
 export default () => {
   firebase.initializeApp(firebaseConfig)
-  const firestore = firebase.firestore()
-  firestore.settings({})
 
   return createStore(
     rootReducer,
     initialState,
     composeWithDevTools({trace: true})(
-      reduxFirestore(firebase),
-      reactReduxFirebase(firebase, reactReduxFirebaseConfig),
       install(),
       applyMiddleware(urlQueryMiddleware()),
       applyMiddleware(blockUiMiddleware)

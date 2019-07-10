@@ -3,11 +3,12 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as Redux from "redux";
 import * as ReactRedux from "react-redux";
+import { ReactReduxFirebaseProvider } from 'react-redux-firebase'
 import "typeface-roboto";
 import "@icon/stroke-7/stroke-7.css";
 
 import App from "~/components/App";
-import createStore from "~/state/store";
+import createStore, { rrfProps } from "~/state/store";
 import { configureUrlQuery } from 'react-url-query'
 import history from '~/util/history'
 import { connectStore } from "~/state/persist";
@@ -47,7 +48,9 @@ Rx.fromEvent(document, "keydown")
 const render = () => {
   ReactDOM.render(
     <ReactRedux.Provider store={store}>
-      <App authIsReady={store.firebaseAuthIsReady} />
+      <ReactReduxFirebaseProvider dispatch={store.dispatch} {...rrfProps}>
+        <App authIsReady={store.firebaseAuthIsReady} />
+      </ReactReduxFirebaseProvider>
     </ReactRedux.Provider>,
     document.getElementById("app")
   );

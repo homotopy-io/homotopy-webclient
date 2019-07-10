@@ -39,7 +39,7 @@ export class ColorPicker extends React.Component {
       <Preview
         style={{ background: this.props.color }}
         onClick={() => this.openPicker()}
-        innerRef={this.pickerRef}>
+        ref={this.pickerRef}>
         {this.state.open &&
           <Picker>
             <BlockPicker

@@ -1122,7 +1122,7 @@ export class Diagram2D extends React.Component {
       <DiagramSVG
         width={this.props.width}
         height={this.props.height}
-        innerRef={this.diagramRef}
+        ref={this.diagramRef}
         preserveAspectRatio="xMidYMid meet"
         viewBox={min_x + ' ' + min_y + ' ' + dx + ' ' + dy}
         >
