@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  node: circleci/node@0.0.7
+  node: circleci/node@1.1.2
 jobs:
   build:
     executor: node/default
@@ -8,31 +8,35 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - dependencies-{{ checksum "client/package.json" }}-{{ checksum "core/package.json" }}
+            - dependencies-{{ checksum "package-lock.json" }}
             - dependencies-
       - run:
           name: Install dependencies
-          command: yarn
+          command: npm install
       - save_cache:
-          key: dependencies-{{ checksum "client/package.json" }}-{{ checksum "core/package.json" }}
+          key: dependencies-{{ checksum "package-lock.json" }}
           paths:
             - node_modules
-            - yarn.lock
+      - run:
+          name: Pull submodules
+          command: |
+            git submodule sync
+            git submodule update --init
       - run:
           name: Build homotopy-core
-          command: cd core && yarn run build
+          command: cd homotopy-core && npm install && npm run build
       - run:
           name: Build web client
-          command: cd client && yarn run build
+          command: npm run build
       - save_cache:
           key: dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - client/dist
-            - client/firebase.json
-            - client/.firebaserc
-            - client/firestore.rules
-            - client/firestore.indexes.json
-            - client/storage.rules
+            - dist
+            - firebase.json
+            - .firebaserc
+            - firestore.rules
+            - firestore.indexes.json
+            - storage.rules
   deploy:
     executor: node/default
     steps:
@@ -40,10 +44,10 @@ jobs:
           key: dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install firebase-tools
-          command: yarn add firebase-tools
+          command: npm install firebase-tools
       - run:
           name: Deploy to firebase
-          command: cd client && ../node_modules/.bin/firebase deploy --token $FIREBASE_DEPLOY_TOKEN
+          command: ../node_modules/.bin/firebase deploy --token $FIREBASE_DEPLOY_TOKEN
 workflows:
   build-and-deploy:
     jobs:
