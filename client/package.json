@@ -62,6 +62,7 @@
     "svg-pan-zoom": "^3.5.3",
     "three": "^0.95.0",
     "three-orbit-controls": "^82.1.0",
+    "three-trackballcontrols": "0.0.8",
     "typeface-roboto": "^0.0.54",
     "urlon": "^3.0.1"
   },

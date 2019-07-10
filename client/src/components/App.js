@@ -2,7 +2,7 @@ import * as React from "react";
 import PropTypes from 'prop-types'
 import { compose } from 'redux'
 import { connect } from "react-redux";
-import ReduxBlockUi from 'react-block-ui/redux'
+import ReduxBlockUi from 'react-block-ui/lib/redux'
 import 'react-block-ui/style.css'
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query'
 import history from '~/util/history'

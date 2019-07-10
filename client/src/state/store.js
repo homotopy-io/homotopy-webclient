@@ -2,7 +2,7 @@ import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mes
 import dotProp from "dot-prop-immutable";
 import { createStore, compose, applyMiddleware } from 'redux'
 import { install, combineReducers, loop, Cmd } from 'redux-loop'
-import blockUiMiddleware from 'react-block-ui/reduxMiddleware'
+import blockUiMiddleware from 'react-block-ui/lib/reduxMiddleware'
 import { urlQueryMiddleware } from 'react-url-query'
 import workspaceReducer, { initialWorkspace } from '~/state/store/workspace'
 import signatureReducer, { initialSignature } from '~/state/store/signature'
