@@ -1,0 +1,3 @@
+[submodule "homotopy-core"]
+	path = homotopy-core
+	url = https://github.com/homotopy-io/homotopy-core.git

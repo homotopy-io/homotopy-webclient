@@ -1,8 +1,8 @@
 # homotopy.io
 
-master: [![CircleCI](https://circleci.com/gh/homotopy-io/webclient/tree/master.svg?style=svg)](https://circleci.com/gh/homotopy-io/webclient/tree/master)
+master: [![CircleCI](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/master.svg?style=svg)](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/master)
 
-stable: [![CircleCI](https://circleci.com/gh/homotopy-io/webclient/tree/stable.svg?style=svg)](https://circleci.com/gh/homotopy-io/webclient/tree/stable)
+stable: [![CircleCI](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/stable.svg?style=svg)](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/stable)
 
 ## DOI
 
@@ -18,17 +18,14 @@ This work is made available under the CC BY-NC 3.0, Attribution-NonCommercial 3.
 
 First time:
 
-- `npm install -g yarn`
-
-Subsequent times:
-
-- In root directory, run `yarn` to install all dependencies and link the included packages together.
+- `git submodule sync && git submodule update --init`
+* `cd homotopy-core && npm install && npm run build`
+* `npm install`
 
 Development:
 
-- In `client` and `core`, run `npm run dev`, which automatically rebuilds when
-  the source changes. In `client`, this also starts a webserver at
-  http://localhost:8080.
+- Run `npm run dev`, which automatically rebuilds when the source changes. This
+  also starts a webserver at http://localhost:8080.
   
 Deployment:
 
