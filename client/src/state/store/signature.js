@@ -1,9 +1,9 @@
-import { _assert, _debug } from "../../../../core/src/util/debug"; // this is a mess
 import dotProp from "dot-prop-immutable";
 import createReducer from "~/util/create-reducer";
 import * as WorkspaceActions from "~/state/actions/workspace";
 import * as SignatureActions from "~/state/actions/signature";
 import * as Core from "homotopy-core";
+import { _assert, _debug } from "homotopy-core/src/util/debug";
 import { cellColors } from "~/style";
 
 export const initialSignature = {

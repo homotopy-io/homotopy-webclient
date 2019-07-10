@@ -3,7 +3,7 @@ import createReducer from "~/util/create-reducer";
 import * as WorkspaceActions from "~/state/actions/workspace";
 import * as AttachActions from "~/state/actions/attach";
 import * as Core from "homotopy-core";
-import { _assert, _debug } from "../../../../core/src/util/debug";
+import { _assert, _debug } from "homotopy-core/src/util/debug";
 import { toast } from 'react-toastify';
 import { notify } from "~/state/store/notify";
 

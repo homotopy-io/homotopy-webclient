@@ -1,5 +1,5 @@
 import * as Core from "homotopy-core";
-import { _assert, _debug, isNatural } from "../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug, isNatural } from "homotopy-core/src/util/debug";
 
 /*
     Literature on Bezier triangles

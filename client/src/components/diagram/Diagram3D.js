@@ -20,7 +20,7 @@ import { Surface } from "~/util/3d/surface";
 import { subdivideSurface } from "~/util/3d/subdivision";
 import { groupSurface } from "~/util/3d/group";
 import { indexBuffer, vertexBuffer } from "~/util/3d/buffers";
-import { _assert, _debug, isNatural } from "../../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug, isNatural } from "homotopy-core/src/util/debug";
 
 /*
 export default compose(

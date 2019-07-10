@@ -11,7 +11,7 @@ import * as HSLuv from "hsluv";
 import BezierCubic from "~/util/bezier";
 
 import compose from "~/util/compose";
-import { _assert, _debug, isNatural } from "../../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug, isNatural } from "homotopy-core/src/util/debug";
 //import { _assert } from "~/util/debug";
 import Graph from "~/util/graph";
 import withSize from "~/components/misc/Sized";

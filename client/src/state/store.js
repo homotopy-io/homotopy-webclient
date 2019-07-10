@@ -1,4 +1,4 @@
-import { _assert, _debug } from "../../../core/src/util/debug"; // this is a mess
+import { _assert, _debug } from "homotopy-core/src/util/debug";
 import dotProp from "dot-prop-immutable";
 import { createStore, compose, applyMiddleware } from 'redux'
 import { install, combineReducers, loop, Cmd } from 'redux-loop'
