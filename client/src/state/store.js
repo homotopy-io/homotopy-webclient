@@ -97,7 +97,7 @@ const reactReduxFirebaseConfig = {
 export default () => {
   firebase.initializeApp(firebaseConfig)
   const firestore = firebase.firestore()
-  firestore.settings({timestampsInSnapshots: true})
+  firestore.settings({})
 
   return createStore(
     rootReducer,
