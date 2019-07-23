@@ -377,6 +377,13 @@ export default (state = initialWorkspace, action) => {
       state = dotProp.set(state, "workspace.notifications", []);
       break;
 
+    } case 'workspace/catt': {
+
+      // Build a type-theoretic interpretation of the given diagram
+      let { diagram } = state.workspace;
+      let { generators } = state.signature;
+      
+      
     } case 'signature/select-generator': {
 
       let { id } = action.payload;
