@@ -382,7 +382,11 @@ export default (state = initialWorkspace, action) => {
       // Build a type-theoretic interpretation of the given diagram
       let { diagram } = state.workspace;
       let { generators } = state.signature;
-      
+      let int = new Core.Catt.Interpreter();
+      let value = int.interpret(generators, diagram);
+      let pp = new Core.Catt.PrettyPrinter();
+      console.log(value);
+      console.log(pp.prettyPrintDef(value));
       
     } case 'signature/select-generator': {
 
