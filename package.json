@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "_dev": "webpack-dev-server --config webpack.dev.js",
-    "dev": "node --max-old-space-size=8192 ../node_modules/webpack-dev-server/bin/webpack-dev-server.js --config webpack.dev.js",
+    "dev": "webpack-dev-server --config webpack.dev.js",
+    "_dev": "node --max-old-space-size=8192 ../node_modules/webpack-dev-server/bin/webpack-dev-server.js --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js --profile",
     "deploy": "npm run build && cp assets/index.html dist && firebase deploy"
   },
