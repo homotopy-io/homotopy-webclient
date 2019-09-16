@@ -388,6 +388,15 @@ export default (state = initialWorkspace, action) => {
       }
       break;
 
+    } case 'workspace/catt': {
+
+      let dia = state.workspace.diagram;
+      let sig = Object.values(state.signature.generators);
+      let int = new Core.Catt.Interpreter();
+      let res = int.interpretDiagram(sig, dia);
+      console.log(res);
+      break;
+      
     }
 
   }

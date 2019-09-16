@@ -42,6 +42,7 @@ Rx.fromEvent(document, "keydown")
       case "P": return store.dispatch({ type: 'workspace/decrease-projection' });
       case "j": return store.dispatch({ type: 'workspace/decrease-slice' });
       case "k": return store.dispatch({ type: 'workspace/increase-slice' });
+      case "a": return store.dispatch({ type: 'workspace/catt' });
     }
   });
 
