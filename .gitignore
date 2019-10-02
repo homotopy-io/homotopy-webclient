@@ -63,3 +63,15 @@ node_modules/
 
 # dotenv environment variables file
 .env
+
+# Direnv file
+.envrc
+
+# Nix build files
+*.nix
+
+# Emacs lock files
+.#*
+
+# Tern files
+.tern-port
