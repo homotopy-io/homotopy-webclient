@@ -11,6 +11,7 @@ import styled from "styled-components";
 import Header from "~/components/Header";
 import Login from "~/components/Login";
 import ProjectListing from "~/components/ProjectListing";
+import DeleteConfirmation from "~/components/misc/DeleteConfirmation"
 import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
 import ButtonTool from "~/components/tools/Buttons";
@@ -132,6 +133,7 @@ export class App extends React.PureComponent {
             </ToolBar>
             <Login />
             <ProjectListing />
+            <DeleteConfirmation />
             <ToastTool />
             <ToastContainer
               position={toast.POSITION.BOTTOM_RIGHT}
@@ -207,4 +209,3 @@ const Content = styled.div`
   flex-direction: column;
   flex: 1;
 `;
-

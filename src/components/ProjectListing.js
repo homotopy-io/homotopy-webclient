@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { compose } from 'redux'
+import { compose, bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import styled from "styled-components";
 
@@ -23,7 +23,7 @@ import Tooltip from '@material-ui/core/Tooltip'
 import Typography from '@material-ui/core/Typography'
 import { makeStyles } from '@material-ui/core/styles';
 
-import { connectModal } from 'redux-modal'
+import { connectModal, show as showM } from 'redux-modal'
 import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
 
 import copy from 'copy-to-clipboard'
@@ -32,7 +32,7 @@ import { setProject, setProjectID } from '~/state/actions/project'
 import { save, load } from '~/util/firebase'
 
 export const ProjectListing = ({
-  show, handleHide, uid, projects, firebase, firestore, setProject, serialization, copied, clearCopied, setCopied
+  show, handleHide, uid, projects, firebase, firestore, setProject, serialization, copied, clearCopied, setCopied, showModal
 }) =>
   <Dialog
     open={show}
@@ -114,10 +114,7 @@ export const ProjectListing = ({
                     </Tooltip>
                     <Tooltip title="Delete">
                       <IconButton aria-label="Delete" onClick={() => {
-                        // delete db entry in firestore
-                        firestore.delete({ collection: 'projects', doc: project.id })
-                        // delete blob in firebase storage
-                        firebase.deleteFile(`${uid}/${project.id}/0.proof`)
+                        showModal('deleteConfirmation', { project: project });
                       }}>
                         <DeleteIcon />
                       </IconButton>
@@ -151,7 +148,8 @@ export default compose(
       setProject: project => dispatch(setProject(project)),
       setProjectID: id => dispatch(setProjectID(id)),
       setCopied: () => dispatch({ type: "copied/set" }),
-      clearCopied: () => dispatch({ type: "copied/clear" })
+      clearCopied: () => dispatch({ type: "copied/clear" }),
+      showModal: bindActionCreators(showM, dispatch)
     })
   ),
   firebaseConnect(),
