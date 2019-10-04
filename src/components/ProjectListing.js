@@ -94,13 +94,14 @@ export const ProjectListing = ({
               </Tooltip>
               <Tooltip title="Clone">
                 <IconButton aria-label="Clone" onClick={() => {
-                  load(firebase, project, setProject)
+                  load(firebase, project, setProject);
+                  const metadata = project.versions[0].metadata;
                   save(firebase, firestore, {
                     uid,
                     docid: undefined, // force a new document to be created
-                    metadata: project.versions[0].metadata,
+                    metadata: Object.assign({},metadata,{title: metadata.title + " (Clone)"}),
                     proof: serialization
-                  }, setProjectID)
+                  }, setProjectID);
                 }}>
                   <FilterNoneIcon />
                 </IconButton>
