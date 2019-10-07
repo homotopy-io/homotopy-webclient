@@ -21,6 +21,7 @@ import LinkIcon from '@material-ui/icons/Link'
 import Switch from '@material-ui/core/Switch'
 import Tooltip from '@material-ui/core/Tooltip'
 import Typography from '@material-ui/core/Typography'
+import { makeStyles } from '@material-ui/core/styles';
 
 import { connectModal } from 'redux-modal'
 import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
@@ -38,6 +39,7 @@ export const ProjectListing = ({
     onClose={handleHide}
     scroll="paper"
     aria-labelledby="project-listing-title"
+    maxWidth="md"
   >
     <DialogTitle id="project-listing-title">Projects</DialogTitle>
     <DialogContent>
@@ -47,76 +49,87 @@ export const ProjectListing = ({
           <Card>
             <CardHeader
               title={project.versions[0].metadata.title}
-              subheader={`Author: ${project.versions[0].metadata.author}`} />
+              subheader={`Author: ${project.versions[0].metadata.author}`}
+              classes={useStyles()}
+              titleTypographyProps={{
+                noWrap: true
+              }}
+              subheaderTypographyProps = {{
+                noWrap: true
+              }}
+              action=
+                {
+                  <CardActions disableActionSpacing>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={project.public}
+                          onChange={evt => {
+                            const readable = evt.target.checked
+                            const blob = firebase.storage().ref().child(`${uid}/${project.id}/0.proof`)
+                            blob.updateMetadata({
+                              customMetadata: {public: readable}
+                            })
+                          }}
+                          value="public"
+                        />
+                      }
+                      label="Public"
+                    />
+                    <Tooltip
+                      title={project.public ? copied ? "Copied!" : "Copy link to clipboard" : "Make the project public to create a sharable link"}
+                      onClose={evt => setTimeout(clearCopied, 1000)}
+                      interactive
+                    >
+                      <div>
+                        <IconButton aria-label="Copy link to clipboard" disabled={!project.public} onClick={() => {
+                          copy(`${window.location.host}/?id=${project.id}`)
+                          setCopied()
+                        }}>
+                          <LinkIcon />
+                        </IconButton>
+                      </div>
+                    </Tooltip>
+                    <Tooltip title="Load">
+                      <IconButton aria-label="Load" onClick={() => {
+                        load(firebase, project, setProject)
+                        handleHide()
+                      }}>
+                        <LaunchIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Clone">
+                      <IconButton aria-label="Clone" onClick={() => {
+                        load(firebase, project, setProject);
+                        const metadata = project.versions[0].metadata;
+                        save(firebase, firestore, {
+                          uid,
+                          docid: undefined, // force a new document to be created
+                          metadata: Object.assign({},metadata,{title: metadata.title + " (Clone)"}),
+                          proof: serialization
+                        }, setProjectID);
+                      }}>
+                        <FilterNoneIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton aria-label="Delete" onClick={() => {
+                        // delete db entry in firestore
+                        firestore.delete({ collection: 'projects', doc: project.id })
+                        // delete blob in firebase storage
+                        firebase.deleteFile(`${uid}/${project.id}/0.proof`)
+                      }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </CardActions>
+                }
+            />
             <CardContent>
               <Typography>
                 {project.versions[0].metadata.abstract}
               </Typography>
             </CardContent>
-            <CardActions disableActionSpacing>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={project.public}
-                    onChange={evt => {
-                      const readable = evt.target.checked
-                      const blob = firebase.storage().ref().child(`${uid}/${project.id}/0.proof`)
-                      blob.updateMetadata({
-                        customMetadata: {public: readable}
-                      })
-                    }}
-                    value="public"
-                  />
-                }
-                label="Public"
-              />
-              <Tooltip
-                title={project.public ? copied ? "Copied!" : "Copy link to clipboard" : "Make the project public to create a sharable link"}
-                onClose={evt => setTimeout(clearCopied, 1000)}
-                interactive
-              >
-                <div>
-                  <IconButton aria-label="Copy link to clipboard" disabled={!project.public} onClick={() => {
-                    copy(`${window.location.host}/?id=${project.id}`)
-                    setCopied()
-                  }}>
-                    <LinkIcon />
-                  </IconButton>
-                </div>
-              </Tooltip>
-              <Tooltip title="Load">
-                <IconButton aria-label="Load" onClick={() => {
-                  load(firebase, project, setProject)
-                  handleHide()
-                }}>
-                  <LaunchIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Clone">
-                <IconButton aria-label="Clone" onClick={() => {
-                  load(firebase, project, setProject);
-                  const metadata = project.versions[0].metadata;
-                  save(firebase, firestore, {
-                    uid,
-                    docid: undefined, // force a new document to be created
-                    metadata: Object.assign({},metadata,{title: metadata.title + " (Clone)"}),
-                    proof: serialization
-                  }, setProjectID);
-                }}>
-                  <FilterNoneIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton aria-label="Delete" onClick={() => {
-                  // delete db entry in firestore
-                  firestore.delete({ collection: 'projects', doc: project.id })
-                  // delete blob in firebase storage
-                  firebase.deleteFile(`${uid}/${project.id}/0.proof`)
-                }}>
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </CardActions>
           </Card>
         </Project>
       )}
@@ -154,6 +167,12 @@ export default compose(
   }),
   connectModal({ name: "projectListing" })
 )(ProjectListing)
+
+const useStyles = makeStyles ({
+  content: {
+    'min-width': '0px'
+  }
+});
 
 const Project = styled.div`
  margin-bottom: 12px;
