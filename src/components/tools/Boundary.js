@@ -11,7 +11,8 @@ import Diagram2D from "~/components/diagram/Diagram2D";
 export const BoundaryTool = ({
   source,
   target,
-  onClearBoundary
+  onClearBoundary,
+  setDiagram
 }) => {
   if (!source && !target) {
     return null;
@@ -25,7 +26,7 @@ export const BoundaryTool = ({
       { label: "Clear boundary", icon: "close", onClick: onClearBoundary }
     ]}>
       <Container>
-        <Diagram>
+        <Diagram onClick={() => setDiagram(diagram)}>
           <Diagram2D diagram={diagram} dimension={Math.min(2, diagram.n)} slice={[]} />
         </Diagram>
       </Container>
@@ -39,7 +40,8 @@ export default connect(
     target: getTarget(state.proof)
   }),
   dispatch => ({
-    onClearBoundary: () => dispatch({ type: 'workspace/clear-boundary' })
+    onClearBoundary: () => dispatch({ type: 'workspace/clear-boundary' }),
+    setDiagram: (diagram) => dispatch({ type: 'workspace/set-diagram', payload: { diagram }})
   })
 )(BoundaryTool);
 

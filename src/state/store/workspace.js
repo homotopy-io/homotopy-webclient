@@ -357,6 +357,12 @@ export default (state = initialWorkspace, action) => {
       state = dotProp.set(state, "workspace.target", null);
       break;
 
+    } case 'workspace/set-diagram': {
+
+      let { diagram } = action.payload;
+      state = setDiagram(state, diagram);
+      break;
+
     } case 'workspace/contract': {
 
       let { diagram } = state.workspace;
