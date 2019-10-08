@@ -108,9 +108,7 @@ const Details = styled.div`
 `;
 
 const RenderedName = styled.div`
-  padding-left: 8px;
-  padding-top: 7px;
-  padding-bottom: 7px;
+  padding: 8px;
   background: #34495e;
   font-size: 15px;
 `
@@ -120,6 +118,8 @@ const Name = styled.input`
   background: #34495e;
   border: none;
   color: #ecf0f1;
+  font-size: 15px;
+  font-family: "Roboto", sans-serif;
 `;
 
 const Actions = styled.div`
