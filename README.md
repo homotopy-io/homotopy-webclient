@@ -20,7 +20,7 @@ First time:
 
 - `git submodule sync`
 - `git submodule update --init`
-- `cd homotopy-core
+- `cd homotopy-core`
 - `npm install`
 - `npm run build`
 - `cd ..`
