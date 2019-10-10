@@ -18,15 +18,19 @@ This work is made available under the CC BY-NC 3.0, Attribution-NonCommercial 3.
 
 First time:
 
-- `git submodule sync && git submodule update --init`
-* `cd homotopy-core && npm install && npm run build`
-* `npm install`
+- `git submodule sync`
+- `git submodule update --init`
+- `cd homotopy-core
+- `npm install`
+- `npm run build`
+- `cd ..`
+- `npm install`
 
 Development:
 
 - Run `npm run dev`, which automatically rebuilds when the source changes. This
   also starts a webserver at http://localhost:8080.
-  
+
 Deployment:
 
 - (Project collaborators only.) Merge to `stable` and push; this is then automatically deployed.
