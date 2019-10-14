@@ -40,3 +40,7 @@ Deployment:
 You can cite _homotopy.io_ using the following BiBTeX entry:
 
     @misc{homotopyio-tool, author = {Lukas Heidemann and Nick Hu and Jamie Vicary}, title = {\emph{homotopy.io}}, year = 2019, doi = {10.5281/zenodo.2540764}, url = {https://doi.org/10.5281/zenodo.2540764} }
+
+## Community
+
+Have questions about homotopy.io? Come and chat to us! We can be found in the [[matrix]](https://matrix.org/) room [`#homotopy:matrix.org`](https://matrix.to/#/#homotopy:matrix.org), which is bridged to [Gitter](https://gitter.im/homotopyio/community) and [`#homotopy` on freenode.net](https://webchat.freenode.net/#homotopy).
