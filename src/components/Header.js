@@ -67,6 +67,7 @@ export const Header = ({
     }
     {/*<Action>Gallery</Action>
     <Action>Help</Action>*/}
+    <Action onClick={() => showModal('tikz')}>TikZ</Action>
     <Action onClick={() => downloadJSON({
       metadata,
       proof: serialization

@@ -31,11 +31,14 @@ export default compose(
   : <Loading {...props} />
 );
 
+export let instance = null
+
 export class Diagram2D extends React.Component {
 
   constructor(props) {
     super(props);
     this.diagramRef = React.createRef();
+    instance = this
   }
 
   componentDidMount() {

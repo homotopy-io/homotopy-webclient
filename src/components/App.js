@@ -10,6 +10,7 @@ import { firebaseConnect, firestoreConnect } from 'react-redux-firebase'
 import styled from "styled-components";
 import Header from "~/components/Header";
 import Login from "~/components/Login";
+import Tikz from "~/components/diagram/Tikz";
 import ProjectListing from "~/components/ProjectListing";
 import Signature from "~/components/Signature";
 import Workspace from "~/components/Workspace";
@@ -131,6 +132,7 @@ export class App extends React.PureComponent {
               <BoundaryTool />
             </ToolBar>
             <Login />
+            <Tikz />
             <ProjectListing />
             <ToastTool />
             <ToastContainer
