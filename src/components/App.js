@@ -19,6 +19,7 @@ import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 import ToastTool from "~/components/tools/Toast";
 import LogoImg from '../logo.svg';
+import URLON from 'urlon'
 import ReactGA from 'react-ga';
 
 // Toast stuff
@@ -63,6 +64,24 @@ export class App extends React.PureComponent {
   }
 
   async componentDidMount() {
+    // three cases to consider:
+    //  * got an ID but no legacy URL data
+    //    - retrieve the project from firebase
+    //  * got no ID but got legacy URL data
+    //    - decode the legacy URL and clear it
+    //  * got both an ID and legacy URL data
+    //    - decode the legacy URL, clear it, but leave the ID intact
+    const legacyDecode = (hash) => {
+      try {
+        this.props.dispatch(setProject({
+          ...URLON.parse(hash)
+        }))
+      } catch (err) {
+        console.log("Failed to parse legacy URL")
+      }
+      window.location.hash = ''
+    }
+
     const getProofPath = async () => {
       // get from firestore the path to the blob
       await this.props.firestore.get({ collection: "projects", doc: this.props.id })
@@ -77,18 +96,30 @@ export class App extends React.PureComponent {
         const path = await getProofPath()
         const fileRef = this.props.firebase.storage().ref().child(path)
         const meta = await fileRef.getMetadata() // try to retrieve the project…
-        const url = await fileRef.getDownloadURL()
-        const xhr = new XMLHttpRequest()
-        xhr.onload = (evt => {
-          this.props.dispatch(setProject({
-            metadata: meta.customMetadata, // set metadata from firebase storage metadata
-            proof: xhr.response
-          }))
-        })
-        xhr.open('GET', url) // get proof blob from firebase storage
-        xhr.send()
+        const hash = window.location.hash.substr(1) // check if we got a legacy URL
+        if (hash && hash !== 'undefined' && hash !== 'null') { // got a legacy URL
+          legacyDecode(hash)
+        }
+        else { // no legacy URL, so set the project from firebase
+          const url = await fileRef.getDownloadURL()
+          const xhr = new XMLHttpRequest()
+          xhr.onload = (evt => {
+            this.props.dispatch(setProject({
+              metadata: meta.customMetadata, // set metadata from firebase storage metadata
+              proof: xhr.response
+            }))
+          })
+          xhr.open('GET', url) // get proof blob from firebase storage
+          xhr.send()
+        }
       } catch (err) { // couldn't retrieve project
         this.props.dispatch(setProjectID(undefined))
+      }
+    }
+    else {
+      const hash = window.location.hash.substr(1)
+      if (hash && hash !== 'undefined' && hash !== 'null') { // got a legacy URL
+        legacyDecode(hash)
       }
     }
     // listen for hash changes
