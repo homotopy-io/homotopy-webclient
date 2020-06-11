@@ -19,7 +19,6 @@ import BoundaryTool from "~/components/tools/Boundary";
 import AttachmentTool from "~/components/tools/Attachment";
 import ToastTool from "~/components/tools/Toast";
 import LogoImg from '../logo.svg';
-import URLON from 'urlon'
 import ReactGA from 'react-ga';
 
 // Toast stuff
@@ -64,7 +63,6 @@ export class App extends React.PureComponent {
   }
 
   async componentDidMount() {
-    const hash = window.location.hash.substr(1);
     const getProofPath = async () => {
       // get from firestore the path to the blob
       await this.props.firestore.get({ collection: "projects", doc: this.props.id })
@@ -79,18 +77,16 @@ export class App extends React.PureComponent {
         const path = await getProofPath()
         const fileRef = this.props.firebase.storage().ref().child(path)
         const meta = await fileRef.getMetadata() // try to retrieve the project…
-        if (!hash || hash === 'undefined' || hash === 'null') { // set it if we got no data in the url
-          const url = await fileRef.getDownloadURL()
-          const xhr = new XMLHttpRequest()
-          xhr.onload = (evt => {
-            this.props.dispatch(setProject({
-              metadata: meta.customMetadata, // set metadata from firebase storage metadata
-              proof: xhr.response
-            }))
-          })
-          xhr.open('GET', url) // get proof blob from firebase storage
-          xhr.send()
-        }
+        const url = await fileRef.getDownloadURL()
+        const xhr = new XMLHttpRequest()
+        xhr.onload = (evt => {
+          this.props.dispatch(setProject({
+            metadata: meta.customMetadata, // set metadata from firebase storage metadata
+            proof: xhr.response
+          }))
+        })
+        xhr.open('GET', url) // get proof blob from firebase storage
+        xhr.send()
       } catch (err) { // couldn't retrieve project
         this.props.dispatch(setProjectID(undefined))
       }

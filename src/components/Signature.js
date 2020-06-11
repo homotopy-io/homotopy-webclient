@@ -9,8 +9,6 @@ import { getDimensionGroups } from "~/state/store/signature";
 
 import IconButton from "~/components/misc/IconButton";
 
-import URLON from 'urlon'
-
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField'
 import ExpansionPanel from '@material-ui/core/ExpansionPanel'
@@ -68,18 +66,15 @@ export const Signature = ({
                      0)
                    }}>
         {!titleFocused && <RenderedTitle id="title">{metadata.title}</RenderedTitle>}
-        <Field name="title" type={titleFocused ? "text" : "hidden"} component={renderTextField} fullWidth={titleFocused} inputProps={{style: titleStyle}} />
+        <Field name="title" type={titleFocused ? "text" : "hidden"} component={renderTextField} fullWidth={titleFocused} inputProps={{style: titleStyle}} onBlur={evt => {
+            // update metadata
+            window.sessionStorage.setItem("metadata", JSON.stringify(metadata))
+          }} />
       </GroupHeader>
       <div style={{margin: '0px 16px 8px 16px'}}>
         <Field name="author" component={renderTextField} label="Author" fullWidth onBlur={evt => {
-          // update hash
-          const hash = window.location.hash.substr(1)
-          if (hash) {
-            const data = URLON.parse(window.location.hash.substr(1))
-            window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.author', metadata.author))
-          } else {
-            window.location.hash = URLON.stringify({ metadata })
-          }
+          // update metadata
+          window.sessionStorage.setItem("metadata", JSON.stringify(metadata))
         }} />
       </div>
       <ExpansionPanel onMouseEnter={() => setAbstractFocus(true)}
@@ -102,14 +97,10 @@ export const Signature = ({
         <ExpansionPanelDetails>
           {!abstractFocused && <RenderedAbstract id="abstract">{metadata.abstract}</RenderedAbstract>}
           <Field name="abstract" type={abstractFocused ? "text" : "hidden"} component={renderTextField} multiline={abstractFocused} fullWidth={abstractFocused} onBlur={evt => {
-            // update hash
-            const hash = window.location.hash.substr(1)
-            if (hash) {
-              const data = URLON.parse(window.location.hash.substr(1))
-              window.location.hash = URLON.stringify(dotProp.set(data, 'metadata.abstract', metadata.abstract))
-            } else {
-              window.location.hash = URLON.stringify({ metadata })
-            }
+            // update metadata
+            // FIXME: in Chrome, this is not called unless you <TAB> out of the
+            // field
+            window.sessionStorage.setItem("metadata", JSON.stringify(metadata))
           }} />
         </ExpansionPanelDetails>
       </ExpansionPanel>

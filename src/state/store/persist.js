@@ -4,7 +4,6 @@ import * as Core from "homotopy-core";
 import * as Compression from "../../util/compression";
 import dotProp from "dot-prop-immutable";
 import { initialProof } from '~/state/store.js'
-import URLON from 'urlon'
 
 export const initialPersist = null
 
@@ -15,24 +14,22 @@ export default (state = initialPersist, action) => {
   switch (action.type) {
 
     case 'persist/deserialize': {
-      
-      const hash = window.location.hash.substr(1)
+      const proof = window.sessionStorage.getItem("proof_state")
+      const metadata = JSON.parse(window.sessionStorage.getItem("metadata"))
+
       const initialMetadata = {
         title: "Untitled Project",
         author: "",
         abstract: ""
       }
-      if (!hash) {
-        console.log('Rehydrating empty hash, clearing proof')
+      if (!proof) {
+        console.log('Got nothing to rehydrate, clearing proof')
         return loop({ ...state, ...initialProof }, Cmd.list(setMetadata(initialMetadata)))
       }
-      const parsed = URLON.parse(hash)
-      console.log('Hash parsed', parsed)
-      const { proof, metadata } = parsed
       const stateWithMetadata = state =>
       metadata ? loop(state, Cmd.list(setMetadata({ ...initialMetadata, ...metadata }))) : state
-      if (!proof) { // no proof in hash, give empty proof but set the metadata
-        console.log('Hash has no proof, got metadata, clearing proof')
+      if (!proof) { // no proof found, give empty proof but set the metadata
+        console.log('Got no proof, got metadata, clearing proof')
         return stateWithMetadata({ ...state, ...initialProof })
       }
       if (state.serialization === proof) return stateWithMetadata(state) // no update needed
@@ -81,22 +78,8 @@ export default (state = initialPersist, action) => {
 
       let compressed = Compression.compress(string);
 
-      // Put the string into local storage
-      //window.localStorage.setItem("homotopy_io_state", compressed);
-
-      // Put the string into the URL
-      const prevHash = window.location.hash.substr(1)
-      if (prevHash) {
-        const olddata = URLON.parse(prevHash)
-        window.location.hash = URLON.stringify({
-          ...olddata,
-          proof: compressed
-        })
-      } else {
-        window.location.hash = URLON.stringify({
-          proof: compressed
-        })
-      }
+      // Put the string into session storage
+      window.sessionStorage.setItem("proof_state", compressed);
 
       const t4 = performance.now();
       console.log(`State decycled (${Math.floor(t1-t0)} ms, ${s1} objects), `

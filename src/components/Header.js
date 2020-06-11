@@ -15,8 +15,6 @@ import * as Compression from '~/util/compression'
 import downloadJSON from '~/util/export'
 import { save } from '~/util/firebase'
 
-import URLON from 'urlon' // for an ugly hack
-
 import CircularProgress from '@material-ui/core/CircularProgress'
 
 export const Header = ({
@@ -45,9 +43,15 @@ export const Header = ({
         : <React.Fragment>
           <Action onClick={() => alert('TODO: implement email/password changing')}>{auth.email}</Action>
           <Action onClick={() => firebase.logout()}>Log out</Action>
-          <Action onClick={() => { setProjectID(undefined); window.location.hash = '' }}>New</Action>
           <Action onClick={() => {
-            if (!window.location.hash.substr(1))
+            setProjectID(undefined)
+            window.sessionStorage.removeItem("metadata")
+            window.sessionStorage.removeItem("proof_state")
+          }}>New</Action>
+          <Action onClick={() => {
+            const proof = window.sessionStorage.getItem("proof_state")
+            const metadata = JSON.parse(window.sessionStorage.getItem("metadata"))
+            if (!proof && !metadata)
               serialize()
             // FIXME: this really ought to update the proof.serialization key in
             // the redux store when we get here, but it's still undefined for
@@ -59,7 +63,7 @@ export const Header = ({
               uid: auth.uid,
               docid: id,
               metadata,
-              proof: serialization || URLON.parse(window.location.hash.substr(1)).proof
+              proof: serialization || window.sessionStorage.getItem("proof_state")
             }, setProjectID)
           }}>Save</Action>
           <Action onClick={() => showModal('projectListing')}>Projects</Action>

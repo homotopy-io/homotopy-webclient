@@ -1,7 +1,6 @@
 import { change } from 'redux-form'
 import * as Core from "homotopy-core";
 import * as Compression from "~/util/compression";
-import URLON from 'urlon'
 
 /**
  * Connect the redux store to local storage.
@@ -16,24 +15,21 @@ export function connectStore(store) {
  */
 
 const loadState = (store) => {
-  const raw = window.location.hash.substr(1)
-  if (raw) {
-    const data = URLON.parse(raw);
-
+  const metadata = JSON.parse(window.sessionStorage.getItem("metadata"))
+  const proof = window.sessionStorage.getItem("proof_state")
+  if (proof) {
     try {
       // load metadata
-      for (const k in data.metadata) {
+      for (const k in metadata) {
         console.log('Changing meta', k)
-        store.dispatch(change('metadata', k, data.metadata[k]))
+        store.dispatch(change('metadata', k, metadata[k]))
       }
       // load proof
-      if (data.proof) {
-        const decompressed = Compression.decompress(data.proof);
-        const deserializer = Core.SerializeCyclic.destringify(decompressed);
-        const state = deserializer.getHead();
-        state.serialization = data.proof;
-        store.dispatch({ type: 'persist/loaded', payload: state });
-      }
+      const decompressed = Compression.decompress(proof);
+      const deserializer = Core.SerializeCyclic.destringify(decompressed);
+      const state = deserializer.getHead();
+      state.serialization = proof;
+      store.dispatch({ type: 'persist/loaded', payload: state });
     } catch (err) {
       console.log('Rehydration error');
     }
