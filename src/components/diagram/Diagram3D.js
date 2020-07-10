@@ -468,18 +468,23 @@ export class Diagram3D extends React.Component {
     cancelAnimationFrame(this.animationFrame);
   }
 
-  getMaterial(generator) {
+  /**
+   * Get the material to display a particular generator in a given ambient dimension
+   * @param {Integer} generator
+   * @param {Integer} dimension
+   * @return {Material}
+   */
+  getMaterial(generator, dimension) {
     const id = generator.generator.id;
-
-    if (!this.materials.has(id)) {
+    const key = id + "," + dimension.toString();
+    if (!this.materials.has(key)) {
       let material = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(generator.color),
+        color: new THREE.Color(this.diagram.getColour(generator, dimension)),
         side: THREE.DoubleSide
       });
-      this.materials.set(id, material);
+      this.materials.set(key, material);
     }
-
-    return this.materials.get(id);
+    return this.materials.get(key);
   }
 
   getMaterialOfColour(colour) {
@@ -613,17 +618,51 @@ export class Diagram3D extends React.Component {
     return result;
   }
 
+  /**
+   * Display a diagram in 3D
+   */
   buildSceneUnique() {
-
+    let showHomotopies = true;
     // Prepare the simplices
     let diagram = this.diagramToRender;
     let dimension = Math.min(diagram.n, 3);
     let generators = this.props.generators;
-    let complex = diagram.skeleton({ generators, dimension, max_simplex_size: 3 }).complex.trimInvisible();
-    console.log(complex.getByDimension());
+
+    let complex_full = diagram.skeleton({ generators, dimension, max_simplex_size: 3 }).complex;
+
+    let complex = {};
+    // Get the geometry we want to display
+    if (showHomotopies) {
+      // Find the homotopies we want to display.
+      let points = diagram.getAllPointsWithData(dimension, dimension, generators);
+      let homotopy_points = [];
+
+      for (let point of points) {
+        let keep = true;
+        let homotopy = [];
+        for (let i = 0; i < point.coordinates.length; i++) {
+          // Need to keep the boundary points along the highest dimension
+          if (i > 0) keep = keep && !point.boundary[i];
+          if (point.nontrivial[i] && !point.algebraic[i]) {
+            // There are no 1d homotopies on the highest dimensional boundary
+            if (i > 0 || !point.boundary[i]) homotopy.push(i + 1);
+          }
+        }
+        keep = keep && homotopy.length > 0; // Remove if boundary or not a homotopy
+        if (keep) {
+          homotopy_points[point.coordinates] = homotopy;
+        }
+      }
+
+      // Find the relevant simplicies
+      complex = complex_full.trimInvisibleHomotopies(homotopy_points);
+    } else { // Display only algebraic geometry. Much faster.
+      complex = complex_full.trimInvisible();
+    }
 
     let { layout, boundary } = diagram.layout(dimension);
 
+    // Display
     let loop = new Loop({ complex, layout, boundary, dimension });
     this.originalLayout = { ...layout };
 
@@ -637,7 +676,7 @@ export class Diagram3D extends React.Component {
       let vertex_data = loop.draw_vertices[i];
       let id = vertex_data.id;
       let new_geometry = new THREE.SphereGeometry(0.1, 32, 32);
-      let new_mesh = new THREE.Mesh(new_geometry, this.getMaterial(generators[id]));
+      let new_mesh = new THREE.Mesh(new_geometry, this.getMaterial(generators[id], diagram.n));
       let point = loop.layout[vertex_data.vertex];
       let vector = Diagram3D.to3Vector(point);
       new_mesh.position.set(vector.x, vector.y, vector.z);
@@ -655,8 +694,7 @@ export class Diagram3D extends React.Component {
     });
 
     // Sort the edge segments into maximal chains
-    let edge_groups = sorted_edges.map(data => { return [data] });
-    console.log(edge_groups);
+    let edge_groups = sorted_edges.map(data => { return [data]; });
     let merged;
     do {
       merged = false;
@@ -693,7 +731,6 @@ export class Diagram3D extends React.Component {
     } while (merged);
 
     // Render the maximal chains
-    console.log('Rendering ' + edge_groups.length + ' edge groups');
     for (let i=0; i<edge_groups.length; i++) {
       let group = edge_groups[i];
       let curve = new THREE.CurvePath();
@@ -704,7 +741,7 @@ export class Diagram3D extends React.Component {
       }
       let geometry = new THREE.TubeGeometry(curve, path_points.length * 20, 0.05, 8, false, true);
       let generator = generators[group[0].id];
-      let material = this.getMaterial(generator);
+      let material = this.getMaterial(generator, diagram.n - 1);
       let wire = new THREE.Mesh(geometry, material);
       this.scene.add(wire);
       this.objects.push(wire);
@@ -735,13 +772,13 @@ export class Diagram3D extends React.Component {
       let geometry = triangle_geometries[id];
       geometry.mergeVertices();
       geometry.computeVertexNormals();
-      let material = this.getMaterial(generators[id]);
+      let material = this.getMaterial(generators[id], diagram.n - 2);
       material.transparent = this.transparent;
       material.opacity = this.opacity;
       let mesh = new THREE.Mesh(geometry, material);
       this.scene.add(mesh);
       this.objects.push(mesh);
-      this.intersectMeshes.push(mesh)
+      this.intersectMeshes.push(mesh);
     }
 
     // Intersection data

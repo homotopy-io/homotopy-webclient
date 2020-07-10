@@ -213,26 +213,6 @@ export class Diagram2D extends React.Component {
     return this.props.generators[id];
   }
 
-  // Get the display colour of the generator in a given ambient dimension
-  getColour(generator, n) {
-
-    if (_debug) _assert(isNatural(n));
-    if (_debug) _assert(generator);
-
-    //if (n >= 3) debugger;
-
-    // If the generator is appearing in its native dimension, use the assigned colour
-    if (n <= generator.generator.n) return generator.color;
-
-    // Otherwise, adjust the lightness cyclically
-    var husl = HSLuv.hexToHsluv(generator.color);
-    var lightnesses = [30, 50, 70];
-    //husl[2] = lightnesses[(n - generator.generator.n) % 3];
-    husl[2] = 20 + ((husl[2] + (n - generator.generator.n) * 17.8309886184) % 60);
-    return HSLuv.hsluvToHex(husl);
-
-  }
-
   getControlPoint(generator, from, to) {
     if (this.diagram.n < 2 || generator.generator.n <= this.diagram.n - 2) {
       return from;
@@ -257,7 +237,7 @@ export class Diagram2D extends React.Component {
 
     if (_debug) _assert(generator);
 
-    let colour = this.getColour(generator, this.diagram.n);
+    let colour = this.diagram.getColour(generator, this.diagram.n);
     let key = `point`;
     let fill_opacity = 1;
     let r = 12.5;
@@ -301,7 +281,7 @@ export class Diagram2D extends React.Component {
       //return null;
     }
 
-    let colour = this.getColour(generator, this.diagram.n);
+    let colour = this.diagram.getColour(generator, this.diagram.n);
     let key = `point#${point.position.join(":")}`;
     let fill_opacity = 1;
     let r = 12.5;
@@ -347,7 +327,7 @@ export class Diagram2D extends React.Component {
       //return null;
     }
 
-    let colour = this.getColour(generator, this.diagram.n);
+    let colour = this.diagram.getColour(generator, this.diagram.n);
     let key = `point#${point.position.join(":")}`;
     let fill_opacity = 1;
     let small_radius = 15;
@@ -359,7 +339,7 @@ export class Diagram2D extends React.Component {
       } else if (point.count_depths <= 1) {
         fill_opacity = 1;
         r = small_radius;
-        colour = this.getColour(generator, this.diagram.n - 1);
+        colour = this.diagram.getColour(generator, this.diagram.n - 1);
       } else {
         fill_opacity = 0;
         r = 25;
@@ -931,7 +911,6 @@ export class Diagram2D extends React.Component {
   }
 
   renderSurface(sm, mt, st) {
-//return;
     if (_debug) _assert(sm.source_point === st.source_point);
     if (_debug) _assert(st.target_point === mt.target_point);
     if (_debug) _assert(mt.source_point === sm.target_point);
@@ -977,7 +956,7 @@ export class Diagram2D extends React.Component {
     */
 
     let sGenerator = s.generator;
-    let colour = highlight ? "#f1c40f" : this.getColour(sGenerator, this.diagram.n - 2);
+    let colour = highlight ? "#f1c40f" : this.diagram.getColour(sGenerator, this.diagram.n - 2);
     let stroke_colour = colour;
     //stroke_colour = '#fff';
     //let key = 'surface#' + s.point.join(":") + '#' + m.point.join(":") + '#' + t.point.join(":")';
