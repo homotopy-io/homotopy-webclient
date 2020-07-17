@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import Diagram2D from "~/components/diagram/Diagram2D";
 import Diagram3D from "~/components/diagram/Diagram3D";
 
-import { getDiagram, getDisplayDimension, getSlice, getRenderer, getProjection } from "~/state/store/workspace";
+import { getDiagram, getDisplayDimension, getSlice, getRenderer, getProjection, getDisplayHomotopies } from "~/state/store/workspace";
 import { getHighlight } from "~/state/store/attach";
 //import { selectCell, homotopy } from "~/state/actions/workspace";
 
@@ -20,7 +20,8 @@ export const Workspace = ({
   onSelectCell,
   onHomotopy,
   onHomotopy3d,
-  projection
+  projection,
+  displayHomotopies
 }) => {
   let Diagram = renderer == 2 ? Diagram2D : Diagram3D;
 
@@ -33,6 +34,7 @@ export const Workspace = ({
           highlight={highlight}
           slice={slice}
           projection={projection}
+          displayHomotopies={displayHomotopies}
           interactive
           onSelect={onSelectCell}
           onHomotopy={onHomotopy}
@@ -50,12 +52,13 @@ export default connect(
     highlight: getHighlight(state.proof),
     slice: getSlice(state.proof),
     renderer: getRenderer(state.proof),
-    projection: getProjection(state.proof)
+    projection: getProjection(state.proof),
+    displayHomotopies: getDisplayHomotopies(state.proof)
   }),
   dispatch => ({
-    onSelectCell: (points) => dispatch({ type: 'workspace/select-cell', payload: { points } }),
-    onHomotopy: (point, direction) => dispatch({ type: 'workspace/homotopy', payload: { point, direction } }),
-    onHomotopy3d: (point, direction) => dispatch({ type: 'workspace/homotopy3d', payload: { point, direction } })
+    onSelectCell: (points) => dispatch({ type: "workspace/select-cell", payload: { points } }),
+    onHomotopy: (point, direction) => dispatch({ type: "workspace/homotopy", payload: { point, direction } }),
+    onHomotopy3d: (point, direction) => dispatch({ type: "workspace/homotopy3d", payload: { point, direction } })
   })
 )(Workspace);
 

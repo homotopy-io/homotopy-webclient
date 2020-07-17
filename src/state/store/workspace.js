@@ -15,6 +15,7 @@ export const initialWorkspace = {
   slice: null,
   projection: null,
   renderer: 2,
+  displayHomotopies: false,
   notifications: []
 }
 
@@ -72,6 +73,10 @@ export const getSlice = (state) => {
 
 export const getRenderer = (state) => {
   return state.workspace.renderer;
+};
+
+export const getDisplayHomotopies = (state) => {
+  return state.workspace.displayHomotopies;
 };
 
 export const getProjection = (state) => {
@@ -204,6 +209,11 @@ export default (state = initialWorkspace, action) => {
 
       state = dotProp.set(state, "workspace.renderer", action.payload.renderer);
       state = dotProp.set(state, "workspace.slice", updateSlices(state));
+      break;
+
+    } case 'workspace/set-display-homotopies': {
+
+      state = dotProp.set(state, "workspace.displayHomotopies", action.payload.displayHomotopies);
       break;
 
     } case 'workspace/homotopy3d':

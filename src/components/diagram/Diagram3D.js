@@ -346,6 +346,8 @@ export class Diagram3D extends React.Component {
         return true;
       }
     }
+    if (this.props.displayHomotopies != nextProps.displayHomotopies) return true;
+
     return false;
 
 

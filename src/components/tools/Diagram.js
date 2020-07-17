@@ -2,7 +2,7 @@ import * as React from "react";
 import { connect } from "react-redux";
 
 // import { clearDiagram, setProjection, setSlice, setRenderer } from "~/state/actions/workspace";
-import { getDiagram, getSlice, getProjection, getSliceBounds, getRenderer } from "~/state/store/workspace";
+import { getDiagram, getSlice, getProjection, getSliceBounds, getRenderer, getDisplayHomotopies } from "~/state/store/workspace";
 
 import Tool, { Control } from "~/components/Tool";
 import styled from "styled-components";
@@ -13,10 +13,12 @@ export const DiagramTool = ({
   sliceBounds,
   projection,
   renderer,
+  displayHomotopies,
   onClearDiagram,
   onSetSlice,
   onSetProjection,
-  onSetRenderer
+  onSetRenderer,
+  onSetDisplayHomotopies
 }) => {
   if (diagram == null) {
     return null;
@@ -32,6 +34,7 @@ export const DiagramTool = ({
       <RendererControl value={renderer} onChange={onSetRenderer} />
       <ProjectionControl value={projection} dimension={diagram.n} onChange={onSetProjection} />
       <SliceControl slice={slice} bounds={sliceBounds} onChange={onSetSlice} />
+      {renderer != 2 ? <DisplayHomotopiesControl value={displayHomotopies} onChange={onSetDisplayHomotopies} /> : null}
     </Tool>
   );
 };
@@ -42,13 +45,15 @@ export default connect(
     slice: getSlice(state.proof),
     projection: getProjection(state.proof),
     sliceBounds: getSliceBounds(state.proof),
-    renderer: getRenderer(state.proof)
+    renderer: getRenderer(state.proof),
+    displayHomotopies: getDisplayHomotopies(state.proof)
   }),
   dispatch => ({
     onClearDiagram: () => dispatch({ type: 'workspace/clear-diagram' }),
     onSetProjection: (projection) => dispatch({ type: 'workspace/set-projection', payload: { projection } }),
     onSetSlice: (index, height) => dispatch({ type: 'workspace/set-slice', payload: { index, height } }),
-    onSetRenderer: (renderer) => dispatch({ type: 'workspace/set-renderer', payload: { renderer } })
+    onSetRenderer: (renderer) => dispatch({ type: 'workspace/set-renderer', payload: { renderer } }),
+    onSetDisplayHomotopies: (displayHomotopies) => dispatch({ type: 'workspace/set-display-homotopies', payload: { displayHomotopies } }),
   })
 )(DiagramTool);
 
@@ -122,5 +127,17 @@ export const RendererControl = ({
         <option value={3}>3D</option>
       </select>
     </Control>
+  );
+}
+
+export const DisplayHomotopiesControl = ({
+  value,
+  onChange
+}) => {
+  return (
+      <Control label="Display homotopies">
+        <input type="checkbox" checked={value} onChange={e => onChange(!value)} value={value}>
+        </input>
+      </Control>
   );
 }
