@@ -12,7 +12,7 @@ You can cite _homotopy.io_ using the following DOI:
 
 ## License
 
-This work is made available under the CC BY-NC 3.0, Attribution-NonCommercial 3.0 Unported
+This work is made available under the [CC BY-NC 3.0, Attribution-NonCommercial 3.0 Unported](LICENSE)
 
 ## Build Instructions
 
