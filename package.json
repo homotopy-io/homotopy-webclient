@@ -32,7 +32,7 @@
     "copy-to-clipboard": "^3.3.1",
     "dat.gui": "^0.7.7",
     "dot-prop-immutable": "^1.6.0",
-    "firebase": "^6.6.2",
+    "firebase": "^7.21.0",
     "glamor": "^2.20.40",
     "history": "^4.10.1",
     "homotopy-core": "file:homotopy-core",
