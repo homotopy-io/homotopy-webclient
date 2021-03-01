@@ -61,7 +61,7 @@
     "rxjs": "^6.5.5",
     "styled-components": "^4.4.1",
     "svg-pan-zoom": "^3.6.1",
-    "three": "^0.106.2",
+    "three": "^0.125.0",
     "three-orbit-controls": "^82.1.0",
     "three-trackballcontrols": "0.0.8",
     "typeface-roboto": "^0.0.54",
