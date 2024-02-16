@@ -1,8 +1,6 @@
 # homotopy.io
 
-master: [![CircleCI](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/master.svg?style=svg)](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/master)
-
-stable: [![CircleCI](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/stable.svg?style=svg)](https://circleci.com/gh/homotopy-io/homotopy-webclient/tree/stable)
+![master](https://github.com/homotopy-io/homotopy-webclient/workflows/ci.yml/badge.svg)
 
 ## DOI
 
@@ -33,7 +31,7 @@ Development:
 
 Deployment:
 
-- (Project collaborators only.) Merge to `stable` and push; this is then automatically deployed.
+- (Project collaborators only.) Merge to `master` and push; this is then automatically deployed.
 
 ## Citation
 
