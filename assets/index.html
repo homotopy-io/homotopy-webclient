@@ -28,6 +28,14 @@
             {left: "\\(", right: "\\)", display: false}
           ]
         });'></script>
+    <!-- prompt for redirect to beta.homotopy.io -->
+    <script>
+      if (window.location.hostname === 'homotopy.io') {
+        if (window.confirm('A new version of homotopy.io is now in beta. Would you like to be redirected to beta.homotopy.io? This version is no longer supported.')) {
+          window.location = 'https://beta.homotopy.io';
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
