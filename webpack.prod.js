@@ -1,6 +1,7 @@
 const path = require("path");
 const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
@@ -11,6 +12,11 @@ module.exports = merge(common, {
     new HtmlWebpackPlugin({
       template: "assets/index.html",
       favicon: "assets/favicon.ico"
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: "static" }
+      ]
     })
   ],
   node: {
